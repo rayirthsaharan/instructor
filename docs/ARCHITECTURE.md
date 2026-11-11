@@ -90,5 +90,13 @@ tests/              unit + integration;  e2e/  Playwright;  fixtures/  sample ma
 scripts/            project tooling
 ```
 
-## 10. Commands
+## 10. Amendments from the senior-engineer review (D-007) - these override the sections above
+1. **Separate worker process.** The job runner is its own Node entrypoint (`src/worker.ts`) in the same container, sharing `src/lib`; it is not started inside Next.js. Jobs are claimed atomically with a lease (`lease_until`, heartbeat, attempt cap). SQLite runs in WAL mode with `busy_timeout`. Each paid chunk result is saved (`job_artifacts`) so a resume never re-pays.
+2. **Dedupe scope.** `analyses` is keyed by `(content_hash, pipeline_version)`. Global reuse applies to PDFs only; photo sets dedupe within the owning session. Rows from the mock provider are never shared. Rows are immutable; page images and analyses are reference-counted before deletion.
+3. **Panels, not free-form boxes.** Diagram panels are detected in code on the rendered page image; the model selects a `panelId`. Raw coordinates are a fallback only and are always relative to the exact image sent to the model. Validated in the M0 spike.
+4. **Chunked output, merge in code.** Each page-range chunk is analysed and verified separately with chunk-prefixed ids; merging is deterministic code. The model is used only for a small parts-reconciliation pass that returns id mappings.
+5. **Hostile uploads.** Rendering runs in a child process with time and memory limits; pinned pdf.js with `isEvalSupported: false`; `sharp` with `limitInputPixels`; page count checked before rendering. Files are served with `nosniff`, fixed Content-Type and a sandbox CSP. Assistant output is rendered as text, never HTML. Rate limits are per IP as well as per session.
+6. **Guide contract changes.** `highlights[]` items are `{ source: SourceRef, panelId?, label?, partId? }` (they carry a page). `SourceRef` gains `panelId?` and `regionFallback: boolean`. Step ids are stable within an analysis; progress, notes, messages and simplifications reference `analysis_id` + step id. Warnings, and steps containing numbers, carry `sourceQuote`. `Guide` gains `language`. Step order lives only in `phases[].stepIds` (`steps` is an unordered map by id). `schemaVersion` is a literal with a migration function.
+
+## 11. Commands
 To be filled in by the engineer when the app is scaffolded (dev, build, typecheck, lint, test, e2e).

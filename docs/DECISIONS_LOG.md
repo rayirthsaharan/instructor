@@ -20,3 +20,6 @@ Status: proposed (needs user approval), accepted, superseded by D-nnn.
 
 ## D-006 | 2026-11-11 | orchestrator | accepted
 **No external spending without approval.** Development and tests default to `AI_PROVIDER=mock`. Real analysis requires the user to supply an Anthropic API key.
+
+## D-007 | 2026-11-11 | senior-engineer (review), orchestrator (accepted) | accepted, subject to D-005 approval
+**Architecture amendments before coding:** separate worker process with leased jobs; dedupe keyed by content hash + pipeline version with global sharing for PDFs only; code-detected diagram panels chosen by id instead of model-drawn boxes; chunked analysis merged in code; hardened upload rendering; Guide contract fixes (highlights carry a page, single source of step order, `sourceQuote`, stable step ids). Details: ARCHITECTURE section 10. Reason: each item is cheap now and expensive after data exists.
