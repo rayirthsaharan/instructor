@@ -1,6 +1,6 @@
 # Instructor - Architecture
 
-Status: **Proposed - awaiting user approval of the stack.** Owner: lead orchestrator. Changes go through `docs/DECISIONS_LOG.md`.
+Status: **Approved (D-010), with section 10 amendments and the portability condition in D-010.** Owner: lead orchestrator. Changes go through `docs/DECISIONS_LOG.md`.
 
 ## 1. Shape of the system
 A single full-stack TypeScript web application. No microservices: the MVP has one hard problem (document understanding) and everything else should be boring.

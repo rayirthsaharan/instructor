@@ -1,6 +1,6 @@
 # Instructor - Product Requirements Document
 
-Status: **Draft v1 - awaiting user approval of vision and MVP scope.** Owner: lead orchestrator.
+Status: **v1 approved by the user (D-010).** Owner: lead orchestrator.
 
 ## 1. Product vision
 

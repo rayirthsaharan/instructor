@@ -9,7 +9,7 @@ Each task names its owner agent. Every feature task runs the feature loop in `CL
 - [x] Product vision, MVP and PRD drafted (orchestrator)
 - [x] Design system and user flows v1 (ui-ux-designer)
 - [x] Architecture risk review (senior-engineer) - amendments in ARCHITECTURE section 10
-- [!] **User approval of PRD scope and stack** - gate for M0
+- [x] User approval of PRD scope, stack and design (D-010)
 
 ## M0. Foundations
 - [ ] Align USER_FLOWS with D-007/D-009 (ui-ux-designer)

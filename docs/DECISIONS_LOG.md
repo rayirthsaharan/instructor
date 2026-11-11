@@ -29,3 +29,11 @@ Status: proposed (needs user approval), accepted, superseded by D-nnn.
 
 ## D-009 | 2026-11-11 | orchestrator | accepted
 **Answers to the designer's open questions.** (a) Highlights carry their own page (D-007 item 6); do not assume `sources[0]`. (b) `warnings[].severity` is the enum `caution | warning`. (c) "Replace and re-analyse" for an unreadable page is out of MVP; the UI offers "Start again with new photos" instead. (d) Processing has its own resumable URL `/d/[documentId]` (not `/new` in place), so leaving and returning works; this overrides USER_FLOWS section 1 until the designer aligns it in M0.
+
+## D-010 | 2026-11-11 | user | accepted
+**User approvals.** D-002, D-003, D-004, D-005 (+D-007), D-008 are approved and now `accepted`. Conditions and additions from the user:
+- Architecture must stay portable: all database access goes through `src/lib/db` (repository functions; no SQLite-specific SQL or driver types outside it), storage through `StorageAdapter`, jobs through a queue interface, so PostgreSQL or another deployment can be adopted later. No extra infrastructure in the MVP.
+- No paid API usage without asking first. Build the complete experience on mocked analysis. Before the diagram-location accuracy test, present the test design, expected API usage and estimated cost and wait for approval.
+- Accuracy is a core requirement: never invent; every step keeps its page/diagram reference; **verified information is visibly distinguished from AI interpretation**; uncertainty is communicated; warnings and safety text are preserved and never simplified in a way that changes meaning.
+- Usability over animation or visual complexity. Maintainable and testable, not over-engineered.
+- Report to the user at each milestone: what was built, what was tested, what needs approval.
