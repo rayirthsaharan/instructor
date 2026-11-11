@@ -3,34 +3,33 @@
 Last updated: 2026-11-11 by orchestrator. **Read this first when resuming.**
 
 ## Where we are
-Milestone M-1 (development system + product definition) is complete. No application code exists yet.
+- M-1 (development system, product definition): done. User approved direction, MVP scope, stack and design (D-010).
+- **M0 (foundations): done.** App scaffold, database + migrations, storage adapter, leased job queue + worker, design tokens + UI primitives + gallery, Guide contract + validator + sample manual, mock AI provider, config module. QA passed every piece after fixes; senior-engineer security review applied (D-012).
+- Verified by the orchestrator at M0 close: `npm run check` 366/366 unit tests, typecheck and lint clean; `npm run build` ok; `npm run e2e -- --trace off` 22/22.
+- **M1 (capture and pipeline): in progress.** See IMPLEMENTATION_PLAN.
 
-Done:
-- Agent team defined in `.claude/agents/` and routing rules in `CLAUDE.md`; `node scripts/validate-agents.mjs` passes; 24/24 validator tests pass.
-- PRD, architecture (with senior-engineer amendments, section 10), design system and user flows v1, implementation plan.
-- One full feature loop was exercised on the validator script (engineer -> QA -> fix -> orchestrator verification).
+## Rules in force (from the user, D-010)
+- No paid API usage without asking. Everything runs on `AI_PROVIDER=mock`. The diagram-location accuracy spike needs a test plan + cost estimate presented to the user first.
+- Accuracy invariants: never invent; every step keeps its source page; manual-sourced vs inferred content is visibly distinguished; warnings verbatim.
+- Report to the user at each milestone: built / tested / needs approval.
 
-## Next action
-**Blocked on user approval** of: beachhead + source-anchored visuals (D-002, D-003), MVP scope (D-004), stack (D-005), design identity (D-008), and whether/when to supply an Anthropic API key (D-006). After approval start M0 in `IMPLEMENTATION_PLAN.md`:
-1. `ui-ux-designer`: align USER_FLOWS with D-007/D-009 (small).
-2. `software-engineer`: scaffold app per ARCHITECTURE sections 2, 9, 10.
-3. `senior-engineer`: region/panel spike (needs API key).
-
-## Verification record for the multi-model system (2026-11-11, Claude Code 2.1.322)
-- Verified from subagent transcripts: designer task ran on `claude-fable-5-2`, engineer and QA tasks on `claude-sonnet-5-5`, senior-engineer task on `claude-opus-5-5`. All three models are available on this account.
-- **Not yet verified:** delegation by project agent name (`subagent_type: software-engineer` etc.). The session that created `.claude/agents/` could not see the new agents ("Agent type not found"); Claude Code loads a newly created agents directory only at session start. In that session the fallback in `CLAUDE.md` was used (general-purpose agent + model alias + "read your agent file"). **First thing in the next session:** delegate one small task by agent name and confirm the model in `/tasks`; then update this section.
+## Multi-model system - verification record (Claude Code 2.1.322)
+- Models confirmed from transcripts: designer on `claude-fable-5-2`, engineer and QA on `claude-sonnet-5-5`, senior engineer on `claude-opus-5-5`.
+- **Delegation by project agent name is verified**: after a session restart, `software-engineer` and `qa-engineer` were called by name with no model override and ran on `claude-sonnet-5-5`. A session that *creates* `.claude/agents/` cannot see the agents until it restarts; the fallback in `CLAUDE.md` covers that case.
+- Not yet exercised by name: `ui-ux-designer`, `senior-engineer` (both verified on the right model through the fallback path).
+- Usage limits: heavy parallel runs can hit the account's 5-hour limit; interrupted agents keep their work and can be resumed with a message.
 
 ## How to inspect agents
-- `/agents` - lists project agents and their configured models.
-- `/tasks` - running subagents with the model each is using (Claude Code >= 2.1.242).
+- `/agents` - project agents and configured models. `/tasks` - running subagents and the model each uses (Claude Code >= 2.1.242).
 - Transcripts: `~/.claude/projects/<project>/<session>/subagents/agent-<id>.jsonl` (each assistant message records `"model"`).
-- `node scripts/validate-agents.mjs` - static check of the definitions.
+- `npm run validate:agents` - static check of the definitions.
 
 ## Version notes
 - Fable 5.2 needs Claude Code >= 2.1.321; Sonnet 5.5 >= 2.1.284; Opus 5.5 >= 2.1.280.
-- Agent frontmatter `model` takes precedence over `CLAUDE_CODE_SUBAGENT_MODEL` only from 2.1.251; on older versions that env var overrides the agent files.
+- Agent frontmatter `model` outranks `CLAUDE_CODE_SUBAGENT_MODEL` only from 2.1.251.
 
 ## Open issues
-- USER_FLOWS not yet aligned with D-007/D-009.
-- Validator known limitations (accepted): unclosed frontmatter followed by a later `---` is misparsed; headings inside code fences count.
-- Design contrast ratios are hand-calculated; automated test required in M0.
+- Number-word quantity rule is strict; tune against real model output later.
+- `getAIProvider` and DB/storage defaults should read `getConfig()` (M1).
+- Validator script known limitations (accepted): unclosed frontmatter followed by a later `---`; headings inside code fences.
+- Build prints two harmless font-metric warnings for the Atkinson fonts.

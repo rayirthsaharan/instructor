@@ -11,13 +11,14 @@ Each task names its owner agent. Every feature task runs the feature loop in `CL
 - [x] Architecture risk review (senior-engineer) - amendments in ARCHITECTURE section 10
 - [x] User approval of PRD scope, stack and design (D-010)
 
-## M0. Foundations
-- [ ] Align USER_FLOWS with D-007/D-009 (ui-ux-designer)
-- [ ] Scaffold app: Next.js + TS + Tailwind + Drizzle/SQLite + Vitest + Playwright; commands documented (software-engineer)
-- [ ] Design tokens and UI primitives from DESIGN_SYSTEM.md (software-engineer; designer reviews)
-- [ ] Guide schema + validators + fixture guide for a sample manual (software-engineer)
-- [ ] AIProvider interface + MockProvider (software-engineer)
-- [ ] Spike: region accuracy on 3 sample manuals; decide crop/padding/fallback rules (senior-engineer) - needs API key approval
+## M0. Foundations - DONE 2026-11-11 (QA passed, security review applied, orchestrator verified)
+- [x] Align USER_FLOWS with D-007/D-009/D-010 (ui-ux-designer)
+- [x] Scaffold app: Next.js + TS + Tailwind + Drizzle/SQLite + Vitest + Playwright; storage adapter; leased job queue + worker
+- [x] Design tokens, UI primitives and gallery `/dev/ui` (designer approved)
+- [x] Guide schema, `validateGuide` (branded `ValidatedGuide`), selectors, sample manual fixture
+- [x] AIProvider interface + MockProvider
+- [x] Senior-engineer security review and fixes (D-012)
+- [!] Spike: diagram-panel location accuracy on sample manuals (senior-engineer) - **needs user approval of test plan and cost first (D-010)**; scheduled after the mocked experience is complete
 
 ## M1. Capture and pipeline
 - [ ] Session cookie, storage adapter, upload API with validation (software-engineer)

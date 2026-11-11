@@ -422,7 +422,7 @@
       "id": "s4",
       "phaseId": "frame",
       "title": "Press in the cam locks",
-      "instruction": "Press a cam lock (F) into each round hole on the ends of both shelves, matching the direction shown in the diagram.",
+      "instruction": "Press a cam lock (F) into each round hole on the ends of the shelves, matching the direction shown in the diagram.",
       "sources": [
         {
           "pageIndex": 3,
@@ -476,7 +476,7 @@
       "id": "s5",
       "phaseId": "frame",
       "title": "Join the shelves to the first side",
-      "instruction": "Lay a side panel flat. Slot both shelves onto the cam bolts, then turn each cam lock clockwise until it stops.",
+      "instruction": "Lay a side panel flat. Slot the shelves onto the cam bolts, then turn each cam lock clockwise until it stops.",
       "sources": [
         {
           "pageIndex": 3,

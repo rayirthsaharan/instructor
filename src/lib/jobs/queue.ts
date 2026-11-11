@@ -35,8 +35,10 @@ export class DbJobQueue implements JobQueue {
     const r = await repo.getJob(this.db, id);
     return r && toJob(r);
   }
-  saveArtifact(jobId: string, key: string, data: unknown): Promise<void> {
-    return repo.saveJobArtifact(this.db, jobId, key, data, this.clock());
+  /** Fenced. A missing token (untyped callers) is refused, never treated as "unfenced". */
+  async saveArtifact(jobId: string, key: string, data: unknown, token?: number): Promise<boolean> {
+    if (token === undefined) return false;
+    return repo.saveJobArtifact(this.db, jobId, key, data, token, this.clock());
   }
   getArtifact(jobId: string, key: string): Promise<unknown | undefined> {
     return repo.getJobArtifact(this.db, jobId, key);

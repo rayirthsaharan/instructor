@@ -126,10 +126,24 @@ describe('DbJobQueue', () => {
 
   it('stores job artifacts once per key', async () => {
     const job = await q.enqueue({ type: 'noop' });
-    await q.saveArtifact(job.id, 'chunk-1', { a: 1 });
-    await q.saveArtifact(job.id, 'chunk-1', { a: 2 });
+    const c = (await q.claim(1000))!;
+    expect(await q.saveArtifact(job.id, 'chunk-1', { a: 1 }, c.attempts)).toBe(true);
+    await q.saveArtifact(job.id, 'chunk-1', { a: 2 }, c.attempts);
     expect(await q.getArtifact(job.id, 'chunk-1')).toEqual({ a: 1 });
     expect(await q.getArtifact(job.id, 'chunk-2')).toBeUndefined();
+  });
+
+  it('saveArtifact is fenced: stale token, missing token and non-running jobs write nothing', async () => {
+    const job = await q.enqueue({ type: 'noop' });
+    expect(await q.saveArtifact(job.id, 'k', 1, 1)).toBe(false); // queued, not running
+    const a = (await q.claim(1000))!;
+    now += 2000;
+    const b = (await q.claim(1000))!;
+    expect(await q.saveArtifact(job.id, 'k', 1, a.attempts)).toBe(false);
+    expect(await q.saveArtifact(job.id, 'k', 1)).toBe(false);
+    expect(await q.getArtifact(job.id, 'k')).toBeUndefined();
+    expect(await q.saveArtifact(job.id, 'k', 2, b.attempts)).toBe(true);
+    expect(await q.getArtifact(job.id, 'k')).toBe(2);
   });
 
   it('rejects a job whose documentId is not a document (foreign key)', async () => {

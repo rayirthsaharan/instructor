@@ -127,3 +127,10 @@ Task: re-check of M0 security fixes (D-012/H-015). Added tests/qa-m0-sec.test.ts
 Verdict: PASS WITH MINOR ISSUES. `npm run check`: typecheck + lint OK; 362 pass, 3 fail (intentional, confirmed defects).
 Verified OK: fencing on heartbeat/complete/fail/completeWithArtifacts; AbortSignal on lease loss; transient heartbeat/claim/complete errors; symlink put/get/delete (dir, leaf, dangling, in-root); config rules; brand has one cast only; citation and simplification checks; migration upgrade preserves data, CHECK/FK enforced, foreign_keys ON. qa-m0a.test.ts changes weaken nothing.
 Open defects: (1) major-minor: JobContext.queue.saveArtifact is unfenced (zombie can write). (2) minor: migration 0001 crashes on pre-existing ownerless mock analyses rows (CHECK fails in INSERT..SELECT). (3) minor: NUMBER_WORDS lacks zero/single/both, so introduced quantities slip through simplifyStepChecked.
+
+## H-017 | 2026-11-11 | from: software-engineer -> to: orchestrator
+Task: M0 security-review fixes and QA re-check defects.
+Done: all D-012 items; then fenced `saveArtifact`, migration 0001 deletes ownerless mock analyses before rebuild, fuller `NUMBER_WORDS`. Fixture steps reworded where a number word tripped the rule.
+How to verify: orchestrator ran `npm run check` (366/366), `npm run build` (ok; two harmless font-metric warnings), `npm run e2e -- --trace off` (22/22).
+Open issues / risks: the number-word rule is deliberately strict (words like "both", "few" count as quantities); expect to tune it against real model output. `getAIProvider` and the DB/storage defaults do not read `getConfig()` yet - do this in M1.
+Next: M1.

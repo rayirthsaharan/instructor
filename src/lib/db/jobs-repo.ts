@@ -129,13 +129,15 @@ export async function failJob(db: Db, id: string, attempt: number, error: string
   }, { behavior: 'immediate' });
 }
 
-export async function saveJobArtifact(db: Db, jobId: string, key: string, data: unknown, now: number): Promise<void> {
+/** Fenced: writes only while `attempt` still holds the running job. Returns false (writing nothing) otherwise. */
+export async function saveJobArtifact(db: Db, jobId: string, key: string, data: unknown, attempt: number, now: number): Promise<boolean> {
   const dataJson = JSON.stringify(data);
-  unwrap(db)
-    .insert(jobArtifacts)
-    .values({ jobId, key, dataJson, createdAt: now })
-    .onConflictDoNothing()
-    .run();
+  return unwrap(db).transaction((tx) => {
+    const j = tx.select({ status: jobs.status, attempts: jobs.attempts }).from(jobs).where(eq(jobs.id, jobId)).get();
+    if (!j || j.status !== 'running' || j.attempts !== attempt) return false;
+    tx.insert(jobArtifacts).values({ jobId, key, dataJson, createdAt: now }).onConflictDoNothing().run();
+    return true;
+  }, { behavior: 'immediate' });
 }
 
 export async function getJobArtifact(db: Db, jobId: string, key: string): Promise<unknown | undefined> {

@@ -50,7 +50,8 @@ describe('jobs correctness', () => {
   });
   it('artifacts are write-once and survive requeue', async () => {
     const j = await q.enqueue({ type: 'x' });
-    await q.saveArtifact(j.id, 'k', { a: 1 }); await q.saveArtifact(j.id, 'k', { a: 2 });
+    const c = (await q.claim(1000))!;
+    await q.saveArtifact(j.id, 'k', { a: 1 }, c.attempts); await q.saveArtifact(j.id, 'k', { a: 2 }, c.attempts);
     expect(await q.getArtifact(j.id, 'k')).toEqual({ a: 1 });
     expect(await q.getArtifact(j.id, 'missing')).toBeUndefined();
   });

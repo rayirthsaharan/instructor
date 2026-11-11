@@ -45,7 +45,8 @@ export interface JobQueue {
   /** Requeues while attempts remain, otherwise marks the job failed. */
   fail(id: string, error: string, token: number): Promise<Job | undefined>;
   get(id: string): Promise<Job | undefined>;
-  saveArtifact(jobId: string, key: string, data: unknown): Promise<void>;
+  /** Fenced like complete(): returns false and writes nothing unless `token` still holds the running job. */
+  saveArtifact(jobId: string, key: string, data: unknown, token: number): Promise<boolean>;
   getArtifact(jobId: string, key: string): Promise<unknown | undefined>;
 }
 

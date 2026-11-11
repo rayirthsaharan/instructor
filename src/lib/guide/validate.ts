@@ -57,9 +57,9 @@ const isBlank = (q: string | undefined) => q !== undefined && q.trim() === '';
 export const MIN_REGION_SIDE = 0.01;
 
 const NUMBER_WORDS = [
-  'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen',
+  'zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen',
   'seventeen', 'eighteen', 'nineteen', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety', 'hundred', 'hundreds', 'thousand',
-  'half', 'halves', 'quarter', 'quarters', 'third', 'thirds', 'dozen', 'dozens', 'twice', 'double', 'triple', 'pair', 'pairs', 'couple', 'several',
+  'half', 'halves', 'quarter', 'quarters', 'third', 'thirds', 'dozen', 'dozens', 'twice', 'double', 'triple', 'pair', 'pairs', 'couple', 'several', 'few', 'single', 'both', 'once', 'thrice',
 ].join('|');
 const QUANTITY_RE = new RegExp(`\\p{N}|\\b(?:${NUMBER_WORDS})\\b`, 'iu');
 
