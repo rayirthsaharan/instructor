@@ -102,3 +102,22 @@ Done: Verdict PASS WITH MINOR ISSUES (1 major, 1 minor). Added `tests/qa-m0b.tes
 How to verify: `npx playwright test e2e/qa-m0b.spec.ts --trace off`.
 Open issues / risks: (1) major - BottomSheet/ConfirmDialog do not lock background scroll (`window.scrollY` changes on wheel over scrim; add `overflow:hidden` on html while a modal dialog is open, e.g. `html:has(dialog[open])`). (2) minor - CitationChip/PageTag hit area is 42px (before:-inset-y-2 is relative to the padding box, border 1px); use -inset-y-2.5 or min-h-11. Note: vitest include only matches `*.test.ts`, so `.test.tsx` files never run.
 Next: engineer fixes 1-2; QA re-runs.
+
+## H-013 | 2026-11-11 | from: qa-engineer -> to: orchestrator
+Task: Re-check M0-c after fixes.
+Done: PASS. Defects 1-5 fixed; quote-vs-page check tested adversarially (wrong page, case/whitespace, changed numbers, short or empty `pageTexts` fail closed); the word-boundary gap was then fixed. 155/155 targeted tests.
+Open issues / risks: quotes are checked against a step's `sources`, not its highlight pages (intended).
+Next: closed.
+
+## H-014 | 2026-11-11 | from: ui-ux-designer + qa-engineer -> to: software-engineer -> orchestrator
+Task: M0-b review and fixes.
+Done: Designer verdict "approve with fixes"; QA verdict "pass with minor issues". All fixed: scroll lock while a dialog is open; >= 44px hit areas on citation chips, page tags and checklist step links; `BottomSheet` `lgPresentation: panel | dialog`; distinct error glyph; Shift+Tab wraps inside the sheet. Native `<dialog>` and half/full sheet detents accepted by the designer.
+How to verify: `npx playwright test e2e/ui-gallery.spec.ts e2e/qa-m0b.spec.ts --trace off` (21/21), `npx vitest run tests/ui-* tests/contrast.test.ts tests/qa-m0b.test.ts` (80/80).
+Open issues / risks: none.
+Next: closed.
+
+## H-015 | 2026-11-11 | from: senior-engineer -> to: software-engineer
+Task: M0 security and correctness review (read-only).
+Done: Verdict "close after fixes". Rulings: (a) fencing token must be required, remove remembered-token map; (b) `put` through an escaping symlink must throw, never unlink; (c) add `src/lib/config.ts` rejecting weak `SESSION_SECRET` in production. Defects: 1 zombie-worker writes unfenced (AbortSignal + transactional complete); 2 schema-parsed guide counts as validated (brand `ValidatedGuide`, validate citations and simplifications); 3 ownership CHECK on analyses; 4 repositories and JobQueue must be async for portability; 5 a DB error kills the worker; 6 `jobs.document_id` needs a foreign key.
+Open issues / risks: all accepted (D-012).
+Next: engineer applies all; QA re-checks; orchestrator closes M0.

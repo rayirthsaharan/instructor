@@ -125,12 +125,12 @@ function Content() {
           </Button>
         </Row>
         <Row label="icon button: 44 / 56 / pressed / accent / disabled / focus">
-          <IconButton icon="close" aria-label="Close" />
+          <IconButton icon="close" aria-label="Dismiss" />
           <IconButton icon="more" aria-label="More options" size={56} />
           <IconButton icon="eye" aria-label="Marks" pressed />
           <IconButton icon="page" aria-label="Fit" accent />
-          <IconButton icon="close" aria-label="Close (disabled)" disabled />
-          <IconButton icon="close" aria-label="Close (focus)" data-force-focus />
+          <IconButton icon="close" aria-label="Dismiss (disabled)" disabled />
+          <IconButton icon="close" aria-label="Dismiss (focus)" data-force-focus />
         </Row>
       </Section>
 
