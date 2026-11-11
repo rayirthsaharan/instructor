@@ -160,3 +160,15 @@ Task: QA of M1-a backend.
 Done: PASS WITH MINOR ISSUES. `tests/qa-m1a-api.test.ts` (23 tests, 2 failing by design). Contract, pipeline honesty, retry, dedupe scoping, demo-guide labelling, quote verification against page text, progress validation and delete cleanup all confirmed.
 Open issues / risks: one major defect - `src/lib/upload/sniff.ts:14` treats a valid photo whose metadata contains `%PDF-` as a PDF and rejects it as corrupt.
 Next: engineer fixes this together with the security list (H-019).
+
+## H-022 | 2026-11-11 | from: qa-engineer -> to: software-engineer, orchestrator
+Task: Integrated QA of M1 (backend fixes over real HTTP + un-mocked browser flow at 375/1280/320, mock provider).
+Done: PASS WITH MINOR ISSUES, one major. All backend fixes confirmed over HTTP (sniff order, 429 `rate_limited` + Retry-After, bounded JSON 413, cookie attributes, foreign Origin 403, session row only on first write, `no-cache` page images, `attempts`). Flow, copy, reorder/undo, dialogs, keyboard path, 320px all pass. `npm run check`: 490 passed before the new files. `npm run e2e`: 101 passed, 4 failed (the defects below). New: `e2e/qa-m1-api.spec.ts` (9), `e2e/qa-m1-flow.spec.ts` (20 + 2), `tests/qa-m1-integration.test.ts` (1 failing by design).
+Open defects: (1) MAJOR `src/lib/client/messages.ts:84` - `attempts` is 3 after the server's own automatic retries, so the first failure the user sees shows "It's still not working" and no "Try again"; the UI retry path is unreachable (API retry works, resets attempts to 0). Fix: base `repeated` on manual retries (e.g. count of user retries) or expose a separate counter. (2) MINOR no focus management on route changes (focus stays on BODY on /new, /d, /g) and after removing a photo tile. (3) MINOR spec conflict: USER_FLOWS 10.1 says no Library card remains for a rejected file; app (and m1-real-flow) keep a deletable card - align the doc.
+Next: engineer fixes (1)-(2); designer decides (3).
+
+## H-023 | 2026-11-11 | from: ui-ux-designer -> to: software-engineer
+Task: Visual review of M1 screens; align specs with D-015.
+Done: Verdict "approve with fixes". USER_FLOWS sections 3, 4, 10.3 and DESIGN_SYSTEM 7.14 updated (four real stages; separate `rate_limited` / `quota_exceeded` copy; per-error banner labels). Fixes requested: failed-state title, rate-limit copy, banner labels, equal card heights at 1280, hero "Step n of m - title", hide photo tip for PDFs; re-shoot screenshots with transitions off.
+Open issues / risks: publish-stage failure reuses the generic failure title (accepted, D-016).
+Next: engineer applies with QA's H-022 list.
