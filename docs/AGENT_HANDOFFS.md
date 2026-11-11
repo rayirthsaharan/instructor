@@ -189,3 +189,10 @@ Done: `src/lib/client/guide-store.ts` (`useGuide`, `progressReducer`); `/g/[id]`
 How to verify: `npx playwright test e2e/m2-overview-flow.spec.ts --trace off`; unit tests `tests/ui-m2-*`.
 Open issues / risks: `e2e/m1-real-flow.spec.ts:21` still expects the old placeholder text; own `PrepRow` instead of `ChecklistRow` (needs a crop thumbnail); unreadable-pages button reads "Start again with new photos or a new file"; no clock/person icons on the facts tiles; safety acknowledgement required only for Start and not persisted; save-error banner shows between auto-retries; shared `Menu` closes on any scroll.
 Next: QA and designer review once the player lands.
+
+## H-026 | 2026-11-11 | from: software-engineer -> to: qa-engineer, ui-ux-designer
+Task: M2-a Step player and Original viewer.
+Done: `/g/[id]/play` (URL-driven step and overlays), `src/components/features/{player,source-visual,original-viewer}`, new `ui/Disclosure`, additive props on `ui/Menu` and `ui/Chip`. Read-aloud, wake lock, marks toggle, zoom/pan, steps sheet, irreversible and low-confidence treatments.
+How to verify: `npx playwright test e2e/m2-player-*.spec.ts --trace off` (51 tests).
+Open issues / risks: fixture step sources had no `region`, so crops showed the whole page (being fixed in M2-c); "Explain it more simply" and the Ask panel are stubs until M3; warning page tags use the step's first source; callout discs show the number, or the label when <= 2 characters; step changes use `replaceState` (Back leaves the player) - designer to confirm.
+Next: M2-c integration fixes, then QA and designer review.

@@ -239,7 +239,7 @@ export function SourceVisual({
       }
       return;
     }
-    if (!L.zoomed && onSwipe) {
+    if (!L.zoomed && onSwipe && e.pointerType !== 'mouse') {
       const dir = swipeDirection(p.x - g.x0, p.y - g.y0, dt);
       if (dir) onSwipe(dir);
     }
@@ -305,7 +305,7 @@ export function SourceVisual({
       aria-roledescription="zoomable image"
       aria-label={`Manual page ${page.pageIndex + 1}${mode === 'step' ? ', zoomable picture' : ''}. Keys: plus and minus zoom, 0 fits, arrows pan when zoomed, M toggles marks.`}
       tabIndex={0}
-      data-testid="source-visual"
+      data-testid={mode === 'page' ? 'viewer-visual' : 'source-visual'}
       data-zoom={level.toFixed(2)}
       data-load={loadState}
       data-marks={marksVisible ? 'on' : 'off'}
@@ -488,7 +488,7 @@ export function SourceVisual({
       )}
 
       {tag && ready && (
-        <div className="pointer-events-none absolute inset-x-0 bottom-14 flex justify-center px-2 md:bottom-3" data-testid="visual-tag" data-no-gesture>
+        <div className="pointer-events-none absolute inset-x-0 bottom-14 flex justify-center px-2" data-testid="visual-tag" data-no-gesture>
           {tag === 'lowConfidence' && <ProvenanceTag kind="doubleCheck" className="shadow-elev-1" />}
           {tag === 'approximate' && <ProvenanceTag kind="approximate" className="shadow-elev-1" />}
           {tag === 'wholePage' && (
