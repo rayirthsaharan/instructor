@@ -88,3 +88,10 @@ Done: tokens in `src/app/globals.css`; primitives in `src/components/ui` (barrel
 How to verify: `npx vitest run tests/ui-* tests/contrast.test.ts`; `npx playwright test e2e/ui-gallery.spec.ts --trace off`.
 Open issues / risks: stated contrast for light unsure-fg on unsure-soft corrected from 6.2 to 6.1 (true 6.1988) in the design system and test by the orchestrator.
 Next: designer visual review; QA behaviour and accessibility review.
+
+## H-012 | 2026-11-11 | from: qa-engineer -> to: software-engineer
+Task: Adversarial review of M0-c (guide schema/validate/selectors, AI mock, fixture).
+Done: Verdict FAIL (accuracy-relevant defects). 36 tests in `tests/qa-m0c.test.ts`, 17 failing by design. Invariants a, d, e, f (no warning dropped or reworded in any repair), g, duplicate ids, version rejection and fixture-vs-SVG checks hold.
+How to verify: `npx vitest run tests/qa-m0c.test.ts`.
+Open issues / risks: (1) major - `containsQuantity` misses fractions (½), Unicode digits, one, quarter, twenty, fifteen, hundred, so inferred guidance and unquoted steps can carry quantities; (2) major - empty phases and zero-step guides accepted; (3) major - selectors treat `constructor`/`toString` as step ids (progress 130%, partsForStep and mock simplifyStep throw TypeError); (4) minor - whitespace-only sourceQuote accepted, quote stripped from inferred guidance with no issue, no length limits (5MB text accepted); (5) minor - fixture s4 invents "arrow on the lock" at medium confidence with no quote; mock simplest drops the 16 nails quantity.
+Next: engineer fixes 1-3 (use Object.hasOwn / Map), QA re-runs.

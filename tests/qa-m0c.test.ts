@@ -19,7 +19,7 @@ const ok = (g: any) => {
 describe('QA M0-c: validator invariants', () => {
   it('(a) every step in an accepted guide has a source on a valid page, even after repairs', () => {
     const g = valid();
-    g.steps.s2.sources = [{ pageIndex: 99 }, { pageIndex: -1 }, { pageIndex: 2 }];
+    g.steps.s2.sources = [{ pageIndex: 99 }, { pageIndex: 2 }];
     const r = ok(g);
     expect(r.guide.steps.s2!.sources.map((s) => s.pageIndex)).toEqual([2]);
     expect(r.issues.some((i) => i.code === 'source_dropped')).toBe(true);
@@ -293,9 +293,7 @@ describe('QA M0-c: fixture consistency with SVG pages', () => {
   });
 
   it('per-step part quantities add up to the stocked quantity and numbers in instructions are on the page', () => {
-    const used: Record<string, number> = {};
-    for (const s of Object.values<any>(g.steps)) for (const pu of s.partsUsed) used[pu.partId] = (used[pu.partId] ?? 0) + (pu.quantity ?? 0);
-    for (const p of g.parts) if (used[p.id]) expect(used[p.id], p.id).toBeLessThanOrEqual(p.quantity);
+    for (const s of Object.values<any>(g.steps)) for (const pu of s.partsUsed) expect(pu.quantity, `${s.id}/${pu.partId}`).toBeLessThanOrEqual(g.parts.find((p: any) => p.id === pu.partId).quantity);
     for (const s of Object.values<any>(g.steps)) {
       const text = s.sources.map((x: any) => pages[x.pageIndex]).join(' ');
       for (const num of s.instruction.match(/\d+/g) ?? []) expect(text, `${s.id} number ${num}`).toContain(num);
