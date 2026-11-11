@@ -86,7 +86,7 @@ function Content() {
   const [chip, setChip] = useState(true);
   const [part, setPart] = useState(false);
   const [rows, setRows] = useState<ChecklistStatus[]>(['unchecked', 'have', 'missing']);
-  const [sheet, setSheet] = useState(false);
+  const [sheet, setSheet] = useState<false | 'panel' | 'dialog'>(false);
   const [confirm, setConfirm] = useState(false);
   const cycle = (i: number) =>
     setRows((r) => r.map((s, j) => (j === i ? (s === 'have' ? 'unchecked' : 'have') : s)));
@@ -230,15 +230,19 @@ function Content() {
         </Row>
         <ToastDemo />
         <Row label="bottom sheet / destructive dialog">
-          <Button variant="secondary" onClick={() => setSheet(true)}>
+          <Button variant="secondary" onClick={() => setSheet('dialog')}>
             Open bottom sheet
+          </Button>
+          <Button variant="secondary" onClick={() => setSheet('panel')}>
+            Open sheet (panel on desktop)
           </Button>
           <Button variant="danger" onClick={() => setConfirm(true)}>
             Open dialog
           </Button>
         </Row>
         <BottomSheet
-          open={sheet}
+          open={sheet !== false}
+          lgPresentation={sheet === 'panel' ? 'panel' : 'dialog'}
           onClose={() => setSheet(false)}
           title="Cam lock"
           footer={<Button onClick={() => setSheet(false)}>Show in manual</Button>}

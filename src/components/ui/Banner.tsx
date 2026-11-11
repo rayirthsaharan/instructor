@@ -22,7 +22,7 @@ const cfg: Record<
     fg: 'text-danger-fg',
     text: IRREVERSIBLE_TEXT,
   },
-  error: { icon: 'warn', label: 'Error', box: 'bg-danger-soft border-l-4 border-danger-fg', fg: 'text-danger-fg' },
+  error: { icon: 'crossCircle', label: 'Error', box: 'bg-danger-soft border-l-4 border-danger-fg', fg: 'text-danger-fg' },
   info: { icon: 'info', label: null, box: 'bg-surface-sunken border border-line', fg: 'text-ink-muted', text: INFO_TEXT },
   unsure: {
     icon: 'doubleCheck',

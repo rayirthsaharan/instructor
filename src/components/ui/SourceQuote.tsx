@@ -11,7 +11,7 @@ export function PageTag({ page, onOpen, className }: { page: number; onOpen?: ()
       onClick={onOpen}
       aria-label={`Open manual page ${page}`}
       className={cn(
-        'type-tag inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center rounded-xs px-2 text-accent underline t-fast hover:bg-accent-soft',
+        'type-tag inline-flex min-h-12 min-w-11 cursor-pointer items-center justify-center rounded-xs px-2 text-accent underline t-fast hover:bg-accent-soft',
         className,
       )}
     >

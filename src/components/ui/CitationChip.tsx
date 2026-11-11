@@ -35,7 +35,7 @@ export function CitationChip({
       aria-label={label.aria}
       className={cn(
         'type-tag focus-on-accent relative inline-flex h-7 cursor-pointer items-center gap-1 rounded-xs border border-transparent bg-accent-soft px-2 text-accent t-fast',
-        'before:absolute before:inset-x-0 before:-inset-y-2 before:content-[""]',
+        'before:absolute before:inset-x-0 before:-inset-y-2.5 before:content-[""]',
         'hover:border-accent active:border-accent active:bg-accent active:text-on-accent',
         className,
       )}

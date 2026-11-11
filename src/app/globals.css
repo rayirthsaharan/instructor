@@ -388,6 +388,59 @@
     }
   }
 
+  /* >= 1024: sheet becomes a right panel (400) or a centred dialog (max 560). */
+  @media (min-width: 64rem) {
+    dialog.sheet[data-lg='panel'] {
+      inset: 0 0 0 auto;
+      max-width: 25rem;
+      height: 100dvh;
+      transform: translateX(100%);
+    }
+    dialog.sheet[data-lg='panel'][open] {
+      transform: translateX(0);
+    }
+    @starting-style {
+      dialog.sheet[data-lg='panel'][open] {
+        transform: translateX(100%);
+      }
+    }
+    dialog.sheet[data-lg='panel'] .sheet-inner {
+      height: 100dvh !important;
+      max-height: none !important;
+      border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+    }
+    dialog.sheet[data-lg='dialog'] {
+      inset: 0;
+      margin: auto;
+      max-width: 35rem;
+      height: fit-content;
+      transform: none;
+      opacity: 0;
+      transition: opacity var(--dur-fast) var(--ease-in), display var(--dur-fast) allow-discrete,
+        overlay var(--dur-fast) allow-discrete;
+    }
+    dialog.sheet[data-lg='dialog'][open] {
+      transform: none;
+      opacity: 1;
+    }
+    @starting-style {
+      dialog.sheet[data-lg='dialog'][open] {
+        opacity: 0;
+      }
+    }
+    dialog.sheet[data-lg='dialog'] .sheet-inner {
+      height: auto !important;
+      max-height: min(40rem, calc(100dvh - 48px)) !important;
+      border-radius: var(--radius-lg);
+    }
+  }
+
+  /* Scroll lock while a sheet or dialog is open, without layout shift. */
+  html:has(dialog[open]) {
+    overflow: hidden;
+    scrollbar-gutter: stable;
+  }
+
   .toast-enter {
     animation: fade-in var(--dur-fast) var(--ease-out);
   }

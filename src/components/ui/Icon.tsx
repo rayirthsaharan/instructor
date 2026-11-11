@@ -36,6 +36,12 @@ const paths = {
     </>
   ),
   dashedSquare: <rect x="4" y="4" width="16" height="16" rx="2" strokeDasharray="3.5 3" />,
+  crossCircle: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="m9 9 6 6M15 9l-6 6" />
+    </>
+  ),
   close: <path d="m6 6 12 12M18 6 6 18" />,
   chevronRight: <path d="m9 5 7 7-7 7" />,
   chevronDown: <path d="m5 9 7 7 7-7" />,

@@ -75,7 +75,7 @@ export function GuideCard({
           {status === 'processing' && stageText}
           {status === 'failed' && (
             <span className="inline-flex items-center gap-1 text-danger-fg">
-              <Icon name="warn" size={20} /> Couldn&apos;t finish - Try again
+              <Icon name="crossCircle" size={20} /> Couldn&apos;t finish - Try again
             </span>
           )}
         </p>

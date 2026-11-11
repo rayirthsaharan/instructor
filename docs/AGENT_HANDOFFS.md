@@ -95,3 +95,10 @@ Done: Verdict FAIL (accuracy-relevant defects). 36 tests in `tests/qa-m0c.test.t
 How to verify: `npx vitest run tests/qa-m0c.test.ts`.
 Open issues / risks: (1) major - `containsQuantity` misses fractions (½), Unicode digits, one, quarter, twenty, fifteen, hundred, so inferred guidance and unquoted steps can carry quantities; (2) major - empty phases and zero-step guides accepted; (3) major - selectors treat `constructor`/`toString` as step ids (progress 130%, partsForStep and mock simplifyStep throw TypeError); (4) minor - whitespace-only sourceQuote accepted, quote stripped from inferred guidance with no issue, no length limits (5MB text accepted); (5) minor - fixture s4 invents "arrow on the lock" at medium confidence with no quote; mock simplest drops the 16 nails quantity.
 Next: engineer fixes 1-3 (use Object.hasOwn / Map), QA re-runs.
+
+## H-0QA | 2026-11-11 | from: qa-engineer -> to: software-engineer
+Task: Review M0-b design tokens, UI primitives, /dev/ui gallery.
+Done: Verdict PASS WITH MINOR ISSUES (1 major, 1 minor). Added `tests/qa-m0b.test.ts` (production gate) and `e2e/qa-m0b.spec.ts` (14 tests; 2 fail by design). Confirmed OK: focus rings on all tabbable controls, sheet/dialog aria + Tab trap + Escape + focus return, checklist Space/Enter and "Marked missing", toast live region, banner roles/labels/icons, reduced motion, data-theme override, no h-scroll at 320/375, /dev/ui gated in production.
+How to verify: `npx playwright test e2e/qa-m0b.spec.ts --trace off`.
+Open issues / risks: (1) major - BottomSheet/ConfirmDialog do not lock background scroll (`window.scrollY` changes on wheel over scrim; add `overflow:hidden` on html while a modal dialog is open, e.g. `html:has(dialog[open])`). (2) minor - CitationChip/PageTag hit area is 42px (before:-inset-y-2 is relative to the padding box, border 1px); use -inset-y-2.5 or min-h-11. Note: vitest include only matches `*.test.ts`, so `.test.tsx` files never run.
+Next: engineer fixes 1-2; QA re-runs.

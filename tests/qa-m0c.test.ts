@@ -9,6 +9,10 @@ import { MockProvider, loadFixtureGuide } from '@/lib/ai/mock';
 const FIX = path.resolve(__dirname, '../fixtures');
 const valid = (): any => JSON.parse(fs.readFileSync(path.join(FIX, 'lumen-bookcase.guide.json'), 'utf8'));
 const opts = { pageCount: 6 };
+const svgText = (n: number) =>
+  [...fs.readFileSync(path.join(FIX, `lumen-bookcase/page-${n}.svg`), 'utf8').matchAll(/<text[^>]*>([^<]*)</g)].map((m) => m[1]!.replace(/&amp;/g, '&')).join(' ');
+const pageTexts = [1, 2, 3, 4, 5, 6].map(svgText);
+const runT = (g: any, pt: string[] | undefined = pageTexts) => validateGuide(g, { pageCount: 6, pageTexts: pt });
 const run = (g: any) => validateGuide(g, opts);
 const ok = (g: any) => {
   const r = run(g);
@@ -358,7 +362,11 @@ describe('QA M0-c: mock provider', () => {
   it('default draft validates with no issues; custom bad draft is rejected by validateGuide (provider does not launder)', async () => {
     const r = await new MockProvider().analyseDocument({ pages });
     expect(r.kind).toBe('guide');
-    if (r.kind === 'guide') expect(ok(r.draft).issues).toEqual([]);
+    if (r.kind === 'guide') {
+      const v = runT(r.draft);
+      if (!v.ok) throw new Error(JSON.stringify(v.errors));
+      expect(v.issues).toEqual([]);
+    }
     const bad = valid();
     bad.steps.s2.sources = [{ pageIndex: 50 }];
     const r2 = await new MockProvider({ draft: bad }).analyseDocument({ pages });
@@ -425,6 +433,103 @@ describe('QA M0-c: mock provider', () => {
     const r = await new MockProvider().verifyGuide({ guide, pages });
     expect(r.draft).toEqual(guide);
     expect(r.draft).not.toBe(guide);
-    expect(ok(r.draft).issues).toEqual([]);
+    const v = runT(r.draft);
+    if (!v.ok) throw new Error(JSON.stringify(v.errors));
+    expect(v.issues).toEqual([]);
+  });
+});
+
+
+describe('QA M0-c re-check: quote-vs-page verification', () => {
+  const codes = (r: any) => (r.ok ? r.issues.map((i: any) => i.code) : ['FATAL']);
+
+  it('without pageTexts exactly one info quotes_unverified issue is recorded', () => {
+    const r: any = run(valid());
+    const q = r.issues.filter((i: any) => i.code === 'quotes_unverified');
+    expect(q.length).toBe(1);
+    expect(q[0].severity).toBe('info');
+    expect(runT(valid()).ok && (runT(valid()) as any).issues.some((i: any) => i.code === 'quotes_unverified')).toBe(false);
+  });
+
+  it('quote from a different page than the step cites is removed and reported', () => {
+    const g = valid();
+    g.steps.s2.sourceQuote = 'Maximum load per shelf: 15 kg.'; // lives on page 6, step cites page 3
+    const r: any = runT(g);
+    expect(codes(r)).toContain('quote_not_found');
+    expect(r.guide.steps.s2.sourceQuote).toBeUndefined();
+  });
+
+  it('quote removed for a step-level quote lowers confidence', () => {
+    const g = valid();
+    g.steps.s2.sourceQuote = 'Totally invented sentence.';
+    expect((runT(g) as any).guide.steps.s2.confidence).toBe('low');
+  });
+
+  it('case and whitespace differences are tolerated', () => {
+    const g = valid();
+    g.steps.s2.sourceQuote = '  PRESS 4   dowels G\ninto the top edge of each side panel A.  ';
+    expect(codes(runT(g))).not.toContain('quote_not_found');
+  });
+
+  it('a quote that is only a partial-word fragment is not accepted as a verbatim quote', () => {
+    const g = valid();
+    g.steps.s2.sourceQuote = 'ress 4 dowel';
+    expect(codes(runT(g))).toContain('quote_not_found');
+  });
+
+  it('a mutated number in a quote is caught', () => {
+    const g = valid();
+    g.steps.s7.sourceQuote = 'Nail the back panel on using 12 nails H spaced evenly along every edge.';
+    expect(codes(runT(g))).toContain('quote_not_found');
+  });
+
+  it('removed warning quote keeps the warning (text/severity) and labels it interpreted', () => {
+    const g = valid();
+    g.steps.s7.warnings[0].sourceQuote = 'WARNING: something the page never says';
+    const r: any = runT(g);
+    const w = r.guide.steps.s7.warnings[0];
+    expect(w.text).toBe(valid().steps.s7.warnings[0].text);
+    expect(w.severity).toBe('warning');
+    expect(w.interpretedFromDiagram).toBe(true);
+    expect(codes(r)).toContain('quote_not_found');
+  });
+
+  it('manual-origin guidance whose quote is not on the page becomes inferred (never presented as manual)', () => {
+    const g = valid();
+    g.steps.s2.checkpoint = { text: 'Dowels should be firm and straight.', origin: 'manual', sourceQuote: 'invented quote' };
+    const r: any = runT(g);
+    expect(r.guide.steps.s2.checkpoint?.origin ?? 'inferred').toBe('inferred');
+  });
+
+  it('empty-string pageTexts entries and a pageTexts array shorter than pageCount fail closed', () => {
+    const g = valid();
+    expect(codes(runT(g, ['', '', '', '', '', ''])).filter((c) => c === 'quote_not_found').length).toBeGreaterThan(0);
+    const short: any = runT(valid(), pageTexts.slice(0, 2));
+    expect(codes(short)).toContain('quote_not_found');
+    expect(short.guide.steps.s7.sourceQuote).toBeUndefined();
+    const empty: any = runT(valid(), []);
+    expect(codes(empty)).toContain('quote_not_found');
+    expect(empty.guide.steps.s7.confidence).not.toBe('high');
+  });
+
+  it('empty pageTexts is not treated as "absent" (no silent skip of verification)', () => {
+    const r: any = runT(valid(), []);
+    expect(codes(r)).not.toContain('quotes_unverified');
+    expect(r.guide.steps.s7.sourceQuote).toBeUndefined();
+  });
+
+  it('blank quotes are removed and reported', () => {
+    const g = valid();
+    g.steps.s2.checkpoint = { text: 'x', origin: 'manual', sourceQuote: '   ' };
+    const r: any = run(g);
+    expect(codes(r)).toContain('blank_quote_removed');
+    expect(r.guide.steps.s2.checkpoint.origin).toBe('inferred');
+  });
+
+  it('a quote is checked against the step sources only, not highlight pages', () => {
+    const g = valid();
+    g.steps.s2.highlights[0].source.pageIndex = 5;
+    g.steps.s2.sourceQuote = 'Maximum load per shelf: 15 kg.';
+    expect(codes(runT(g))).toContain('quote_not_found');
   });
 });

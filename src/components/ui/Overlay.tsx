@@ -59,6 +59,7 @@ export function BottomSheet({
   children,
   footer,
   initialDetent = 'half',
+  lgPresentation = 'dialog',
 }: {
   open: boolean;
   onClose: () => void;
@@ -66,6 +67,8 @@ export function BottomSheet({
   children: ReactNode;
   footer?: ReactNode;
   initialDetent?: DetentName;
+  /** At >= 1024px: 400px right-side panel or centred dialog (max 560). */
+  lgPresentation?: 'panel' | 'dialog';
 }) {
   const titleId = useId();
   const [detent, setDetent] = useState<DetentName>(initialDetent);
@@ -95,6 +98,7 @@ export function BottomSheet({
     <dialog
       ref={ref}
       className="sheet"
+      data-lg={lgPresentation}
       aria-labelledby={titleId}
       aria-modal="true"
       onCancel={(e) => {
@@ -111,7 +115,7 @@ export function BottomSheet({
       onKeyDown={trapTab}
     >
       <div
-        className="flex flex-col rounded-t-lg bg-surface-raised text-ink shadow-elev-2"
+        className="sheet-inner flex flex-col rounded-t-lg bg-surface-raised text-ink shadow-elev-2"
         style={{
           height: detent === 'half' ? '56dvh' : 'calc(100dvh - 48px)',
           maxHeight: 'calc(100dvh - 48px)',

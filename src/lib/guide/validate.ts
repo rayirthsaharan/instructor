@@ -27,6 +27,22 @@ export interface ValidateOptions {
 }
 
 const normaliseText = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim();
+const WORD = /[\p{L}\p{N}]/u;
+
+/** Substring match that must start and end on word boundaries (where the quote's own edge is a word character). */
+function containsQuote(hay: string, needle: string): boolean {
+  let from = 0;
+  for (;;) {
+    const at = hay.indexOf(needle, from);
+    if (at < 0) return false;
+    const before = at > 0 ? hay[at - 1]! : '';
+    const after = hay[at + needle.length] ?? '';
+    const startOk = !WORD.test(needle[0]!) || !WORD.test(before);
+    const endOk = !WORD.test(needle[needle.length - 1]!) || !WORD.test(after);
+    if (startOk && endOk) return true;
+    from = at + 1;
+  }
+}
 const isBlank = (q: string | undefined) => q !== undefined && q.trim() === '';
 
 /** Smallest region side (fraction of the page) that is still treated as a real area. */
@@ -190,7 +206,7 @@ export function validateGuide(raw: unknown, opts: ValidateOptions): ValidationRe
         issue('blank_quote_removed', qPath, 'A blank source quote was removed.');
         return undefined;
       }
-      if (pageHay && !pageHay.some((h) => h.includes(normaliseText(q)))) {
+      if (pageHay && !pageHay.some((h) => containsQuote(h, normaliseText(q)))) {
         issue('quote_not_found', qPath, 'Source quote does not appear on the step\'s source pages and was removed.');
         if (qPath === `${p}.sourceQuote`) stepQuoteRemoved = true;
         return undefined;

@@ -80,17 +80,14 @@ export function ChecklistRow({
         {onOverflow && <IconButton icon="more" aria-label={`More options for ${name}`} onClick={onOverflow} />}
       </div>
       {missing && neededInSteps && neededInSteps.length > 0 && (
-        <p className="type-body-sm pb-2 pl-10 text-ink-muted">
-          Needed in steps{' '}
-          {neededInSteps.map((s, i): ReactNode => (
-            <span key={s.step}>
-              {i > 0 && ', '}
-              <a href={s.href} className="inline-flex min-h-11 items-center px-1 text-accent underline">
-                {s.step}
-              </a>
-            </span>
+        <div className="type-body-sm flex flex-wrap items-center gap-2 pb-2 pl-10 text-ink-muted">
+          <span>Needed in steps</span>
+          {neededInSteps.map((s): ReactNode => (
+            <a key={s.step} href={s.href} className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xs px-2 text-accent underline">
+              {s.step}
+            </a>
           ))}
-        </p>
+        </div>
       )}
     </div>
   );
