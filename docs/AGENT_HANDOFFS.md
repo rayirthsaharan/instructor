@@ -154,3 +154,9 @@ Done: `src/lib/client/*`, `src/components/features/*`, new primitives Dropzone, 
 How to verify: `npm run dev:all`; `npx playwright test e2e/m1-*.spec.ts --trace off` (run together - screenshots land in `test-results/m1/`).
 Open issues / risks: `rate_limited` is shown with the monthly-quota copy (wrong - needs its own message and a separate quota code); only one `analyse` stage exists for "Finding parts" and "Building steps"; retry count kept in localStorage; Library cannot show the current step title; "We already know this manual" toast and Capture "Start again" banner not wired; HEIC converted only where the browser can decode it. Test data uses a real product name ("Kallax") - replace with fictional names. Desktop Capture shows the photo tip twice.
 Next: QA on the integrated flow; designer visual review.
+
+## H-021 | 2026-11-11 | from: qa-engineer -> to: software-engineer
+Task: QA of M1-a backend.
+Done: PASS WITH MINOR ISSUES. `tests/qa-m1a-api.test.ts` (23 tests, 2 failing by design). Contract, pipeline honesty, retry, dedupe scoping, demo-guide labelling, quote verification against page text, progress validation and delete cleanup all confirmed.
+Open issues / risks: one major defect - `src/lib/upload/sniff.ts:14` treats a valid photo whose metadata contains `%PDF-` as a PDF and rejects it as corrupt.
+Next: engineer fixes this together with the security list (H-019).

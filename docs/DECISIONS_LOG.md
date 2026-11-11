@@ -49,3 +49,9 @@ Status: proposed (needs user approval), accepted, superseded by D-nnn.
 
 ## D-013 | 2026-11-11 | software-engineer, ui-ux-designer (accepted) | accepted
 **UI implementation choices.** Sheets and dialogs use the native `<dialog>` element with an added Tab-wrap trap and page scroll lock. `BottomSheet` takes `lgPresentation: panel | dialog` for >= 1024px. The component gallery `/dev/ui` returns 404 in production unless `ENABLE_DEV_UI=1`. Dark styles use a custom Tailwind variant that honours `data-theme`.
+
+## D-014 | 2026-11-11 | software-engineer | accepted
+**Migrations that rebuild tables run with foreign keys off**, followed by `foreign_key_check`, then foreign keys back on. Covered by an upgrade test with existing rows.
+
+## D-015 | 2026-11-11 | orchestrator | accepted
+**M1 decisions.** (1) The Processing screen shows only stages the API reports: Reading pages (ingest + render), Finding parts and building steps (analyse, one stage), Double-checking (verify), finishing (publish) - honesty applies to progress as well as content; USER_FLOWS section 4 to be aligned by the designer. (2) `rate_limited` (too many uploads; 429/503) and `quota_exceeded` (monthly free-guide quota, off by default) are separate error codes with separate copy. (3) Proxy headers are ignored unless `TRUST_PROXY_HOPS` is set. (4) With the mock provider, the Lumen fixture manual gets its real fixture guide; any other upload gets a clearly labelled synthetic demo guide (one low-confidence step per page, nothing invented) so the whole flow can be exercised without API cost. (5) HEIC is converted in the browser where it can decode it and otherwise rejected with a clear message; no conversion dependency in the MVP.
