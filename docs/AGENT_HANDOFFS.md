@@ -182,3 +182,10 @@ Done: `retryCount` (user retries) drives the repeated-failure copy; focus moves 
 How to verify: orchestrator ran `npm run check` (492/492), `npm run build`, `npm run e2e -- --trace off` (110/110).
 Open issues / risks: see DEVELOPMENT_STATUS open issues.
 Next: M2.
+
+## H-025 | 2026-11-11 | from: software-engineer -> to: qa-engineer, ui-ux-designer
+Task: M2-b guide store, Overview + prep checklist, Completion.
+Done: `src/lib/client/guide-store.ts` (`useGuide`, `progressReducer`); `/g/[id]` Overview; `/g/[id]/done` Completion; `src/components/features/{overview,completion}`. Store merges with the server as a union so a completed step is never lost; 4xx not retried, other failures retry at 2s/5s/15s then wait for `retrySave`; pending changes flush on page hide.
+How to verify: `npx playwright test e2e/m2-overview-flow.spec.ts --trace off`; unit tests `tests/ui-m2-*`.
+Open issues / risks: `e2e/m1-real-flow.spec.ts:21` still expects the old placeholder text; own `PrepRow` instead of `ChecklistRow` (needs a crop thumbnail); unreadable-pages button reads "Start again with new photos or a new file"; no clock/person icons on the facts tiles; safety acknowledgement required only for Start and not persisted; save-error banner shows between auto-retries; shared `Menu` closes on any scroll.
+Next: QA and designer review once the player lands.

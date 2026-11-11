@@ -40,6 +40,8 @@ export type PartChipProps = {
   manualLabel?: string;
   /** Crop of the part's source region; omit when there is no region. */
   thumbnailSrc?: string;
+  /** Custom thumbnail node (e.g. a cropped region); wins over `thumbnailSrc`. */
+  thumbnail?: ReactNode;
   selected?: boolean;
   /** User marked the part missing in prep. */
   missing?: boolean;
@@ -57,6 +59,7 @@ export function PartChip({
   quantity,
   manualLabel,
   thumbnailSrc,
+  thumbnail,
   selected = false,
   missing = false,
   tool = false,
@@ -82,6 +85,8 @@ export function PartChip({
       {quantity && <span className="type-tag rounded-xs bg-surface-sunken px-1.5 py-1 text-ink">{quantity}</span>}
       {tool ? (
         <Icon name="wrench" size={20} className="text-ink-muted" />
+      ) : thumbnail ? (
+        thumbnail
       ) : (
         thumbnailSrc && (
           // eslint-disable-next-line @next/next/no-img-element -- small crop of a user page, size known

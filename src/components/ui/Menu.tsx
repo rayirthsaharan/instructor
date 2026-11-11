@@ -10,6 +10,10 @@ export type MenuItem = {
   /** Destructive rows use `danger-fg` (DS 7.15). */
   danger?: boolean;
   disabled?: boolean;
+  /** Switch rows (e.g. "Keep screen on"): rendered as menuitemcheckbox with an On / Off state. */
+  checked?: boolean;
+  /** Helper text under the label. */
+  description?: string;
 };
 
 const MENU_WIDTH = 192;
@@ -19,12 +23,15 @@ export function Menu({
   label,
   items,
   placement = 'below',
+  width = MENU_WIDTH,
   className,
 }: {
   /** Accessible name of the trigger, e.g. "More actions for Flat-pack wardrobe". */
   label: string;
   items: MenuItem[];
   placement?: 'below' | 'above';
+  /** Menu width in px (default 192). */
+  width?: number;
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
@@ -35,7 +42,7 @@ export function Menu({
 
   useEffect(() => {
     if (!open) return;
-    const first = rootRef.current?.querySelector<HTMLElement>('[role="menuitem"]:not([disabled])');
+    const first = rootRef.current?.querySelector<HTMLElement>('[role^="menuitem"]:not([disabled])');
     first?.focus();
     const onDown = (e: PointerEvent) => {
       if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
@@ -66,7 +73,7 @@ export function Menu({
       setOpen(false);
     } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Home' || e.key === 'End') {
       e.preventDefault();
-      const rows = Array.from(rootRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"]:not([disabled])') ?? []);
+      const rows = Array.from(rootRef.current?.querySelectorAll<HTMLElement>('[role^="menuitem"]:not([disabled])') ?? []);
       if (rows.length === 0) return;
       const at = rows.indexOf(document.activeElement as HTMLElement);
       const next =
@@ -88,7 +95,7 @@ export function Menu({
           const r = triggerRef.current?.getBoundingClientRect();
           if (r) {
             // Fixed position, clamped to the viewport, so a tile in the first or last column never clips the menu.
-            const left = Math.max(8, Math.min(window.innerWidth - MENU_WIDTH - 8, r.right - MENU_WIDTH));
+            const left = Math.max(8, Math.min(window.innerWidth - width - 8, r.right - width));
             setPos(
               placement === 'above'
                 ? { left, bottom: window.innerHeight - r.top + 4 }
@@ -103,25 +110,30 @@ export function Menu({
           id={menuId}
           role="menu"
           aria-label={label}
-          style={{ ...pos, width: MENU_WIDTH }}
+          style={{ ...pos, width }}
           className="fixed z-30 overflow-hidden rounded-sm border border-line bg-surface-raised py-1 shadow-elev-2"
         >
           {items.map((it) => (
             <button
               key={it.label}
               type="button"
-              role="menuitem"
+              role={it.checked === undefined ? 'menuitem' : 'menuitemcheckbox'}
+              aria-checked={it.checked}
               disabled={it.disabled}
               onClick={() => {
                 close(true);
                 it.onSelect();
               }}
               className={cn(
-                'type-body flex h-12 w-full cursor-pointer items-center px-4 text-left t-fast hover:bg-surface-sunken disabled:cursor-not-allowed disabled:text-ink-subtle disabled:hover:bg-transparent',
+                'type-body flex min-h-12 w-full cursor-pointer items-center justify-between gap-3 px-4 py-1 text-left t-fast hover:bg-surface-sunken disabled:cursor-not-allowed disabled:text-ink-subtle disabled:hover:bg-transparent',
                 it.danger ? 'text-danger-fg' : 'text-ink',
               )}
             >
-              {it.label}
+              <span className="min-w-0">
+                {it.label}
+                {it.description && <span className="type-body-sm block text-ink-muted">{it.description}</span>}
+              </span>
+              {it.checked !== undefined && <span className="type-tag shrink-0 text-ink-muted">{it.checked ? 'On' : 'Off'}</span>}
             </button>
           ))}
         </div>

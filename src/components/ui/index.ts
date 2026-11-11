@@ -16,3 +16,4 @@ export { Dropzone } from './Dropzone';
 export { PageThumbnailGrid, AddPagesTile, type PageTile } from './PageThumbnailGrid';
 export { StageList, type StageRow, type StageMarker } from './StageList';
 export { Menu, type MenuItem } from './Menu';
+export { Disclosure } from './Disclosure';
