@@ -141,3 +141,9 @@ Done: routes in `src/app/api/**`; logic in `src/lib/{http,pipeline,render,upload
 How to verify: `npm run check` (438 tests); `npm run dev:all`; `tests/capture-*.test.ts`.
 Open issues / risks: contract deviations - `GET /api/guides` rows without a guide have `id: null` (link by `documentId`), extra `DELETE /api/documents/:id`, checklist keys must be part or tool ids. The render child script is located through a cwd fallback (needs `src/` at runtime - deployment concern). IP rate limiting trusts `X-Forwarded-For`. Real provider not implemented (by design).
 Next: QA review; senior-engineer security review of uploads, child process and sessions.
+
+## H-019 | 2026-11-11 | from: senior-engineer -> to: software-engineer
+Task: Security review of M1-a backend (read-only).
+Done: Authorisation, cookie signing, child-process spawning, storage paths and download headers hold up. Findings: (1) upload rate limit bypassable via client-controlled `X-Forwarded-For`, shared `unknown` bucket, no cap on concurrent uploads/probes; (2) JSON bodies read without a size limit; (3) render child script located via cwd; (4) render child has full file-system and network access; (5) cookie should be `__Host-` prefixed and non-GET requests from a foreign Origin rejected; (6) a session row is written for every cookieless request; (7) shared page-image write/delete race; (8) `%PDF-` accepted anywhere in the first 1 KB, page images cached for an hour.
+Open issues / risks: 1-3 block closing M1; 4-8 scheduled with them if cheap, otherwise M2. When the real provider arrives, any page text sent to it must be wrapped and labelled as untrusted data.
+Next: engineer fixes after QA's backend review lands (one combined list).
