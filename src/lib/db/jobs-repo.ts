@@ -1,4 +1,4 @@
-import { and, eq, lt, lte, or, sql } from 'drizzle-orm';
+import { and, eq, lte, or, sql } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import { unwrap, type Db } from './client';
 import { jobs, jobArtifacts } from './schema';
@@ -67,7 +67,7 @@ export function claimJob(db: Db, leaseMs: number, now: number): JobRecord | unde
   return unwrap(db).transaction((tx) => {
     tx.update(jobs)
       .set({ status: 'failed', error: 'Lease expired and attempts exhausted', leaseUntil: null, updatedAt: now })
-      .where(and(eq(jobs.status, 'running'), lt(jobs.leaseUntil, now), sql`${jobs.attempts} >= ${jobs.maxAttempts}`))
+      .where(and(eq(jobs.status, 'running'), lte(jobs.leaseUntil, now), sql`${jobs.attempts} >= ${jobs.maxAttempts}`))
       .run();
     const candidate = tx
       .select()
@@ -94,29 +94,30 @@ export function claimJob(db: Db, leaseMs: number, now: number): JobRecord | unde
 }
 
 /** Extend the lease. Returns false if the job is no longer running (lease lost). */
-export function heartbeatJob(db: Db, id: string, leaseMs: number, now: number, patch?: { stage?: string; progress?: number }): boolean {
+export function heartbeatJob(db: Db, id: string, attempt: number, leaseMs: number, now: number, patch?: { stage?: string; progress?: number }): boolean {
   const res = unwrap(db)
     .update(jobs)
     .set({ leaseUntil: now + leaseMs, heartbeatAt: now, updatedAt: now, ...patch })
-    .where(and(eq(jobs.id, id), eq(jobs.status, 'running')))
+    .where(and(eq(jobs.id, id), eq(jobs.status, 'running'), eq(jobs.attempts, attempt)))
     .run();
   return res.changes > 0;
 }
 
-export function completeJob(db: Db, id: string, now: number): boolean {
+/** `attempt` is the fencing token: the attempts value returned by claimJob. */
+export function completeJob(db: Db, id: string, attempt: number, now: number): boolean {
   const res = unwrap(db)
     .update(jobs)
     .set({ status: 'done', progress: 100, leaseUntil: null, error: null, updatedAt: now })
-    .where(and(eq(jobs.id, id), eq(jobs.status, 'running')))
+    .where(and(eq(jobs.id, id), eq(jobs.status, 'running'), eq(jobs.attempts, attempt)))
     .run();
   return res.changes > 0;
 }
 
 /** Record a failure: requeue if attempts remain, otherwise mark failed. */
-export function failJob(db: Db, id: string, error: string, now: number): JobRecord | undefined {
+export function failJob(db: Db, id: string, attempt: number, error: string, now: number): JobRecord | undefined {
   return unwrap(db).transaction((tx) => {
     const j = tx.select().from(jobs).where(eq(jobs.id, id)).get();
-    if (!j || j.status !== 'running') return undefined;
+    if (!j || j.status !== 'running' || j.attempts !== attempt) return undefined;
     const status = j.attempts >= j.maxAttempts ? 'failed' : 'queued';
     const r = tx
       .update(jobs)

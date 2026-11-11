@@ -14,18 +14,26 @@ export class DbJobQueue implements JobQueue {
   enqueue(input: { type: string; payload?: unknown; documentId?: string; maxAttempts?: number }): Job {
     return toJob(repo.insertJob(this.db, input, this.clock()));
   }
+  private readonly tokens = new Map<string, number>();
+
   claim(leaseMs: number): Job | undefined {
     const r = repo.claimJob(this.db, leaseMs, this.clock());
+    if (r && !this.tokens.has(r.id)) this.tokens.set(r.id, r.attempts);
     return r && toJob(r);
   }
-  heartbeat(id: string, leaseMs: number, patch?: { stage?: string; progress?: number }): boolean {
-    return repo.heartbeatJob(this.db, id, leaseMs, this.clock(), patch);
+  heartbeat(id: string, leaseMs: number, patch?: { stage?: string; progress?: number }, token?: number): boolean {
+    const t = token ?? this.tokens.get(id);
+    return t !== undefined && repo.heartbeatJob(this.db, id, t, leaseMs, this.clock(), patch);
   }
-  complete(id: string): boolean {
-    return repo.completeJob(this.db, id, this.clock());
+  complete(id: string, token?: number): boolean {
+    const t = token ?? this.tokens.get(id);
+    this.tokens.delete(id);
+    return t !== undefined && repo.completeJob(this.db, id, t, this.clock());
   }
-  fail(id: string, error: string): Job | undefined {
-    const r = repo.failJob(this.db, id, error, this.clock());
+  fail(id: string, error: string, token?: number): Job | undefined {
+    const t = token ?? this.tokens.get(id);
+    this.tokens.delete(id);
+    const r = t === undefined ? undefined : repo.failJob(this.db, id, t, error, this.clock());
     return r && toJob(r);
   }
   get(id: string): Job | undefined {
