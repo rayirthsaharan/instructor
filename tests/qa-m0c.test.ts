@@ -503,7 +503,7 @@ describe('QA M0-c re-check: quote-vs-page verification', () => {
 
   it('empty-string pageTexts entries and a pageTexts array shorter than pageCount fail closed', () => {
     const g = valid();
-    expect(codes(runT(g, ['', '', '', '', '', ''])).filter((c) => c === 'quote_not_found').length).toBeGreaterThan(0);
+    expect(codes(runT(g, ['', '', '', '', '', ''])).filter((c: string) => c === 'quote_not_found').length).toBeGreaterThan(0);
     const short: any = runT(valid(), pageTexts.slice(0, 2));
     expect(codes(short)).toContain('quote_not_found');
     expect(short.guide.steps.s7.sourceQuote).toBeUndefined();

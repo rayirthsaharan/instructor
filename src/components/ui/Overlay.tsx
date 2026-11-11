@@ -16,7 +16,7 @@ function trapTab(e: KeyboardEvent<HTMLDialogElement>) {
   const last = items[items.length - 1];
   if (!first || !last) return;
   const active = document.activeElement;
-  if (e.shiftKey && (active === first || active === e.currentTarget)) {
+  if (e.shiftKey && (active === first || active === e.currentTarget || !items.includes(active as HTMLElement))) {
     e.preventDefault();
     last.focus();
   } else if (!e.shiftKey && active === last) {
