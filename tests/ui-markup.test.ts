@@ -21,12 +21,12 @@ describe('Button', () => {
     expect(html(h(Button, null, 'Go'))).toContain('type="button"');
   });
   it('loading sets aria-busy but is not disabled', () => {
-    const m = html(h(Button, { loading: true }, 'Go'));
+    const m = html(h(Button, { loading: true, children: 'Go' }));
     expect(m).toContain('aria-busy="true"');
-    expect(m).not.toContain('disabled');
+    expect(m).not.toMatch(/ disabled(=""| )/);
   });
   it('links a disabled helper line via aria-describedby', () => {
-    const m = html(h(Button, { disabled: true, helper: 'Why not' }, 'Go'));
+    const m = html(h(Button, { disabled: true, helper: 'Why not', children: 'Go' }));
     expect(m).toMatch(/aria-describedby="([^"]+)"[\s\S]*<p id="\1"/);
   });
 });
@@ -41,7 +41,7 @@ describe('IconButton', () => {
 
 describe('Chip / PartChip', () => {
   it('chip exposes selected via aria-pressed', () => {
-    expect(html(h(Chip, { selected: true }, 'A'))).toContain('aria-pressed="true"');
+    expect(html(h(Chip, { selected: true, children: 'A' }))).toContain('aria-pressed="true"');
   });
   it('part chip omits label, quantity and thumbnail when absent (never synthesised)', () => {
     const m = html(h(PartChip, { name: 'Back panel' }));

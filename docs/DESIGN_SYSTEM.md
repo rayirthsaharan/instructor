@@ -60,7 +60,7 @@ Each meaning has three tokens: `-fg` (text and icons on surface or on its own so
 | Warning (manual's cautions) | `--color-warn` | `#8A5300` / `#FFF1D0` / `#F2A900` (ink `#1B1A17`) | `#F5C04A` / `#3A2C0A` / `#F5C04A` (`#1B1A17`) | 6.3 / 5.6 | 10.1 / 8.1 |
 | Irreversible step, danger, errors | `--color-danger` | `#B3261E` / `#FCE9E6` / `#B3261E` (`#FFFFFF`) | `#FF8A7A` / `#401612` / `#FF8A7A` (`#3A0A06`) | 6.5 / 5.5 | 7.4 / 6.8 |
 | Success, completed | `--color-success` | `#1E6B3A` / `#E3F3E6` / `#1E6B3A` (`#FFFFFF`) | `#7FD49A` / `#12301C` / `#7FD49A` (`#0B2414`) | 6.5 / 5.6 | 9.5 / not below 7 |
-| Low confidence, interpretation | `--color-unsure` | `#6B3FA0` / `#F0E8FA` / `#6B3FA0` (`#FFFFFF`) | `#C9A8F5` / `#2A1D42` / `#C9A8F5` (`#1F1233`) | 7.3 / 6.2 | 8.4 / not below 6 |
+| Low confidence, interpretation | `--color-unsure` | `#6B3FA0` / `#F0E8FA` / `#6B3FA0` (`#FFFFFF`) | `#C9A8F5` / `#2A1D42` / `#C9A8F5` (`#1F1233`) | 7.3 / 6.1 | 8.4 / not below 6 |
 
 `--color-warn-solid` light (`#F2A900`) is only 2.0:1 against white: it is a fill for ink-coloured content (8.6:1), never a text or thin-line colour on light surfaces.
 

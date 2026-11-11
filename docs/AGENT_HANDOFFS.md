@@ -67,3 +67,24 @@ Task: Review M0-a db, jobs and storage.
 Done: Verdict FAIL. 23 tests in `tests/qa-m0a.test.ts`, 3 failing by design until fixed. Portability rule (D-010) and schema confirmed.
 Open issues / risks: (1) major - heartbeat/complete/fail have no lease fencing; (2) major - attempt cap exceeded at the lease boundary (`lt` vs `lte`); (3) minor - storage follows symlinks out of the root, non-atomic writes; also widen `.gitignore` env patterns and reject the placeholder session secret in production.
 Next: engineer fixes 1-3; QA re-runs.
+
+## H-009 | 2026-11-11 | from: software-engineer -> to: orchestrator
+Task: Fix M0-a QA defects.
+Done: lease fencing token (`attempts` from claim) required by heartbeat/complete/fail; sweep and claim both use `lte`; storage real-path checks parents and writes atomically; `.gitignore` covers `.env*`.
+How to verify: `npx vitest run tests/qa-m0a.test.ts tests/jobs.test.ts tests/storage.test.ts`.
+Open issues / risks: for senior-engineer review at milestone close - (a) `DbJobQueue` falls back to a remembered token when the caller omits it; (b) `put` through an escaping symlink replaces the symlink with a directory inside the root; (c) no config module yet, so the placeholder `SESSION_SECRET` is not rejected in production.
+Next: senior-engineer M0 security review.
+
+## H-010 | 2026-11-11 | from: software-engineer -> to: qa-engineer
+Task: M0-c Guide contract, validators, selectors, fixture, AIProvider + mock.
+Done: `src/lib/guide/*`, `src/lib/ai/*`, `fixtures/lumen-bookcase*`, `fixtures/invalid/*`, tests. Repairable provenance violations are non-fatal and reported as issues; inferred guidance containing numbers is stripped; `AIProvider` returns `draft: unknown`, which must pass `validateGuide`.
+How to verify: `npx vitest run tests/guide-* tests/ai-*`.
+Open issues / risks: mock answer matching is keyword-based.
+Next: QA adversarial review of the validator.
+
+## H-011 | 2026-11-11 | from: software-engineer -> to: qa-engineer, ui-ux-designer
+Task: M0-b tokens and UI primitives.
+Done: tokens in `src/app/globals.css`; primitives in `src/components/ui` (barrel `index.ts`); gallery at `/dev/ui?theme=light|dark` (404 in production unless `ENABLE_DEV_UI=1`). Native `<dialog>` for sheet/dialog; sheet detents are a half/full toggle. Extra components: GuideCard, LinkCard, WarningBanner, PageTag, InstructorNote.
+How to verify: `npx vitest run tests/ui-* tests/contrast.test.ts`; `npx playwright test e2e/ui-gallery.spec.ts --trace off`.
+Open issues / risks: stated contrast for light unsure-fg on unsure-soft corrected from 6.2 to 6.1 (true 6.1988) in the design system and test by the orchestrator.
+Next: designer visual review; QA behaviour and accessibility review.

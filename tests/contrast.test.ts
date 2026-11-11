@@ -67,8 +67,8 @@ const pairs: Pair[] = [
   { fg: 'success-fg', bg: 'surface', light: 6.5, dark: 9.5, note: 'success-fg on surface' },
   { fg: 'success-fg', bg: 'success-soft', light: 5.6, dark: 7, note: 'success-fg on success-soft' },
   { fg: 'unsure-fg', bg: 'surface', light: 7.3, dark: 8.4, note: 'unsure-fg on surface' },
-  { fg: 'unsure-fg', bg: 'unsure-soft', light: 6.2, dark: 6, note: 'unsure-fg on unsure-soft',
-    discrepancy: 'DS states 6.2 ("rounded down") but the true ratio is 6.1988 (rounded, not floored). Still passes WCAG AA 4.5. Token intentionally NOT changed; report to ui-ux-designer.' },
+  { fg: 'unsure-fg', bg: 'unsure-soft', light: 6.1, dark: 6, note: 'unsure-fg on unsure-soft',
+  },
   // text on solid fills (DS 2.2: stated on-colour; WCAG 4.5 where no number is given)
   { fg: 'warn-on', bg: 'warn-solid', light: 8.6, dark: 4.5, note: 'warn-on on warn-solid' },
   { fg: 'danger-on', bg: 'danger-solid', light: 4.5, dark: 4.5, note: 'danger-on on danger-solid' },
