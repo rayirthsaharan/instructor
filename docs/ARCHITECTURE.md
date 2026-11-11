@@ -99,4 +99,16 @@ scripts/            project tooling
 6. **Guide contract changes.** `highlights[]` items are `{ source: SourceRef, panelId?, label?, partId? }` (they carry a page). `SourceRef` gains `panelId?` and `regionFallback: boolean`. Step ids are stable within an analysis; progress, notes, messages and simplifications reference `analysis_id` + step id. Warnings, and steps containing numbers, carry `sourceQuote`. `Guide` gains `language`. Step order lives only in `phases[].stepIds` (`steps` is an unordered map by id). `schemaVersion` is a literal with a migration function.
 
 ## 11. Commands
-To be filled in by the engineer when the app is scaffolded (dev, build, typecheck, lint, test, e2e).
+All via `npm run <script>` (copy `.env.example` to `.env.local` first; `AI_PROVIDER=mock` is the default).
+| Script | Purpose |
+|---|---|
+| `dev` / `build` / `start` | Next.js dev server, production build, production server |
+| `worker` | Job worker process (`tsx src/worker.ts`); applies migrations on boot, polls the `jobs` table |
+| `typecheck` / `lint` / `test` | `tsc --noEmit`, ESLint, Vitest (`tests/**`, `src/**/*.test.ts`) |
+| `check` | typecheck + lint + test (run before finishing any task) |
+| `e2e` | Playwright against a dev server on port 3100 (`npm run e2e -- --trace off`); uses the pre-installed Chromium |
+| `db:generate` | drizzle-kit: generate a migration from `src/lib/db/schema.ts` into `src/lib/db/migrations` |
+| `db:migrate` | Apply migrations to `DATABASE_PATH` (default `./data/instructor.db`, gitignored) |
+| `validate:agents` | Validate `.claude/agents/*.md` |
+
+Env: `DATABASE_PATH`, `STORAGE_ROOT` (default `./data/files`), `AI_PROVIDER`, `WORKER_POLL_MS`. All SQL lives in `src/lib/db`; other code uses its repository functions and the opaque `Db` handle.
