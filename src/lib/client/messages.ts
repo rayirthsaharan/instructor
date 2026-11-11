@@ -12,6 +12,7 @@ export const MSG = {
   corrupt: "We couldn't open that file. It may be damaged. Try downloading it again or use photos.",
   network: 'The upload stopped. Check your connection.',
   limit: "You've used this month's free guides.",
+  rateLimited: 'Too many uploads right now. Wait a few minutes and try again.',
   empty: 'Add a PDF or at least one page photo.',
   oneKind: 'Add one PDF, or photos of the pages - not both.',
   onePdf: 'Add one PDF at a time.',
@@ -49,6 +50,8 @@ export function uploadErrorMessage(code: string, serverMessage = ''): MappedUplo
     case 'empty':
       return { message: MSG.empty, kind: 'error', retry: false };
     case 'rate_limited':
+      return { message: MSG.rateLimited, kind: 'error', retry: true };
+    case 'quota_exceeded':
       return { message: MSG.limit, kind: 'info', retry: false };
     case 'network':
       return { message: MSG.network, kind: 'error', retry: true };
@@ -58,9 +61,9 @@ export function uploadErrorMessage(code: string, serverMessage = ''): MappedUplo
 }
 
 /** Row of the four-row stage list (DS 7.14). */
-export const STAGE_LABELS = ['Reading pages', 'Finding parts', 'Building steps', 'Double-checking'] as const;
+export const STAGE_LABELS = ['Reading pages', 'Finding parts and building steps', 'Double-checking', 'Finishing'] as const;
 
-/** Index of the stage row a pipeline stage belongs to. `analyse` covers rows 1 and 2; see DECISIONS entry. */
+/** Index of the stage row a pipeline stage belongs to; one row per stage the API really reports. */
 export function stageRow(stage: DocumentStage | null): number {
   switch (stage) {
     case 'ingest':
@@ -70,13 +73,15 @@ export function stageRow(stage: DocumentStage | null): number {
     case 'analyse':
       return 1;
     case 'verify':
+      return 2;
     case 'publish':
       return 3;
   }
 }
 
 /** Section 10.3. `repeated` = third failure. */
-export function failureMessage(stage: DocumentStage | null, code: string | undefined, repeated: boolean): { message: string; repeated: boolean; retryAllowed: boolean; differentFile: boolean } {
+export function failureMessage(stage: DocumentStage | null, code: string | undefined, attempts: number | null | undefined): { message: string; repeated: boolean; retryAllowed: boolean; differentFile: boolean } {
+  const repeated = (attempts ?? 0) >= 3;
   let message: string;
   if (code && /unreadable/.test(code)) {
     message = "We couldn't read these pages. Try photos in brighter light, with each page flat and filling the frame.";
@@ -90,4 +95,10 @@ export function failureMessage(stage: DocumentStage | null, code: string | undef
   if (repeated) message += " It's still not working. Your manual is saved; try again later.";
   const readFail = stage === 'ingest' || stage === 'render' || stage === null;
   return { message, repeated, retryAllowed: !repeated, differentFile: readFail && !repeated };
+}
+
+/** "page 7", "pages 7 and 8", "pages 7, 8 and 12". */
+export function pageList(pages: number[]): string {
+  if (pages.length === 1) return `page ${pages[0]}`;
+  return `pages ${pages.slice(0, -1).join(', ')} and ${pages[pages.length - 1]}`;
 }

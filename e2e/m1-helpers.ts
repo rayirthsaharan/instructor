@@ -40,7 +40,7 @@ export const doc = (over: Partial<Doc> = {}): Doc => ({
 export const guide = (over: Partial<GuideRow> = {}): GuideRow => ({
   id: 'g1',
   documentId: 'doc1',
-  title: 'Kallax shelf unit assembly',
+  title: 'Lumen 3-shelf bookcase assembly',
   stepCount: 24,
   estimatedMinutes: 90,
   progress: { currentStepId: null, completedCount: 0, percent: 0 },

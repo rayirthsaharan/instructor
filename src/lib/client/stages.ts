@@ -12,8 +12,7 @@ export const DOUBLE_CHECK_DETAIL = 'Comparing numbers and part labels with the o
 export const SLOW_DETAIL = 'Still working - long manuals take longer.';
 
 /**
- * Stage rows from the job's real state only. The pipeline reports one `analyse` stage for both
- * "Finding parts" and "Building steps", so while it runs the first of the two is shown active.
+ * Stage rows from the job's real state only: one row per stage the API reports.
  */
 export function buildRows(doc: Pick<DocumentState, 'status' | 'stage' | 'pageCount' | 'pagesRendered'>, slow = false): Row[] {
   const rows: Row[] = STAGE_LABELS.map((label) => ({ label, marker: 'pending', detail: null }));
@@ -37,7 +36,7 @@ export function buildRows(doc: Pick<DocumentState, 'status' | 'stage' | 'pageCou
       row(0).detail = `Page ${Math.min(doc.pagesRendered, doc.pageCount)} of ${doc.pageCount}`;
     }
   }
-  if (!bad && doc.stage === 'verify') row(3).detail = DOUBLE_CHECK_DETAIL;
+  if (!bad && doc.stage === 'verify') row(2).detail = DOUBLE_CHECK_DETAIL;
   if (!bad && slow) {
     const active = row(at);
     active.detail = active.detail ? `${active.detail}. ${SLOW_DETAIL}` : SLOW_DETAIL;

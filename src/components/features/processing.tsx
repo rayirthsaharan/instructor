@@ -6,7 +6,6 @@ import { Banner, Button, Icon, Skeleton, SkeletonRegion, StageList } from '@/com
 import { retryDocument } from '@/lib/client/api';
 import { useDocumentPolling } from '@/lib/client/hooks';
 import { failureMessage, STAGE_LABELS } from '@/lib/client/messages';
-import { bumpRetryCount, getRetryCount } from '@/lib/client/retries';
 import { buildRows } from '@/lib/client/stages';
 import type { DocumentState } from '@/lib/client/types';
 import { BracketFrame, ButtonLink, PageImage } from './common';
@@ -74,17 +73,13 @@ function Loading() {
 function Failed({ doc, onRetried }: { doc: DocumentState; onRetried: () => void }) {
   const [busy, setBusy] = useState(false);
   const [retryError, setRetryError] = useState(false);
-  // Client-only render (the job is fetched after hydration); re-read after every retry.
-  const attempts = getRetryCount(doc.id);
-  // The first failure plus two retries is the third failure.
-  const f = failureMessage(doc.stage, doc.error?.code, attempts >= 2);
+  const f = failureMessage(doc.stage, doc.error?.code, doc.attempts);
 
   const retry = async () => {
     setBusy(true);
     setRetryError(false);
     try {
       await retryDocument(doc.id);
-      bumpRetryCount(doc.id);
       onRetried();
     } catch {
       setRetryError(true);

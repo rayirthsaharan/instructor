@@ -4,9 +4,9 @@ import { FakeApi, guide, newPage, noHorizontalScroll, SHOT, VIEWPORTS, type VpNa
 const shots: VpName[] = ['375', '1280'];
 
 const populated = () => [
-  guide({ id: 'g1', documentId: 'd1', title: 'Kallax shelf unit assembly', progress: { currentStepId: 's7', completedCount: 6, percent: 25 }, updatedAt: Date.parse('2026-11-11T10:00:00Z') }),
-  guide({ id: 'g2', documentId: 'd2', title: 'Espresso machine setup', stepCount: 12, estimatedMinutes: 20, updatedAt: Date.parse('2026-11-10T10:00:00Z') }),
-  guide({ id: 'g3', documentId: 'd3', title: 'Bike light installation', stepCount: 8, estimatedMinutes: null, progress: { currentStepId: null, completedCount: 8, percent: 100 }, updatedAt: Date.parse('2026-11-09T10:00:00Z') }),
+  guide({ id: 'g1', documentId: 'd1', title: 'Lumen 3-shelf bookcase assembly', progress: { currentStepId: 's7', completedCount: 6, percent: 25 }, updatedAt: Date.parse('2026-11-11T10:00:00Z') }),
+  guide({ id: 'g2', documentId: 'd2', title: 'Brio espresso machine setup', stepCount: 12, estimatedMinutes: 20, updatedAt: Date.parse('2026-11-10T10:00:00Z') }),
+  guide({ id: 'g3', documentId: 'd3', title: 'Nova bike light installation', stepCount: 8, estimatedMinutes: null, progress: { currentStepId: null, completedCount: 8, percent: 100 }, updatedAt: Date.parse('2026-11-09T10:00:00Z') }),
   guide({ id: null, documentId: 'd4', title: null, status: 'processing', stepCount: 0, estimatedMinutes: null, updatedAt: Date.parse('2026-11-08T10:00:00Z') }),
   guide({ id: null, documentId: 'd5', title: null, status: 'failed', stepCount: 0, estimatedMinutes: null, updatedAt: Date.parse('2026-11-07T10:00:00Z') }),
 ];
@@ -62,7 +62,7 @@ test('populated library: copy, states, links, sorting and hero', async ({ browse
   await page.goto('/');
 
   const hero = page.getByTestId('continue-hero');
-  await expect(hero.getByRole('heading', { name: 'Kallax shelf unit assembly' })).toBeVisible();
+  await expect(hero.getByRole('heading', { name: 'Lumen 3-shelf bookcase assembly' })).toBeVisible();
   await expect(hero.getByText('Step 7 of 24')).toBeVisible();
   await expect(hero.getByRole('link', { name: 'Continue' })).toHaveAttribute('href', '/g/g1/play');
 
@@ -89,7 +89,7 @@ test('delete: menu, confirm copy, Cancel keeps it, Delete removes it with a toas
   await api.install(page);
   await page.goto('/');
 
-  const trigger = page.getByRole('button', { name: 'More actions for Espresso machine setup' });
+  const trigger = page.getByRole('button', { name: 'More actions for Brio espresso machine setup' });
   await trigger.focus();
   await page.keyboard.press('Enter');
   const menu = page.getByRole('menu');
@@ -124,7 +124,7 @@ test('delete failure shows an error banner with Try again, not a toast', async (
   await api.install(page);
   await page.route('**/api/guides/g2', (r) => r.fulfill({ status: 500, contentType: 'application/json', body: '{"error":{"code":"x","message":"y"}}' }));
   await page.goto('/');
-  await page.getByRole('button', { name: 'More actions for Espresso machine setup' }).click();
+  await page.getByRole('button', { name: 'More actions for Brio espresso machine setup' }).click();
   await page.getByRole('menuitem', { name: 'Delete' }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Delete' }).click();
   await expect(page.locator('[data-kind="error"]')).toContainText("We couldn't delete that guide.");
@@ -139,11 +139,11 @@ test('a processing manual that finishes while the Library is open shows "Your gu
   await api.install(page);
   await page.goto('/');
   await expect(page.getByTestId('guide-card')).toContainText('Reading your manual');
-  api.guides = [guide({ id: 'g9', documentId: 'd9', title: 'Toaster manual', status: 'ready' })];
+  api.guides = [guide({ id: 'g9', documentId: 'd9', title: 'Pico toaster manual', status: 'ready' })];
   await expect(page.getByText('Your guide is ready')).toBeVisible({ timeout: 8000 });
   await page.getByRole('button', { name: 'Open', exact: true }).click();
   await expect(page).toHaveURL(/\/g\/g9$/);
-  await expect(page.getByRole('heading', { name: 'Toaster manual' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Pico toaster manual' })).toBeVisible();
   await expect(page.getByText('Guide overview coming next')).toBeVisible();
   await context.close();
 });

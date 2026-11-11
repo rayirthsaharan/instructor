@@ -14,6 +14,8 @@ export interface DocumentState {
   guideId: string | null;
   error: { code: string; message: string } | null;
   title: string | null;
+  /** Runs so far; optional until the API reports it. */
+  attempts?: number;
 }
 
 export interface GuideSummary {
@@ -38,6 +40,7 @@ export type UploadErrorCode =
   | 'encrypted_pdf'
   | 'corrupt_file'
   | 'empty'
-  | 'rate_limited';
+  | 'rate_limited'
+  | 'quota_exceeded';
 
 export type ClientErrorCode = UploadErrorCode | 'not_found' | 'network' | 'aborted' | 'unknown';

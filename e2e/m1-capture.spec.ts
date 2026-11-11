@@ -47,13 +47,13 @@ test('capture: PDF row, remove with Undo', async ({ browser }) => {
   const { page, context } = await newPage(browser, '768');
   await new FakeApi().install(page);
   await page.goto('/new');
-  await page.getByTestId('file-input').setInputFiles(pdfFile('fridge-manual.pdf', 3 * 1024 * 1024));
+  await page.getByTestId('file-input').setInputFiles(pdfFile('cooler-manual.pdf', 3 * 1024 * 1024));
   const row = page.getByTestId('pdf-row');
-  await expect(row).toContainText('fridge-manual.pdf');
+  await expect(row).toContainText('cooler-manual.pdf');
   await expect(row).toContainText('3.0 MB');
   await expect(page.getByText('1 PDF - 3.0 MB')).toBeVisible();
   await page.screenshot({ path: `${SHOT}/capture-pdf-768-light.png`, fullPage: true });
-  await page.getByRole('button', { name: 'Remove fridge-manual.pdf' }).click();
+  await page.getByRole('button', { name: 'Remove cooler-manual.pdf' }).click();
   await expect(page.getByTestId('dropzone')).toBeVisible();
   await page.getByRole('button', { name: 'Undo' }).click();
   await expect(page.getByTestId('pdf-row')).toBeVisible();

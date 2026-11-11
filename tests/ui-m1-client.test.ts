@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { parseErrorResponse } from '@/lib/client/api';
-import { failureMessage, MSG, tooManyPages, uploadErrorMessage } from '@/lib/client/messages';
+import { failureMessage, MSG, pageList, tooManyPages, uploadErrorMessage } from '@/lib/client/messages';
 import { classifyFile, insertAt, move, planAdd } from '@/lib/client/selection';
 import { nextDelay, POLL_ERROR_MAX_MS, POLL_MAX_MS, POLL_MIN_MS } from '@/lib/client/poll';
 import { buildRows } from '@/lib/client/stages';
@@ -89,7 +89,8 @@ describe('error code mapping', () => {
     expect(uploadErrorMessage('encrypted_pdf').message).toBe(MSG.encrypted);
     expect(uploadErrorMessage('corrupt_file').message).toBe(MSG.corrupt);
     expect(uploadErrorMessage('empty').message).toBe(MSG.empty);
-    expect(uploadErrorMessage('rate_limited')).toMatchObject({ message: MSG.limit, kind: 'info' });
+    expect(uploadErrorMessage('rate_limited')).toMatchObject({ message: 'Too many uploads right now. Wait a few minutes and try again.', kind: 'error', retry: true });
+    expect(uploadErrorMessage('quota_exceeded')).toMatchObject({ message: MSG.limit, kind: 'info', retry: false });
     expect(uploadErrorMessage('network')).toMatchObject({ message: MSG.network, retry: true });
   });
   it('puts the page count from the server message into the too-many-pages copy', () => {
@@ -105,17 +106,17 @@ describe('error code mapping', () => {
     expect(parseErrorResponse(500, '<html>').code).toBe('unknown');
   });
   it('picks failure copy by stage and adds the repeated-failure sentence', () => {
-    expect(failureMessage('render', undefined, false).message).toBe("We couldn't read this file's pages.");
-    expect(failureMessage('render', undefined, false).differentFile).toBe(true);
-    expect(failureMessage('analyse', undefined, false)).toMatchObject({
+    expect(failureMessage('render', undefined, 1).message).toBe("We couldn't read this file's pages.");
+    expect(failureMessage('render', undefined, 1).differentFile).toBe(true);
+    expect(failureMessage('analyse', undefined, undefined)).toMatchObject({
       message: "We couldn't build a guide from this manual. This is on our side.",
       differentFile: false,
     });
-    expect(failureMessage('verify', undefined, false).message).toContain("couldn't verify them against the original");
-    const third = failureMessage('analyse', undefined, true);
+    expect(failureMessage('verify', undefined, 2).message).toContain("couldn't verify them against the original");
+    const third = failureMessage('analyse', undefined, 3);
     expect(third.message.endsWith("It's still not working. Your manual is saved; try again later.")).toBe(true);
     expect(third.retryAllowed).toBe(false);
-    expect(failureMessage('ingest', 'all_pages_unreadable', false).message).toMatch(/brighter light/);
+    expect(failureMessage('ingest', 'all_pages_unreadable', 1).message).toMatch(/brighter light/);
   });
 });
 
@@ -139,6 +140,7 @@ describe('stage rows come only from the real state', () => {
     const rows = buildRows({ status: 'processing', stage: 'render', ...base });
     expect(rows[0]).toMatchObject({ marker: 'active', detail: 'Page 8 of 20' });
     expect(rows[1]?.marker).toBe('pending');
+    expect(rows.map((r) => r.label)).toEqual(['Reading pages', 'Finding parts and building steps', 'Double-checking', 'Finishing']);
   });
   it('no page detail when the count is unknown or zero', () => {
     expect(buildRows({ status: 'processing', stage: 'render', pageCount: null, pagesRendered: null })[0]?.detail).toBeNull();
@@ -146,12 +148,12 @@ describe('stage rows come only from the real state', () => {
   });
   it('verify: earlier stages done, double-checking active with its detail', () => {
     const rows = buildRows({ status: 'processing', stage: 'verify', ...base });
-    expect(rows.map((r) => r.marker)).toEqual(['done', 'done', 'done', 'active']);
-    expect(rows[3]?.detail).toBe('Comparing numbers and part labels with the original');
+    expect(rows.map((r) => r.marker)).toEqual(['done', 'done', 'active', 'pending']);
+    expect(rows[2]?.detail).toBe('Comparing numbers and part labels with the original');
   });
   it('failed: the failed row gets the failed marker, earlier ones stay done', () => {
     const rows = buildRows({ status: 'failed', stage: 'verify', ...base });
-    expect(rows.map((r) => r.marker)).toEqual(['done', 'done', 'done', 'failed']);
+    expect(rows.map((r) => r.marker)).toEqual(['done', 'done', 'failed', 'pending']);
   });
   it('slow adds the line under the active stage only', () => {
     const rows = buildRows({ status: 'processing', stage: 'analyse', ...base }, true);
@@ -188,5 +190,13 @@ describe('library state', () => {
     const list = [g({ id: 'a' }), g({ id: 'b', done: 2 }), g({ id: 'c', done: 5 })];
     expect(hero(list)?.id).toBe('b');
     expect(hero([g({ done: 10 }), g({ status: 'processing' })])).toBeNull();
+  });
+});
+
+describe('pageList', () => {
+  it('words one, two and many pages', () => {
+    expect(pageList([7])).toBe('page 7');
+    expect(pageList([7, 8])).toBe('pages 7 and 8');
+    expect(pageList([7, 8, 12])).toBe('pages 7, 8 and 12');
   });
 });

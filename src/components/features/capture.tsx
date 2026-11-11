@@ -19,7 +19,7 @@ import { ApiError, createDocument } from '@/lib/client/api';
 import { takePendingFiles } from '@/lib/client/handoff';
 import { convertHeicToJpeg } from '@/lib/client/heic';
 import { useCoarsePointer, useIsDesktop } from '@/lib/client/hooks';
-import { MSG, uploadErrorMessage, type MappedUploadError } from '@/lib/client/messages';
+import { MSG, pageList, uploadErrorMessage, type MappedUploadError } from '@/lib/client/messages';
 import { classifyFile, formatBytes, insertAt, move, planAdd, type AddPlan } from '@/lib/client/selection';
 import { IconLink, pageGutters } from './common';
 
@@ -49,7 +49,7 @@ const REPLACE_COPY: Record<NonNullable<AddPlan['replace']>, { title: string; mes
   },
 };
 
-export function CaptureScreen() {
+export function CaptureScreen({ againPages = [] }: { againPages?: number[] }) {
   const router = useRouter();
   const toast = useToast();
   const coarse = useCoarsePointer();
@@ -193,7 +193,7 @@ export function CaptureScreen() {
       setUploading(false);
       if (e instanceof ApiError && e.code === 'aborted') return;
       const mapped = uploadErrorMessage(e instanceof ApiError ? e.code : 'network', e instanceof Error ? e.message : '');
-      if (e instanceof ApiError && e.code === 'rate_limited') setLimitReached(true);
+      if (e instanceof ApiError && e.code === 'quota_exceeded') setLimitReached(true);
       setProblems([mapped]);
     }
   };
@@ -219,6 +219,11 @@ export function CaptureScreen() {
       </header>
       <main className={`${pageGutters} pb-40 lg:grid lg:grid-cols-12 lg:gap-8 lg:pb-12`}>
         <div className="flex flex-col gap-4 lg:col-span-8">
+          {againPages.length > 0 && (
+            <Banner kind="info">
+              Add every page again, including {pageList(againPages)}. Your current guide stays in your library.
+            </Banner>
+          )}
           {problems.map((p) => (
             <Banner
               key={p.message}
@@ -290,7 +295,7 @@ export function CaptureScreen() {
             />
           )}
 
-          <p className="type-body-sm text-ink-muted">{TIP}</p>
+          <p className="type-body-sm text-ink-muted lg:hidden">{TIP}</p>
           <p role="status" className="sr-only">
             {announce}
           </p>

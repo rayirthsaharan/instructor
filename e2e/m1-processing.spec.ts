@@ -73,14 +73,14 @@ test('stages follow the real state and are announced politely', async ({ browser
 test('ready: redirects (replace) to /g/<guideId> and the placeholder shows the title', async ({ browser }) => {
   const { page, context } = await newPage(browser, '375');
   const api = new FakeApi();
-  api.guides = [guide({ id: 'g7', documentId: 'j', title: 'Garden shed assembly' })];
+  api.guides = [guide({ id: 'g7', documentId: 'j', title: 'Orchard garden shed assembly' })];
   api.docs['j'] = doc({ id: 'j', stage: 'verify' });
   await api.install(page);
   await page.goto('/');
   await page.goto('/d/j');
   api.docs['j'] = doc({ id: 'j', status: 'ready', stage: 'publish', progress: 1, guideId: 'g7' });
   await expect(page).toHaveURL(/\/g\/g7$/, { timeout: 8000 });
-  await expect(page.getByRole('heading', { name: 'Garden shed assembly' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Orchard garden shed assembly' })).toBeVisible();
   await expect(page.getByText('Guide overview coming next')).toBeVisible();
   await page.screenshot({ path: `${SHOT}/guide-placeholder-375-light.png` });
   // The Processing URL is not left in history

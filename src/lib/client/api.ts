@@ -19,6 +19,7 @@ const KNOWN_CODES = new Set([
   'corrupt_file',
   'empty',
   'rate_limited',
+  'quota_exceeded',
 ]);
 
 /** Turns an HTTP status + body into an ApiError. Exported for tests. */
