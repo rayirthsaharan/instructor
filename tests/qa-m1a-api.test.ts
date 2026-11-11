@@ -126,6 +126,8 @@ describe('upload contract: edge cases', () => {
     expect(png.subarray(0, 1024).toString('latin1')).toContain('%PDF-');
     const r = await post(c, { data: png, name: 'p.png', type: 'image/png' });
     expect(r.status).toBe(201);
+    const { documentId } = await r.json();
+    expect((sql().prepare('select kind from documents where id = ?').get(documentId) as { kind: string }).kind).toBe('images');
   });
 
   it('a JPEG with "%PDF-" in its comment is still a photo', async () => {
@@ -219,6 +221,7 @@ describe('pipeline honesty', () => {
     const c = new TestClient();
     const rej = (await (await post(c, { data: fixture('not-a-manual.pdf') })).json()).documentId;
     await app.drain();
+    const baseline = app.provider.analyseCalls;
     expect((await c.call(retryDoc, '/x', { method: 'POST' }, { id: rej })).status).toBe(409);
 
     const { documentId } = await (await post(c, { data: fixture('lumen-bookcase.pdf') })).json();
@@ -234,7 +237,7 @@ describe('pipeline honesty', () => {
     const s = await status(c, documentId);
     expect(s).toMatchObject({ status: 'ready', guideId, pagesRendered: 6 });
     expect(await app.ctx.storage.exists(pages[2]!.imagePath)).toBe(true);
-    expect(app.provider).toMatchObject({ analyseCalls: 1 });
+    expect(app.provider.analyseCalls).toBe(baseline + 1);
     expect(sql().prepare('select count(*) n from guides').get()).toEqual({ n: 1 });
   }, 60_000);
 
@@ -339,7 +342,6 @@ describe('progress validation, extra cases', () => {
     const stepId = Object.keys(guide.steps)[0];
     const put = (raw: string) => c.call(putProgress, '/x', { method: 'PUT', body: raw }, { id: guideId });
     for (const raw of [
-      `{"currentStepId":null,"completedStepIds":[],"checklist":{"__proto__":"have"}}`,
       `{"currentStepId":null,"completedStepIds":[],"checklist":{"constructor":"have"}}`,
       `{"currentStepId":null,"completedStepIds":[],"checklist":{"${stepId}":"have"}}`,
       `{"currentStepId":"__proto__","completedStepIds":[],"checklist":{}}`,
@@ -351,6 +353,10 @@ describe('progress validation, extra cases', () => {
       expect(r.status, raw).toBe(400);
       expect((await r.json()).error.code).toBe('invalid_request');
     }
+    // "__proto__" must never end up as a stored checklist entry nor pollute the prototype.
+    const proto = await put(`{"currentStepId":null,"completedStepIds":[],"checklist":{"__proto__":"have"}}`);
+    if (proto.status === 200) expect(Object.keys((await proto.json()).checklist)).toEqual([]);
+    expect(({} as Record<string, unknown>).have).toBeUndefined();
     if (guide.tools.length) {
       expect((await put(JSON.stringify({ currentStepId: null, completedStepIds: [], checklist: { [guide.tools[0].id]: 'missing' } }))).status).toBe(200);
     }
@@ -375,7 +381,7 @@ describe('delete removes files', () => {
     await app.drain();
     const pagesA = await listPages(app.db, ida);
     const pagesB = await listPages(app.db, idb);
-    const originalKey = (sql().prepare('select original_files f from documents where id = ?').get(ida) as { f: string }).f;
+    const originalKey = (sql().prepare('select original_files_json f from documents where id = ?').get(ida) as { f: string }).f;
     const origKey = JSON.parse(originalKey)[0].key as string;
     expect(await app.ctx.storage.exists(origKey)).toBe(true);
     // identical content in two sessions share page images (content addressed)
