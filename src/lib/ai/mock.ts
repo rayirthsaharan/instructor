@@ -1,7 +1,7 @@
 import fixture from '../../../fixtures/lumen-bookcase.guide.json';
 import { getOwn, orderedSteps } from '../guide/selectors';
-import { containsQuantity } from '../guide/validate';
-import { guideSchema, type Guide, type Step } from '../guide/schema';
+import { containsQuantity, validateGuide, type ValidatedGuide } from '../guide/validate';
+import type { Step } from '../guide/schema';
 import {
   AIProviderError,
   type AIProvider,
@@ -117,7 +117,7 @@ export class MockProvider implements AIProvider {
 
   private compose(input: AnswerQuestionInput): { text: string; grounded: boolean; citations: { stepId: string; pageIndex: number; region?: Step['sources'][number]['region'] }[] } {
     const q = new Set(words(input.message));
-    const guide: Guide = input.guide;
+    const guide = input.guide;
     let best: { step: Step; score: number } | undefined;
     for (const step of orderedSteps(guide)) {
       const hay = new Set(words([step.title, step.instruction, ...step.warnings.map((w) => w.text), ...step.partsUsed.map((p) => guide.parts.find((x) => x.id === p.partId)?.name ?? '')].join(' ')));
@@ -139,7 +139,12 @@ export class MockProvider implements AIProvider {
   }
 }
 
-/** The bundled fixture, parsed and typed. Throws if the fixture ever stops matching the schema. */
-export function loadFixtureGuide(): Guide {
-  return guideSchema.parse(fixture);
+/** Page count of the bundled fixture manual. */
+export const FIXTURE_PAGE_COUNT = 6;
+
+/** The bundled fixture, run through `validateGuide`. Throws if the fixture ever stops validating. */
+export function loadFixtureGuide(): ValidatedGuide {
+  const r = validateGuide(structuredClone(fixture), { pageCount: FIXTURE_PAGE_COUNT });
+  if (!r.ok) throw new Error(`Bundled fixture guide is invalid: ${r.errors.map((e) => `${e.path}: ${e.message}`).join('; ')}`);
+  return r.guide;
 }

@@ -13,23 +13,48 @@ export interface Job {
   error: string | null;
 }
 
-export interface JobQueue {
-  enqueue(input: { type: string; payload?: unknown; documentId?: string; maxAttempts?: number }): Job;
-  /** Atomically lease the next runnable job (queued, or running with an expired lease). */
-  claim(leaseMs: number): Job | undefined;
-  /*
-   * Fencing: heartbeat/complete/fail only succeed for the attempt that holds the lease.
-   * `token` is the `attempts` value of the claimed Job. If omitted, the token this queue
-   * instance recorded at its first claim of the job is used; unknown job => false/undefined.
-   */
-  /** Extend the lease; false means the lease was lost and the worker must stop. */
-  heartbeat(id: string, leaseMs: number, patch?: { stage?: string; progress?: number }, token?: number): boolean;
-  complete(id: string, token?: number): boolean;
-  /** Requeues while attempts remain, otherwise marks the job failed. */
-  fail(id: string, error: string, token?: number): Job | undefined;
-  get(id: string): Job | undefined;
-  saveArtifact(jobId: string, key: string, data: unknown): void;
-  getArtifact(jobId: string, key: string): unknown | undefined;
+export interface JobArtifact {
+  key: string;
+  data: unknown;
 }
 
-export type JobHandler = (job: Job, ctx: { queue: JobQueue; heartbeat: (patch?: { stage?: string; progress?: number }) => boolean }) => Promise<void>;
+/** What a handler may return: artifacts to persist atomically with completion. */
+export interface JobResult {
+  artifacts?: JobArtifact[];
+}
+
+/*
+ * Every method returns a Promise so the implementation can move to a networked database (D-010).
+ *
+ * Fencing: heartbeat/complete/fail succeed only for the attempt that holds the lease. `token` is
+ * REQUIRED and is the `attempts` value of the Job returned by `claim`. There is no remembered
+ * token: a caller that lost the lease cannot act on the job.
+ */
+export interface JobQueue {
+  enqueue(input: { type: string; payload?: unknown; documentId?: string; maxAttempts?: number }): Promise<Job>;
+  /** Atomically lease the next runnable job (queued, or running with an expired lease). */
+  claim(leaseMs: number): Promise<Job | undefined>;
+  /** Extend the lease; false means the lease was lost and the worker must stop. */
+  heartbeat(id: string, leaseMs: number, token: number, patch?: { stage?: string; progress?: number }): Promise<boolean>;
+  complete(id: string, token: number): Promise<boolean>;
+  /**
+   * Save artifacts and mark the job done in one transaction that re-checks status and token.
+   * Returns false (and writes nothing) if the lease was lost.
+   */
+  completeWithArtifacts(id: string, token: number, artifacts: JobArtifact[]): Promise<boolean>;
+  /** Requeues while attempts remain, otherwise marks the job failed. */
+  fail(id: string, error: string, token: number): Promise<Job | undefined>;
+  get(id: string): Promise<Job | undefined>;
+  saveArtifact(jobId: string, key: string, data: unknown): Promise<void>;
+  getArtifact(jobId: string, key: string): Promise<unknown | undefined>;
+}
+
+export interface JobContext {
+  queue: JobQueue;
+  /** Aborted when a heartbeat reports the lease lost or heartbeats keep failing past the lease. Handlers must stop. */
+  signal: AbortSignal;
+  /** Extend the lease and record progress. Resolves false if the lease is lost. */
+  heartbeat: (patch?: { stage?: string; progress?: number }) => Promise<boolean>;
+}
+
+export type JobHandler = (job: Job, ctx: JobContext) => Promise<JobResult | void>;

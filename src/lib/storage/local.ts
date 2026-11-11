@@ -1,9 +1,12 @@
-import { lstat, mkdir, readFile, realpath, rename, rm, stat, unlink, writeFile } from 'node:fs/promises';
+import { constants } from 'node:fs';
+import { lstat, mkdir, open, realpath, rename, rm, writeFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { dirname, resolve, sep } from 'node:path';
 import type { StorageAdapter } from './types';
 
 export class StorageKeyError extends Error {}
+
+const ESCAPES = 'Storage key escapes the storage root';
 
 function within(root: string, p: string): boolean {
   return p === root || p.startsWith(root + sep);
@@ -39,7 +42,7 @@ export class LocalStorage implements StorageAdapter {
     for (;;) {
       try {
         const real = await realpath(dir);
-        if (!within(realRoot, real)) throw new StorageKeyError('Storage key escapes the storage root');
+        if (!within(realRoot, real)) throw new StorageKeyError(ESCAPES);
         return;
       } catch (e) {
         if (e instanceof StorageKeyError) throw e;
@@ -49,7 +52,7 @@ export class LocalStorage implements StorageAdapter {
     }
   }
 
-  /** For writes: replace any symlinked directory that points outside the root with a real directory. */
+  /** For writes: create missing directories. A symlinked directory is never replaced; one leaving the root is refused. */
   private async prepareParent(p: string): Promise<void> {
     const rel = p.slice(this.root.length + 1).split(sep).slice(0, -1);
     await mkdir(this.root, { recursive: true });
@@ -60,16 +63,29 @@ export class LocalStorage implements StorageAdapter {
       const st = await lstat(cur).catch(() => undefined);
       if (st?.isSymbolicLink()) {
         const real = await realpath(cur).catch(() => undefined);
-        if (!real || !within(realRoot, real)) await unlink(cur);
+        if (!real || !within(realRoot, real)) throw new StorageKeyError(ESCAPES);
+        continue;
       }
-      await mkdir(cur, { recursive: true }).catch(() => {});
+      if (!st) await mkdir(cur).catch((e: NodeJS.ErrnoException) => {
+        if (e.code !== 'EEXIST') throw e;
+      });
     }
+  }
+
+  /** The leaf itself may never be a symlink: put would replace it and get would follow it. */
+  private async assertLeafNotSymlink(p: string): Promise<void> {
+    const st = await lstat(p).catch(() => undefined);
+    if (!st?.isSymbolicLink()) return;
+    const realRoot = await realpath(this.root).catch(() => this.root);
+    const real = await realpath(p).catch(() => undefined);
+    throw new StorageKeyError(!real || !within(realRoot, real) ? ESCAPES : 'Storage key is a symbolic link');
   }
 
   async put(key: string, data: Uint8Array): Promise<void> {
     const p = this.pathFor(key);
     await this.prepareParent(p);
     await this.assertContained(p);
+    await this.assertLeafNotSymlink(p);
     const tmp = `${p}.${randomUUID()}.tmp`;
     try {
       await writeFile(tmp, data, { flag: 'wx' });
@@ -83,14 +99,25 @@ export class LocalStorage implements StorageAdapter {
   async get(key: string): Promise<Buffer> {
     const p = this.pathFor(key);
     await this.assertContained(p);
-    return readFile(p);
+    let fh;
+    try {
+      fh = await open(p, constants.O_RDONLY | constants.O_NOFOLLOW);
+    } catch (e) {
+      if ((e as NodeJS.ErrnoException).code === 'ELOOP') throw new StorageKeyError(ESCAPES);
+      throw e;
+    }
+    try {
+      return await fh.readFile();
+    } finally {
+      await fh.close();
+    }
   }
 
   async exists(key: string): Promise<boolean> {
     const p = this.pathFor(key);
     await this.assertContained(p);
     try {
-      return (await stat(p)).isFile();
+      return (await lstat(p)).isFile(); // lstat: a symlink leaf is not a stored file
     } catch {
       return false;
     }

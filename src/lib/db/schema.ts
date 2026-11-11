@@ -1,4 +1,5 @@
-import { sqliteTable, text, integer, primaryKey, unique, index } from 'drizzle-orm/sqlite-core';
+import { sql } from 'drizzle-orm';
+import { sqliteTable, text, integer, primaryKey, unique, index, check } from 'drizzle-orm/sqlite-core';
 
 // Timestamps are epoch milliseconds (integer) to stay portable across databases.
 
@@ -35,13 +36,18 @@ export const analyses = sqliteTable('analyses', {
   contentHash: text('content_hash').notNull(),
   pipelineVersion: text('pipeline_version').notNull(),
   provider: text('provider').notNull(),
+  sourceKind: text('source_kind', { enum: ['pdf', 'images'] }).notNull().default('pdf'),
   // '' = globally shareable (real-provider PDFs); otherwise the owning session id.
   ownerSessionId: text('owner_session_id').notNull().default(''),
   guideJson: text('guide_json').notNull(),
   schemaVersion: integer('schema_version').notNull(),
   model: text('model'),
   createdAt: integer('created_at').notNull(),
-}, (t) => [unique('analyses_key').on(t.contentHash, t.pipelineVersion, t.provider, t.ownerSessionId)]);
+}, (t) => [
+  unique('analyses_key').on(t.contentHash, t.pipelineVersion, t.provider, t.ownerSessionId),
+  // Mock results and photo-set results are never shareable: they must carry an owning session.
+  check('analyses_owner_required', sql`${t.ownerSessionId} <> '' OR (${t.provider} <> 'mock' AND ${t.sourceKind} <> 'images')`),
+]);
 
 export const guides = sqliteTable('guides', {
   id: text('id').primaryKey(),
@@ -89,7 +95,7 @@ export const simplifications = sqliteTable('simplifications', {
 
 export const jobs = sqliteTable('jobs', {
   id: text('id').primaryKey(),
-  documentId: text('document_id'),
+  documentId: text('document_id').references(() => documents.id),
   type: text('type').notNull(),
   payloadJson: text('payload_json').notNull().default('{}'),
   status: text('status', { enum: ['queued', 'running', 'done', 'failed'] }).notNull(),

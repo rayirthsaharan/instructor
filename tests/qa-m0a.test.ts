@@ -15,44 +15,44 @@ beforeEach(() => {
 afterEach(() => { closeDb(db); rmSync(dir, { recursive: true, force: true }); });
 
 describe('jobs correctness', () => {
-  it('crash after claim: job is reclaimed only after lease expiry', () => {
-    const j = q.enqueue({ type: 'x' });
-    q.claim(1000);
-    now += 999; expect(q.claim(1000)).toBeUndefined();
-    now += 2; expect(q.claim(1000)?.id).toBe(j.id);
-    expect(q.get(j.id)?.attempts).toBe(2);
+  it('crash after claim: job is reclaimed only after lease expiry', async () => {
+    const j = await q.enqueue({ type: 'x' });
+    await q.claim(1000);
+    now += 999; expect(await q.claim(1000)).toBeUndefined();
+    now += 2; expect((await q.claim(1000))?.id).toBe(j.id);
+    expect((await q.get(j.id))?.attempts).toBe(2);
   });
-  it('attempt cap: expired job with attempts exhausted is failed, never claimed', () => {
-    const j = q.enqueue({ type: 'x', maxAttempts: 2 });
-    q.claim(1000); now += 2000; q.claim(1000); now += 2000;
-    expect(q.claim(1000)).toBeUndefined();
-    expect(q.get(j.id)).toMatchObject({ status: 'failed', attempts: 2 });
+  it('attempt cap: expired job with attempts exhausted is failed, never claimed', async () => {
+    const j = await q.enqueue({ type: 'x', maxAttempts: 2 });
+    await q.claim(1000); now += 2000; await q.claim(1000); now += 2000;
+    expect(await q.claim(1000)).toBeUndefined();
+    expect(await q.get(j.id)).toMatchObject({ status: 'failed', attempts: 2 });
   });
-  it('attempt cap holds at the exact lease boundary (lease_until === now)', () => {
-    const j = q.enqueue({ type: 'x', maxAttempts: 1 });
-    q.claim(1000); now += 1000;
-    q.claim(1000);
-    expect(q.get(j.id)!.attempts).toBeLessThanOrEqual(1);
+  it('attempt cap holds at the exact lease boundary (lease_until === now)', async () => {
+    const j = await q.enqueue({ type: 'x', maxAttempts: 1 });
+    await q.claim(1000); now += 1000;
+    await q.claim(1000);
+    expect((await q.get(j.id))!.attempts).toBeLessThanOrEqual(1);
   });
-  it('stale worker cannot heartbeat/complete a job re-claimed by another worker', () => {
-    const j = q.enqueue({ type: 'x' });
-    q.claim(1000); now += 2000;
-    q.claim(1000); // worker B owns it
-    expect(q.heartbeat(j.id, 1000)).toBe(false); // worker A's stale heartbeat
-    expect(q.complete(j.id)).toBe(false);
+  it('stale worker cannot heartbeat/complete a job re-claimed by another worker', async () => {
+    const j = await q.enqueue({ type: 'x' });
+    const a = (await q.claim(1000))!; now += 2000;
+    await q.claim(1000); // worker B owns it
+    expect(await q.heartbeat(j.id, 1000, a.attempts)).toBe(false); // worker A's stale heartbeat
+    expect(await q.complete(j.id, a.attempts)).toBe(false);
   });
-  it('fail requeues then fails at cap; fail/complete on non-running is a no-op', () => {
-    const j = q.enqueue({ type: 'x', maxAttempts: 2 });
-    q.claim(1000); expect(q.fail(j.id, 'e')?.status).toBe('queued');
-    q.claim(1000); expect(q.fail(j.id, 'e')?.status).toBe('failed');
-    expect(q.fail(j.id, 'e')).toBeUndefined();
-    expect(q.complete(j.id)).toBe(false);
+  it('fail requeues then fails at cap; fail/complete on non-running is a no-op', async () => {
+    const j = await q.enqueue({ type: 'x', maxAttempts: 2 });
+    const c1 = (await q.claim(1000))!; expect((await q.fail(j.id, 'e', c1.attempts))?.status).toBe('queued');
+    const c2 = (await q.claim(1000))!; expect((await q.fail(j.id, 'e', c2.attempts))?.status).toBe('failed');
+    expect(await q.fail(j.id, 'e', c2.attempts)).toBeUndefined();
+    expect(await q.complete(j.id, c2.attempts)).toBe(false);
   });
-  it('artifacts are write-once and survive requeue', () => {
-    const j = q.enqueue({ type: 'x' });
-    q.saveArtifact(j.id, 'k', { a: 1 }); q.saveArtifact(j.id, 'k', { a: 2 });
-    expect(q.getArtifact(j.id, 'k')).toEqual({ a: 1 });
-    expect(q.getArtifact(j.id, 'missing')).toBeUndefined();
+  it('artifacts are write-once and survive requeue', async () => {
+    const j = await q.enqueue({ type: 'x' });
+    await q.saveArtifact(j.id, 'k', { a: 1 }); await q.saveArtifact(j.id, 'k', { a: 2 });
+    expect(await q.getArtifact(j.id, 'k')).toEqual({ a: 1 });
+    expect(await q.getArtifact(j.id, 'missing')).toBeUndefined();
   });
   it('WAL, busy_timeout and foreign keys are applied', () => {
     const f = join(dir, 't.db');
@@ -84,7 +84,7 @@ describe('storage safety', () => {
     mkdirSync(root); mkdirSync(outside); writeFileSync(join(outside, 'secret'), 's');
     symlinkSync(outside, join(root, 'link'));
     const s = new LocalStorage(root);
-    await s.put('link/pwn', new Uint8Array([9]));
+    await expect(s.put('link/pwn', new Uint8Array([9]))).rejects.toBeInstanceOf(StorageKeyError); // now refused outright
     expect(() => readFileSync(join(outside, 'pwn'))).toThrow(); // fails if escape succeeds
   });
 });

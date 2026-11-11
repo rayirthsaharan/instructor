@@ -1,4 +1,4 @@
-import { guideSchema, migrateGuide, type Guide, type Guidance } from './schema';
+import { guideSchema, migrateGuide, type Guide, type Guidance, type Region } from './schema';
 
 export type IssueSeverity = 'info' | 'warning';
 
@@ -16,8 +16,16 @@ export interface GuideError {
   message: string;
 }
 
+declare const validatedBrand: unique symbol;
+
+/**
+ * A guide that has passed `validateGuide`. The brand is not exported and `validateGuide` is the only
+ * code that applies it, so selectors, storage and the UI can demand proof of validation in their types.
+ */
+export type ValidatedGuide = Guide & { readonly [validatedBrand]: true };
+
 export type ValidationResult =
-  | { ok: true; guide: Guide; issues: GuideIssue[] }
+  | { ok: true; guide: ValidatedGuide; issues: GuideIssue[] }
   | { ok: false; errors: GuideError[] };
 
 export interface ValidateOptions {
@@ -64,6 +72,26 @@ const clamp01 = (n: number) => Math.min(1, Math.max(0, n));
 const round6 = (n: number) => Math.round(n * 1e6) / 1e6;
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 
+type ClampResult =
+  | { kind: 'invalid' }
+  | { kind: 'degenerate' }
+  | { kind: 'ok'; region: Region; moved: boolean };
+
+/** Clamp one raw region to 0..1. Shared by guide validation and citation validation. */
+function clampRegion(value: Record<string, unknown>): ClampResult {
+  const { x, y, w, h } = value;
+  const nums = [x, y, w, h];
+  if (!nums.every((n) => typeof n === 'number' && Number.isFinite(n)) || (w as number) <= 0 || (h as number) <= 0) return { kind: 'invalid' };
+  const left = clamp01(x as number);
+  const top = clamp01(y as number);
+  const right = clamp01((x as number) + (w as number));
+  const bottom = clamp01((y as number) + (h as number));
+  const next = { x: round6(left), y: round6(top), w: round6(right - left), h: round6(bottom - top) };
+  if (next.w < MIN_REGION_SIDE || next.h < MIN_REGION_SIDE) return { kind: 'degenerate' };
+  const moved = (a: number, b: unknown) => Math.abs(a - (b as number)) > 1e-6;
+  return { kind: 'ok', region: next, moved: moved(next.x, x) || moved(next.y, y) || moved(next.w, w) || moved(next.h, h) };
+}
+
 /**
  * Clamps every `region` found anywhere in the raw guide to 0..1. A region that is degenerate
  * (non-finite, non-positive or tiny after clamping) is removed and its parent gets `regionFallback: true`.
@@ -78,30 +106,18 @@ function normaliseRegions(node: unknown, path: string, issues: GuideIssue[]): vo
   for (const [key, value] of Object.entries(node)) {
     const childPath = path ? `${path}.${key}` : key;
     if (key === 'region' && isRecord(value)) {
-      const { x, y, w, h } = value;
-      const nums = [x, y, w, h];
-      if (!nums.every((n) => typeof n === 'number' && Number.isFinite(n)) || (w as number) <= 0 || (h as number) <= 0) {
+      const res = clampRegion(value);
+      if (res.kind !== 'ok') {
         delete node.region;
         node.regionFallback = true;
-        issues.push({ code: 'region_dropped', path: childPath, severity: 'warning', message: 'Region is not a valid rectangle; dropped and marked as approximate.' });
+        const message = res.kind === 'invalid' ? 'Region is not a valid rectangle; dropped and marked as approximate.' : 'Region is degenerate after clamping; dropped and marked as approximate.';
+        issues.push({ code: 'region_dropped', path: childPath, severity: 'warning', message });
         continue;
       }
-      const left = clamp01(x as number);
-      const top = clamp01(y as number);
-      const right = clamp01((x as number) + (w as number));
-      const bottom = clamp01((y as number) + (h as number));
-      const next = { x: round6(left), y: round6(top), w: round6(right - left), h: round6(bottom - top) };
-      if (next.w < MIN_REGION_SIDE || next.h < MIN_REGION_SIDE) {
-        delete node.region;
-        node.regionFallback = true;
-        issues.push({ code: 'region_dropped', path: childPath, severity: 'warning', message: 'Region is degenerate after clamping; dropped and marked as approximate.' });
-        continue;
-      }
-      const moved = (a: number, b: unknown) => Math.abs(a - (b as number)) > 1e-6;
-      if (moved(next.x, x) || moved(next.y, y) || moved(next.w, w) || moved(next.h, h)) {
+      if (res.moved) {
         issues.push({ code: 'region_clamped', path: childPath, severity: 'info', message: 'Region extended beyond the page and was clamped.' });
       }
-      node.region = next;
+      node.region = res.region;
     } else {
       normaliseRegions(value, childPath, issues);
     }
@@ -272,5 +288,73 @@ export function validateGuide(raw: unknown, opts: ValidateOptions): ValidationRe
   if (!opts.pageTexts) issue('quotes_unverified', '', 'Quotes not verified against page text.', 'info');
 
   if (errors.length > 0) return { ok: false, errors };
-  return { ok: true, guide, issues };
+  return { ok: true, guide: guide as ValidatedGuide, issues };
+}
+
+// --- assistant citations ---------------------------------------------------------------------------
+
+export interface CitationLike {
+  stepId: string;
+  pageIndex: number;
+  region?: Region;
+}
+
+/**
+ * Checks the citations of an assistant answer against the guide: the step id must exist, the page must be
+ * in range, and a region is clamped to the page (or dropped if unusable). Citations that cannot be
+ * resolved are removed and reported; the caller decides whether an answer left with none is still grounded.
+ */
+export function validateCitations<C extends CitationLike>(
+  citations: readonly C[],
+  guide: ValidatedGuide,
+  pageCount: number,
+): { citations: C[]; issues: GuideIssue[] } {
+  const issues: GuideIssue[] = [];
+  const out: C[] = [];
+  citations.forEach((c, i) => {
+    const path = `citations[${i}]`;
+    const drop = (code: string, message: string) => issues.push({ code, path, severity: 'warning', message });
+    if (!isRecord(c as unknown) || typeof c.stepId !== 'string' || !Object.hasOwn(guide.steps, c.stepId)) {
+      return drop('citation_unknown_step', 'Citation refers to a step that is not in the guide and was removed.');
+    }
+    if (!Number.isInteger(c.pageIndex) || c.pageIndex < 0 || c.pageIndex >= pageCount) {
+      return drop('citation_invalid_page', 'Citation refers to a page outside the document and was removed.');
+    }
+    if (c.region === undefined) return void out.push(c);
+    const res = isRecord(c.region as unknown) ? clampRegion(c.region as unknown as Record<string, unknown>) : ({ kind: 'invalid' } as const);
+    if (res.kind !== 'ok') {
+      issues.push({ code: 'citation_region_dropped', path: `${path}.region`, severity: 'warning', message: 'Citation region is not usable; the page is cited without a highlighted area.' });
+      const rest: CitationLike = { ...c };
+      delete rest.region;
+      return void out.push(rest as C);
+    }
+    if (res.moved) issues.push({ code: 'citation_region_clamped', path: `${path}.region`, severity: 'info', message: 'Citation region extended beyond the page and was clamped.' });
+    out.push({ ...c, region: res.region });
+  });
+  return { citations: out, issues };
+}
+
+// --- simplified text ---------------------------------------------------------------------------------
+
+const NUMBER_WORD_VALUES: Record<string, string> = {
+  one: '1', two: '2', three: '3', four: '4', five: '5', six: '6', seven: '7', eight: '8', nine: '9', ten: '10', eleven: '11', twelve: '12',
+};
+const QUANTITY_TOKEN_RE = new RegExp(`\\p{N}+(?:[.,]\\p{N}+)*|\\b(?:${NUMBER_WORDS})\\b`, 'giu');
+
+function quantityTokens(text: string): Set<string> {
+  const out = new Set<string>();
+  for (const m of text.match(QUANTITY_TOKEN_RE) ?? []) {
+    const t = m.toLowerCase().replace(/,(?=\p{N}{3}\b)/gu, '');
+    out.add(NUMBER_WORD_VALUES[t] ?? t);
+  }
+  return out;
+}
+
+/**
+ * Quantities (digits or spelled-out numbers) that appear in `simplified` but not in `original`.
+ * Empty means the rewrite introduced nothing new. Dropping a number is not flagged here.
+ */
+export function findIntroducedQuantities(original: string, simplified: string): string[] {
+  const known = quantityTokens(original);
+  return [...quantityTokens(simplified)].filter((t) => !known.has(t));
 }

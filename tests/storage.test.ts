@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdtempSync, rmSync, existsSync } from 'node:fs';
+import { mkdtempSync, rmSync, existsSync, mkdirSync, symlinkSync, writeFileSync, readFileSync, lstatSync, readlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { LocalStorage, StorageKeyError } from '@/lib/storage';
@@ -38,5 +38,48 @@ describe('LocalStorage', () => {
   it('never writes outside the root', async () => {
     await store.put('..x', Buffer.from('ok')).catch(() => {});
     expect(existsSync(join(dir, 'evil'))).toBe(false);
+  });
+
+  describe('symlinks', () => {
+    let root: string;
+    let outside: string;
+    beforeEach(() => {
+      root = join(dir, 'root');
+      outside = join(dir, 'outside');
+      mkdirSync(root);
+      mkdirSync(outside);
+      writeFileSync(join(outside, 'secret'), 'top secret');
+    });
+
+    it('put through a directory symlink that escapes throws and leaves the symlink alone', async () => {
+      symlinkSync(outside, join(root, 'link'));
+      await expect(store.put('link/pwn', Buffer.from('x'))).rejects.toThrow('Storage key escapes the storage root');
+      await expect(store.put('link/deeper/pwn', Buffer.from('x'))).rejects.toBeInstanceOf(StorageKeyError);
+      expect(lstatSync(join(root, 'link')).isSymbolicLink()).toBe(true);
+      expect(readlinkSync(join(root, 'link'))).toBe(outside);
+      expect(existsSync(join(outside, 'pwn'))).toBe(false);
+    });
+
+    it('put onto a leaf symlink never replaces it or the target', async () => {
+      symlinkSync(join(outside, 'secret'), join(root, 'leaf'));
+      await expect(store.put('leaf', Buffer.from('x'))).rejects.toThrow('Storage key escapes the storage root');
+      expect(lstatSync(join(root, 'leaf')).isSymbolicLink()).toBe(true);
+      expect(readFileSync(join(outside, 'secret'), 'utf8')).toBe('top secret');
+    });
+
+    it('get does not follow a leaf symlink, even one pointing inside the root', async () => {
+      symlinkSync(join(outside, 'secret'), join(root, 'leaf'));
+      await expect(store.get('leaf')).rejects.toBeInstanceOf(StorageKeyError);
+      await store.put('real', Buffer.from('ok'));
+      symlinkSync(join(root, 'real'), join(root, 'inner'));
+      await expect(store.get('inner')).rejects.toBeInstanceOf(StorageKeyError);
+      expect(await store.exists('inner')).toBe(false);
+      expect(await store.exists('real')).toBe(true);
+    });
+
+    it('get refuses to read through an escaping directory symlink', async () => {
+      symlinkSync(outside, join(root, 'link'));
+      await expect(store.get('link/secret')).rejects.toBeInstanceOf(StorageKeyError);
+    });
   });
 });

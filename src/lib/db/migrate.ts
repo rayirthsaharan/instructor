@@ -1,11 +1,25 @@
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
+import { sql } from 'drizzle-orm';
 import { fileURLToPath } from 'node:url';
 import { closeDb, getDb, unwrap, type Db } from './client';
 
 const migrationsFolder = fileURLToPath(new URL('./migrations', import.meta.url));
 
+/**
+ * Applies pending migrations. Foreign keys are switched off for the duration (SQLite's documented procedure for
+ * table rebuilds; the pragma is ignored inside a transaction) and verified afterwards, so a rebuild can never
+ * leave dangling references behind.
+ */
 export function runMigrations(db: Db): void {
-  migrate(unwrap(db), { migrationsFolder });
+  const inner = unwrap(db);
+  inner.run(sql`PRAGMA foreign_keys = OFF`);
+  try {
+    migrate(inner, { migrationsFolder });
+    const violations = inner.all(sql`PRAGMA foreign_key_check`);
+    if (violations.length > 0) throw new Error(`Migration left ${violations.length} foreign key violation(s)`);
+  } finally {
+    inner.run(sql`PRAGMA foreign_keys = ON`);
+  }
 }
 
 // CLI: `npm run db:migrate`

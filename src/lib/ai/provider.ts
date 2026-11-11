@@ -1,4 +1,5 @@
-import type { Guide, Region } from '../guide/schema';
+import type { Region } from '../guide/schema';
+import type { ValidatedGuide } from '../guide/validate';
 
 /** No SDK types leak through this file: implementations map to and from their own SDK internally. */
 
@@ -31,7 +32,7 @@ export type AnalyseDocumentResult =
   | { kind: 'not_a_manual'; reason: string };
 
 export interface VerifyGuideInput {
-  guide: Guide;
+  guide: ValidatedGuide;
   pages: PageImage[];
   signal?: AbortSignal;
 }
@@ -54,7 +55,7 @@ export interface ChatTurn {
 }
 
 export interface AnswerQuestionInput {
-  guide: Guide;
+  guide: ValidatedGuide;
   currentStepId?: string;
   message: string;
   history?: ChatTurn[];
@@ -75,7 +76,7 @@ export type AnswerEvent =
 export type SimplifyLevel = 'simpler' | 'simplest';
 
 export interface SimplifyStepInput {
-  guide: Guide;
+  guide: ValidatedGuide;
   stepId: string;
   level: SimplifyLevel;
   signal?: AbortSignal;

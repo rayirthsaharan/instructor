@@ -1,26 +1,21 @@
-import { closeDb, getDb, runMigrations } from '@/lib/db';
-import { DbJobQueue, HandlerRegistry, runOnce } from '@/lib/jobs';
-
-const POLL_MS = Number(process.env.WORKER_POLL_MS ?? 1000);
+import { getConfig } from '@/lib/config';
+import { closeDb, openDb, runMigrations } from '@/lib/db';
+import { DbJobQueue, HandlerRegistry, runWorker } from '@/lib/jobs';
 
 const registry = new HandlerRegistry();
 registry.register('noop', async () => {});
 
 async function main(): Promise<void> {
-  const db = getDb();
+  const config = getConfig(); // fails fast on a weak SESSION_SECRET in production
+  const db = openDb(config.databasePath);
   runMigrations(db);
   const queue = new DbJobQueue(db);
-  let stopping = false;
-  const stop = () => {
-    stopping = true;
-  };
+  const stopping = new AbortController();
+  const stop = () => stopping.abort();
   process.on('SIGINT', stop);
   process.on('SIGTERM', stop);
   console.log('Worker started.');
-  while (!stopping) {
-    const worked = await runOnce(queue, registry);
-    if (!worked) await new Promise((r) => setTimeout(r, POLL_MS));
-  }
+  await runWorker(queue, registry, { signal: stopping.signal, pollMs: config.workerPollMs });
   closeDb(db);
   console.log('Worker stopped.');
 }

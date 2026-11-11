@@ -1,6 +1,6 @@
 import * as repo from '@/lib/db';
 import type { Db } from '@/lib/db';
-import type { Job, JobQueue } from './types';
+import type { Job, JobArtifact, JobQueue } from './types';
 
 function toJob(r: repo.JobRecord): Job {
   const { id, type, payload, documentId, status, stage, progress, attempts, maxAttempts, error } = r;
@@ -11,39 +11,34 @@ function toJob(r: repo.JobRecord): Job {
 export class DbJobQueue implements JobQueue {
   constructor(private readonly db: Db, private readonly clock: () => number = Date.now) {}
 
-  enqueue(input: { type: string; payload?: unknown; documentId?: string; maxAttempts?: number }): Job {
-    return toJob(repo.insertJob(this.db, input, this.clock()));
+  async enqueue(input: { type: string; payload?: unknown; documentId?: string; maxAttempts?: number }): Promise<Job> {
+    return toJob(await repo.insertJob(this.db, input, this.clock()));
   }
-  private readonly tokens = new Map<string, number>();
-
-  claim(leaseMs: number): Job | undefined {
-    const r = repo.claimJob(this.db, leaseMs, this.clock());
-    if (r && !this.tokens.has(r.id)) this.tokens.set(r.id, r.attempts);
+  async claim(leaseMs: number): Promise<Job | undefined> {
+    const r = await repo.claimJob(this.db, leaseMs, this.clock());
     return r && toJob(r);
   }
-  heartbeat(id: string, leaseMs: number, patch?: { stage?: string; progress?: number }, token?: number): boolean {
-    const t = token ?? this.tokens.get(id);
-    return t !== undefined && repo.heartbeatJob(this.db, id, t, leaseMs, this.clock(), patch);
+  heartbeat(id: string, leaseMs: number, token: number, patch?: { stage?: string; progress?: number }): Promise<boolean> {
+    return repo.heartbeatJob(this.db, id, token, leaseMs, this.clock(), patch);
   }
-  complete(id: string, token?: number): boolean {
-    const t = token ?? this.tokens.get(id);
-    this.tokens.delete(id);
-    return t !== undefined && repo.completeJob(this.db, id, t, this.clock());
+  complete(id: string, token: number): Promise<boolean> {
+    return repo.completeJob(this.db, id, token, this.clock());
   }
-  fail(id: string, error: string, token?: number): Job | undefined {
-    const t = token ?? this.tokens.get(id);
-    this.tokens.delete(id);
-    const r = t === undefined ? undefined : repo.failJob(this.db, id, t, error, this.clock());
+  completeWithArtifacts(id: string, token: number, artifacts: JobArtifact[]): Promise<boolean> {
+    return repo.completeJobWithArtifacts(this.db, id, token, artifacts, this.clock());
+  }
+  async fail(id: string, error: string, token: number): Promise<Job | undefined> {
+    const r = await repo.failJob(this.db, id, token, error, this.clock());
     return r && toJob(r);
   }
-  get(id: string): Job | undefined {
-    const r = repo.getJob(this.db, id);
+  async get(id: string): Promise<Job | undefined> {
+    const r = await repo.getJob(this.db, id);
     return r && toJob(r);
   }
-  saveArtifact(jobId: string, key: string, data: unknown): void {
-    repo.saveJobArtifact(this.db, jobId, key, data, this.clock());
+  saveArtifact(jobId: string, key: string, data: unknown): Promise<void> {
+    return repo.saveJobArtifact(this.db, jobId, key, data, this.clock());
   }
-  getArtifact(jobId: string, key: string): unknown | undefined {
+  getArtifact(jobId: string, key: string): Promise<unknown | undefined> {
     return repo.getJobArtifact(this.db, jobId, key);
   }
 }

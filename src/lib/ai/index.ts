@@ -2,7 +2,8 @@ import { MockProvider, type MockProviderOptions } from './mock';
 import type { AIProvider } from './provider';
 
 export * from './provider';
-export { MockProvider, MOCK_NOT_IN_MANUAL, loadFixtureGuide, type MockProviderOptions, type MockOutcome } from './mock';
+export { MockProvider, MOCK_NOT_IN_MANUAL, loadFixtureGuide, FIXTURE_PAGE_COUNT, type MockProviderOptions, type MockOutcome } from './mock';
+export { simplifyStepChecked, type CheckedSimplification } from './simplify';
 
 /**
  * Chooses the provider from `AI_PROVIDER` (default `mock`). The real provider is not implemented yet and

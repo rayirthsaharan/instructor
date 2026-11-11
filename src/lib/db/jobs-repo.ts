@@ -28,11 +28,11 @@ function toRecord(r: Row): JobRecord {
   return { ...r, payload: JSON.parse(r.payloadJson) as unknown };
 }
 
-export function insertJob(
+export async function insertJob(
   db: Db,
   input: { type: string; payload?: unknown; documentId?: string; maxAttempts?: number },
   now: number,
-): JobRecord {
+): Promise<JobRecord> {
   const row: Row = {
     id: randomUUID(),
     documentId: input.documentId ?? null,
@@ -53,7 +53,7 @@ export function insertJob(
   return toRecord(row);
 }
 
-export function getJob(db: Db, id: string): JobRecord | undefined {
+export async function getJob(db: Db, id: string): Promise<JobRecord | undefined> {
   const r = unwrap(db).select().from(jobs).where(eq(jobs.id, id)).get();
   return r ? toRecord(r) : undefined;
 }
@@ -63,7 +63,7 @@ export function getJob(db: Db, id: string): JobRecord | undefined {
  * Jobs whose lease expired with no attempts left are marked failed instead of claimed.
  * Runs in an IMMEDIATE transaction so competing claimers serialise.
  */
-export function claimJob(db: Db, leaseMs: number, now: number): JobRecord | undefined {
+export async function claimJob(db: Db, leaseMs: number, now: number): Promise<JobRecord | undefined> {
   return unwrap(db).transaction((tx) => {
     tx.update(jobs)
       .set({ status: 'failed', error: 'Lease expired and attempts exhausted', leaseUntil: null, updatedAt: now })
@@ -94,7 +94,7 @@ export function claimJob(db: Db, leaseMs: number, now: number): JobRecord | unde
 }
 
 /** Extend the lease. Returns false if the job is no longer running (lease lost). */
-export function heartbeatJob(db: Db, id: string, attempt: number, leaseMs: number, now: number, patch?: { stage?: string; progress?: number }): boolean {
+export async function heartbeatJob(db: Db, id: string, attempt: number, leaseMs: number, now: number, patch?: { stage?: string; progress?: number }): Promise<boolean> {
   const res = unwrap(db)
     .update(jobs)
     .set({ leaseUntil: now + leaseMs, heartbeatAt: now, updatedAt: now, ...patch })
@@ -104,7 +104,7 @@ export function heartbeatJob(db: Db, id: string, attempt: number, leaseMs: numbe
 }
 
 /** `attempt` is the fencing token: the attempts value returned by claimJob. */
-export function completeJob(db: Db, id: string, attempt: number, now: number): boolean {
+export async function completeJob(db: Db, id: string, attempt: number, now: number): Promise<boolean> {
   const res = unwrap(db)
     .update(jobs)
     .set({ status: 'done', progress: 100, leaseUntil: null, error: null, updatedAt: now })
@@ -114,7 +114,7 @@ export function completeJob(db: Db, id: string, attempt: number, now: number): b
 }
 
 /** Record a failure: requeue if attempts remain, otherwise mark failed. */
-export function failJob(db: Db, id: string, attempt: number, error: string, now: number): JobRecord | undefined {
+export async function failJob(db: Db, id: string, attempt: number, error: string, now: number): Promise<JobRecord | undefined> {
   return unwrap(db).transaction((tx) => {
     const j = tx.select().from(jobs).where(eq(jobs.id, id)).get();
     if (!j || j.status !== 'running' || j.attempts !== attempt) return undefined;
@@ -129,7 +129,7 @@ export function failJob(db: Db, id: string, attempt: number, error: string, now:
   }, { behavior: 'immediate' });
 }
 
-export function saveJobArtifact(db: Db, jobId: string, key: string, data: unknown, now: number): void {
+export async function saveJobArtifact(db: Db, jobId: string, key: string, data: unknown, now: number): Promise<void> {
   const dataJson = JSON.stringify(data);
   unwrap(db)
     .insert(jobArtifacts)
@@ -138,11 +138,45 @@ export function saveJobArtifact(db: Db, jobId: string, key: string, data: unknow
     .run();
 }
 
-export function getJobArtifact(db: Db, jobId: string, key: string): unknown | undefined {
+export async function getJobArtifact(db: Db, jobId: string, key: string): Promise<unknown | undefined> {
   const r = unwrap(db)
     .select()
     .from(jobArtifacts)
     .where(and(eq(jobArtifacts.jobId, jobId), eq(jobArtifacts.key, key)))
     .get();
   return r ? (JSON.parse(r.dataJson) as unknown) : undefined;
+}
+
+export interface JobArtifactInput {
+  key: string;
+  data: unknown;
+}
+
+/**
+ * Write a finished job's artifacts and mark it done in ONE immediate transaction that re-checks
+ * status and the fencing token. A zombie worker (lease lost, job re-claimed) writes nothing and gets false.
+ */
+export async function completeJobWithArtifacts(
+  db: Db,
+  id: string,
+  attempt: number,
+  artifacts: JobArtifactInput[],
+  now: number,
+): Promise<boolean> {
+  return unwrap(db).transaction((tx) => {
+    const j = tx.select({ status: jobs.status, attempts: jobs.attempts }).from(jobs).where(eq(jobs.id, id)).get();
+    if (!j || j.status !== 'running' || j.attempts !== attempt) return false;
+    for (const a of artifacts) {
+      tx.insert(jobArtifacts)
+        .values({ jobId: id, key: a.key, dataJson: JSON.stringify(a.data), createdAt: now })
+        .onConflictDoNothing()
+        .run();
+    }
+    const res = tx
+      .update(jobs)
+      .set({ status: 'done', progress: 100, leaseUntil: null, error: null, updatedAt: now })
+      .where(and(eq(jobs.id, id), eq(jobs.status, 'running'), eq(jobs.attempts, attempt)))
+      .run();
+    return res.changes > 0;
+  }, { behavior: 'immediate' });
 }
