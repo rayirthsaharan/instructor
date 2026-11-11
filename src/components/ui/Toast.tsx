@@ -66,6 +66,14 @@ export function useToast(): Ctx {
  * is set by the screen through the `--toast-offset` custom property on an ancestor.
  */
 export function ToastProvider({ children }: { children: ReactNode }) {
+  // The root layout already provides one; a nested provider (e.g. the gallery) reuses it so the page
+  // has exactly one polite live region.
+  const parent = useContext(ToastContext);
+  if (parent) return <>{children}</>;
+  return <ToastProviderRoot>{children}</ToastProviderRoot>;
+}
+
+function ToastProviderRoot({ children }: { children: ReactNode }) {
   const [toast, setToast] = useState<(ToastOptions & { id: number }) | null>(null);
   const [paused, setPaused] = useState(false);
   const idRef = useRef(0);
