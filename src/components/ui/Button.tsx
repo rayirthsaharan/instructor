@@ -34,6 +34,11 @@ const variants: Record<ButtonVariant, string> = {
     'focus-on-accent bg-danger-solid text-danger-on hover:bg-[color-mix(in_srgb,var(--color-danger-solid),black_8%)] active:bg-[color-mix(in_srgb,var(--color-danger-solid),black_16%)] disabled:bg-surface-sunken disabled:text-ink-subtle',
 };
 
+/** Class string of a Button, for links that look like buttons (navigation should be a link, not a button). */
+export function buttonClass(variant: ButtonVariant = 'primary', size: ButtonSize = 'md', className?: string) {
+  return cn(base, sizes[size], variants[variant], 'no-underline', className);
+}
+
 export function Button({
   variant = 'primary',
   size = 'md',

@@ -66,6 +66,19 @@ const paths = {
     </>
   ),
   spinner: <path d="M12 3a9 9 0 1 0 9 9" />,
+  chevronLeft: <path d="m15 5-7 7 7 7" />,
+  plus: <path d="M12 5v14M5 12h14" />,
+  trash: (
+    <>
+      <path d="M4 7h16M9.5 7V4.5h5V7M6.5 7l.8 12.5h9.4L17.5 7" />
+    </>
+  ),
+  pageQuestion: (
+    <>
+      <path d="M4 8V5.5A1.5 1.5 0 0 1 5.5 4H8M16 4h2.5A1.5 1.5 0 0 1 20 5.5V8M20 16v2.5a1.5 1.5 0 0 1-1.5 1.5H16M8 20H5.5A1.5 1.5 0 0 1 4 18.5V16" />
+      <path d="M9.8 9.8a2.3 2.3 0 1 1 3.2 2.1c-.7.3-1 .8-1 1.4M12 16.2h.01" />
+    </>
+  ),
 } satisfies Record<string, ReactNode>;
 
 export type IconName = keyof typeof paths;

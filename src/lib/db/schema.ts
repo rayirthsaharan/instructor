@@ -15,7 +15,12 @@ export const documents = sqliteTable('documents', {
   kind: text('kind', { enum: ['pdf', 'images'] }).notNull(),
   originalPath: text('original_path').notNull(),
   pageCount: integer('page_count'),
+  // queued | processing | ready | failed | rejected
   status: text('status').notNull(),
+  // Every stored original file: [{ key, mime, size }] in upload order. `originalPath` is the first key.
+  originalFilesJson: text('original_files_json').notNull().default('[]'),
+  errorCode: text('error_code'),
+  errorMessage: text('error_message'),
   createdAt: integer('created_at').notNull(),
 }, (t) => [index('documents_session_idx').on(t.sessionId), index('documents_hash_idx').on(t.contentHash)]);
 
@@ -26,6 +31,8 @@ export const pages = sqliteTable('pages', {
   imagePath: text('image_path').notNull(),
   width: integer('width').notNull(),
   height: integer('height').notNull(),
+  // Plain text extracted from the page (PDF only); used to check source quotes.
+  textContent: text('text_content'),
 }, (t) => [unique('pages_doc_index').on(t.documentId, t.index)]);
 
 // Immutable once written. Keyed by (content_hash, pipeline_version, provider).
@@ -117,3 +124,10 @@ export const jobArtifacts = sqliteTable('job_artifacts', {
   dataJson: text('data_json').notNull(),
   createdAt: integer('created_at').notNull(),
 }, (t) => [primaryKey({ columns: [t.jobId, t.key] })]);
+
+// Fixed-window counters for upload rate limiting (keys like `session:<id>` and `ip:<addr>`).
+export const rateLimits = sqliteTable('rate_limits', {
+  key: text('key').primaryKey(),
+  windowStart: integer('window_start').notNull(),
+  count: integer('count').notNull(),
+});

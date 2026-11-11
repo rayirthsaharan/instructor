@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { Atkinson_Hyperlegible_Mono, Atkinson_Hyperlegible_Next, Bricolage_Grotesque } from 'next/font/google';
+import { ToastProvider } from '@/components/ui';
 import './globals.css';
 
 // DS section 3: three free Google families, self-hosted by next/font, Latin subset, display: swap.
@@ -42,7 +43,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     // suppressHydrationWarning: a manual theme switch sets data-theme on <html> on the client.
     <html lang="en" className={`${display.variable} ${text.variable} ${label.variable}`} suppressHydrationWarning>
-      <body>{children}</body>
+      <body>
+        <ToastProvider>{children}</ToastProvider>
+      </body>
     </html>
   );
 }

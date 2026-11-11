@@ -8,6 +8,8 @@
     "build": "next build",
     "start": "next start",
     "worker": "tsx src/worker.ts",
+    "dev:all": "node scripts/dev-all.mjs",
+    "fixtures": "node scripts/make-fixtures.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "test": "vitest run",
@@ -18,11 +20,14 @@
     "check": "npm run typecheck && npm run lint && npm run test"
   },
   "dependencies": {
+    "@napi-rs/canvas": "^1.1.0",
     "better-sqlite3": "^13.0.3",
     "drizzle-orm": "^0.45.4",
     "next": "^16.4.6",
+    "pdfjs-dist": "6.5.438",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
+    "sharp": "^0.35.5",
     "zod": "^4.6.7"
   },
   "devDependencies": {
@@ -35,6 +40,7 @@
     "drizzle-kit": "^0.31.11",
     "eslint": "^9.39.5",
     "eslint-config-next": "^16.4.6",
+    "pdf-lib": "^1.17.1",
     "postcss": "^8.5.32",
     "tailwindcss": "^4.3.5",
     "tsx": "^4.23.15",

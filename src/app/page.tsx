@@ -1,7 +1,5 @@
+import { LibraryScreen } from '@/components/features/library';
+
 export default function HomePage() {
-  return (
-    <main>
-      <h1>Instructor</h1>
-    </main>
-  );
+  return <LibraryScreen />;
 }

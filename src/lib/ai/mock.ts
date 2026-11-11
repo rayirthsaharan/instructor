@@ -1,4 +1,6 @@
 import fixture from '../../../fixtures/lumen-bookcase.guide.json';
+import manifest from '../../../fixtures/manifest.json';
+import { buildDemoDraft } from './demo-guide';
 import { getOwn, orderedSteps } from '../guide/selectors';
 import { containsQuantity, validateGuide, type ValidatedGuide } from '../guide/validate';
 import type { Step } from '../guide/schema';
@@ -26,6 +28,15 @@ export interface MockProviderOptions {
   outcome?: MockOutcome;
   /** Draft returned for outcome `guide`. Defaults to the Lumen bookcase fixture. */
   draft?: unknown;
+}
+
+type KnownFixture = 'lumen' | 'not_a_manual' | 'failure' | 'demo';
+
+function knownFixture(contentHash: string): KnownFixture {
+  if (contentHash === manifest.lumenBookcasePdf || contentHash === manifest.lumenBookcaseImages) return 'lumen';
+  if (contentHash === manifest.notAManualPdf) return 'not_a_manual';
+  if (contentHash === manifest.mockFailurePdf) return 'failure';
+  return 'demo';
 }
 
 const STAGES: { stage: AnalysisStage; fraction: number; message: string }[] = [
@@ -72,7 +83,10 @@ export class MockProvider implements AIProvider {
   }
 
   async analyseDocument(input: AnalyseDocumentInput): Promise<AnalyseDocumentResult> {
-    const outcome = this.opts.outcome ?? 'guide';
+    // Without a content hash (direct calls) the mock serves the Lumen fixture. With one, it recognises its fixture
+    // files and otherwise builds a labelled demo guide from the real page count.
+    const known = input.contentHash === undefined ? 'lumen' : knownFixture(input.contentHash);
+    const outcome = this.opts.outcome ?? (known === 'not_a_manual' ? 'not_a_manual' : known === 'failure' ? 'failure' : 'guide');
     const per = (this.opts.delayMs ?? 0) / STAGES.length;
     for (const s of STAGES) {
       await sleep(per, input.signal);
@@ -85,7 +99,8 @@ export class MockProvider implements AIProvider {
       }
       input.onProgress?.({ stage: s.stage, fraction: s.fraction, message: s.message });
     }
-    return { kind: 'guide', draft: structuredClone(this.opts.draft ?? fixture) };
+    const draft = this.opts.draft ?? (known === 'demo' ? buildDemoDraft(input.pages.length) : fixture);
+    return { kind: 'guide', draft: structuredClone(draft) };
   }
 
   async verifyGuide(input: VerifyGuideInput): Promise<VerifyGuideResult> {

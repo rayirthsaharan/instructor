@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes } from 'react';
+import type { ButtonHTMLAttributes, Ref } from 'react';
 import { cn } from './cn';
 import { Icon, type IconName } from './Icon';
 
@@ -12,6 +12,7 @@ export type IconButtonProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'chi
   pressed?: boolean;
   /** Accent-coloured icon (e.g. zoom reset when zoomed). */
   accent?: boolean;
+  ref?: Ref<HTMLButtonElement>;
 };
 
 export function IconButton({ icon, size = 44, pressed, accent, className, type = 'button', ...rest }: IconButtonProps) {

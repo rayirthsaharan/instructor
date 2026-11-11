@@ -17,6 +17,7 @@ const envSchema = z.object({
   AI_MODEL_CHAT: optionalString,
   WORKER_POLL_MS: z.preprocess(emptyToUndefined, z.coerce.number().int().min(10).max(3_600_000).default(1000)),
   SESSION_SECRET: optionalString,
+  MOCK_AI_DELAY_MS: z.preprocess(emptyToUndefined, z.coerce.number().int().min(0).max(120_000).default(0)),
 });
 
 export interface AppConfig {
@@ -29,6 +30,8 @@ export interface AppConfig {
   aiModelAnalysis?: string;
   aiModelChat?: string;
   workerPollMs: number;
+  /** Artificial delay of the mock analysis so progress states are visible in local use. 0 in tests. */
+  mockAiDelayMs: number;
   /** Always set in production; may be undefined in development/test, where callers must generate an ephemeral one. */
   sessionSecret?: string;
 }
@@ -74,6 +77,7 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     aiModelAnalysis: e.AI_MODEL_ANALYSIS,
     aiModelChat: e.AI_MODEL_CHAT,
     workerPollMs: e.WORKER_POLL_MS,
+    mockAiDelayMs: e.MOCK_AI_DELAY_MS,
     sessionSecret: e.SESSION_SECRET,
   };
 }

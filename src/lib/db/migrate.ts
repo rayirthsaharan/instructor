@@ -1,9 +1,12 @@
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import { sql } from 'drizzle-orm';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { closeDb, getDb, unwrap, type Db } from './client';
 
-const migrationsFolder = fileURLToPath(new URL('./migrations', import.meta.url));
+// Built with path functions (not `new URL('./migrations', import.meta.url)`) so the Next bundler does not try to
+// resolve the folder as a module: migrations only ever run from the worker, the CLI and tests.
+const migrationsFolder = join(dirname(fileURLToPath(import.meta.url)), 'migrations');
 
 /**
  * Applies pending migrations. Foreign keys are switched off for the duration (SQLite's documented procedure for

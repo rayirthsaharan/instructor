@@ -134,3 +134,10 @@ Done: all D-012 items; then fenced `saveArtifact`, migration 0001 deletes ownerl
 How to verify: orchestrator ran `npm run check` (366/366), `npm run build` (ok; two harmless font-metric warnings), `npm run e2e -- --trace off` (22/22).
 Open issues / risks: the number-word rule is deliberately strict (words like "both", "few" count as quantities); expect to tune it against real model output. `getAIProvider` and the DB/storage defaults do not read `getConfig()` yet - do this in M1.
 Next: M1.
+
+## H-018 | 2026-11-11 | from: software-engineer -> to: qa-engineer, senior-engineer
+Task: M1-a backend - sessions, upload, rendering, pipeline, guide/progress APIs (mock provider).
+Done: routes in `src/app/api/**`; logic in `src/lib/{http,pipeline,render,upload,session,db}`; contract in `docs/API.md`; fixtures (Lumen PDF and PNGs, not-a-manual, mock-failure, encrypted, `manifest.json`). PDFs are probed and rendered in a child process (pinned pdfjs-dist + @napi-rs/canvas) with timeout, RSS watchdog and heap cap; page text is extracted there and used to verify source quotes. Page images are content-addressed and reference-counted.
+How to verify: `npm run check` (438 tests); `npm run dev:all`; `tests/capture-*.test.ts`.
+Open issues / risks: contract deviations - `GET /api/guides` rows without a guide have `id: null` (link by `documentId`), extra `DELETE /api/documents/:id`, checklist keys must be part or tool ids. The render child script is located through a cwd fallback (needs `src/` at runtime - deployment concern). IP rate limiting trusts `X-Forwarded-For`. Real provider not implemented (by design).
+Next: QA review; senior-engineer security review of uploads, child process and sessions.

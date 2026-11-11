@@ -1,6 +1,6 @@
 export { cn } from './cn';
 export { Icon, type IconName } from './Icon';
-export { Button, type ButtonProps, type ButtonVariant, type ButtonSize } from './Button';
+export { Button, buttonClass, type ButtonProps, type ButtonVariant, type ButtonSize } from './Button';
 export { IconButton, type IconButtonProps } from './IconButton';
 export { Card, LinkCard, GuideCard, type GuideCardStatus } from './Card';
 export { Chip, PartChip, type PartChipProps } from './Chip';
@@ -12,3 +12,7 @@ export { BottomSheet, ConfirmDialog, type DetentName } from './Overlay';
 export { Skeleton, SkeletonText, SkeletonRegion } from './Skeleton';
 export { SourceQuote, PageTag, ProvenanceTag, InstructorNote, type ProvenanceKind } from './SourceQuote';
 export { CitationChip, citationLabel } from './CitationChip';
+export { Dropzone } from './Dropzone';
+export { PageThumbnailGrid, AddPagesTile, type PageTile } from './PageThumbnailGrid';
+export { StageList, type StageRow, type StageMarker } from './StageList';
+export { Menu, type MenuItem } from './Menu';

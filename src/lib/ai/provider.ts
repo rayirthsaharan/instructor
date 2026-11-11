@@ -20,6 +20,8 @@ export interface PageImage {
 
 export interface AnalyseDocumentInput {
   pages: PageImage[];
+  /** Hash of the uploaded content. Real providers ignore it; the mock matches it against its fixture manuals. */
+  contentHash?: string;
   /** Preferred language for generated text; defaults to the manual's language. */
   language?: string;
   onProgress?: (progress: AnalysisProgress) => void;

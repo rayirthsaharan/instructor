@@ -103,7 +103,9 @@ All via `npm run <script>` (copy `.env.example` to `.env.local` first; `AI_PROVI
 | Script | Purpose |
 |---|---|
 | `dev` / `build` / `start` | Next.js dev server, production build, production server |
-| `worker` | Job worker process (`tsx src/worker.ts`); applies migrations on boot, polls the `jobs` table |
+| `worker` | Job worker process (`tsx src/worker.ts`); applies migrations on boot, runs the analysis pipeline, polls the `jobs` table |
+| `dev:all` | Web (`next dev`) and worker together for local use (`node scripts/dev-all.mjs`); uploads only progress while the worker runs |
+| `fixtures` | Regenerates `fixtures/*.pdf`, `fixtures/lumen-bookcase/page-N.png` and `fixtures/manifest.json` (mock provider content hashes) from the SVG pages |
 | `typecheck` / `lint` / `test` | `tsc --noEmit`, ESLint, Vitest (`tests/**`, `src/**/*.test.ts`) |
 | `check` | typecheck + lint + test (run before finishing any task) |
 | `e2e` | Playwright against a dev server on port 3100 (`npm run e2e -- --trace off`); uses the pre-installed Chromium |
@@ -111,4 +113,4 @@ All via `npm run <script>` (copy `.env.example` to `.env.local` first; `AI_PROVI
 | `db:migrate` | Apply migrations to `DATABASE_PATH` (default `./data/instructor.db`, gitignored) |
 | `validate:agents` | Validate `.claude/agents/*.md` |
 
-Env: `DATABASE_PATH`, `STORAGE_ROOT` (default `./data/files`), `AI_PROVIDER`, `WORKER_POLL_MS`. All SQL lives in `src/lib/db`; other code uses its repository functions and the opaque `Db` handle.
+Env: `DATABASE_PATH`, `STORAGE_ROOT` (default `./data/files`), `AI_PROVIDER`, `WORKER_POLL_MS`, `SESSION_SECRET` (required in production), `MOCK_AI_DELAY_MS` (mock analysis delay, default 0). HTTP contract: `docs/API.md`. All SQL lives in `src/lib/db`; other code uses its repository functions and the opaque `Db` handle.
