@@ -398,13 +398,7 @@
         }
       ],
       "toolsUsed": [],
-      "warnings": [
-        {
-          "text": "A cam lock turned the wrong way will not grip the bolt.",
-          "severity": "caution",
-          "interpretedFromDiagram": true
-        }
-      ],
+      "warnings": [],
       "irreversible": false,
       "confidence": "medium",
       "interpretedFromDiagram": true,
@@ -428,7 +422,7 @@
       "id": "s4",
       "phaseId": "frame",
       "title": "Press in the cam locks",
-      "instruction": "Press a cam lock (F) into each round hole on the ends of both shelves, with the arrow on the lock pointing towards the nearest shelf end.",
+      "instruction": "Press a cam lock (F) into each round hole on the ends of both shelves, matching the direction shown in the diagram.",
       "sources": [
         {
           "pageIndex": 3,
@@ -482,7 +476,7 @@
       "id": "s5",
       "phaseId": "frame",
       "title": "Join the shelves to the first side",
-      "instruction": "Lay one side panel flat. Slot both shelves onto the cam bolts, then turn each cam lock clockwise until it stops.",
+      "instruction": "Lay a side panel flat. Slot both shelves onto the cam bolts, then turn each cam lock clockwise until it stops.",
       "sources": [
         {
           "pageIndex": 3,

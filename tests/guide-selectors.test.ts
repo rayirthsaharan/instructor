@@ -5,10 +5,17 @@ import { validateGuide } from '@/lib/guide/validate';
 import { orderedSteps, partsForStep, phaseForStep, progressPercentage, stepsBlockedByMissingParts, toolsForStep } from '@/lib/guide/selectors';
 
 const r = validateGuide(JSON.parse(fs.readFileSync(path.resolve(__dirname, '../fixtures/lumen-bookcase.guide.json'), 'utf8')), { pageCount: 6 });
+
 if (!r.ok) throw new Error('fixture invalid');
 const guide = r.guide;
 
 describe('selectors', () => {
+  it('ignores inherited property names as ids', () => {
+    for (const id of ['constructor', 'toString', '__proto__']) {
+      expect(partsForStep(guide, id)).toEqual([]);
+      expect(progressPercentage(guide, [id])).toBe(0);
+    }
+  });
   it('orders steps by phases, ignoring map order', () => {
     expect(orderedSteps(guide).map((s) => s.id)).toEqual(['s1', 's2', 's3', 's4', 's5', 's6', 's7', 's8', 's9', 's10']);
     const shuffled = { ...guide, steps: Object.fromEntries(Object.entries(guide.steps).reverse()) };

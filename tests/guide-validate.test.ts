@@ -8,7 +8,10 @@ import { migrateGuide } from '@/lib/guide/schema';
 const FIX = path.resolve(__dirname, '../fixtures');
 const load = (rel: string): any => JSON.parse(fs.readFileSync(path.join(FIX, rel), 'utf8'));
 const valid = () => load('lumen-bookcase.guide.json');
-const opts = { pageCount: 6 };
+const pageTexts = [1, 2, 3, 4, 5, 6].map((n) =>
+  fs.readFileSync(path.join(FIX, `lumen-bookcase/page-${n}.svg`), 'utf8').replace(/<[^>]+>/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>'),
+);
+const opts: { pageCount: number; pageTexts?: string[] } = { pageCount: 6, pageTexts };
 
 function ok(raw: unknown, o = opts) {
   const r = validateGuide(raw, o);
@@ -287,9 +290,80 @@ describe('containsQuantity', () => {
     ['two screws', true],
     ['Two Screws', true],
     ['5mm', true],
-    ['one at a time', false],
+    ['one at a time', true],
+    ['half a turn', true],
+    ['\u00bd turn', true],
+    ['Phone', false],
     ['second panel', false],
     ['twofold', false],
     ['tighten firmly', false],
   ])('%s -> %s', (text, expected) => expect(containsQuantity(text)).toBe(expected));
+});
+
+describe('quote verification against page text', () => {
+  it('removes a quote not found on the step pages, with consequences', () => {
+    const g = valid();
+    g.steps.s2.sourceQuote = 'This sentence is not in the manual.';
+    g.steps.s2.checkpoint = { text: 'Firm.', origin: 'manual', sourceQuote: 'Invented quote' };
+    g.steps.s9.warnings[0].sourceQuote = 'Invented warning quote';
+    const r = ok(g);
+    expect(r.guide.steps.s2!.sourceQuote).toBeUndefined();
+    expect(r.guide.steps.s2!.confidence).toBe('low');
+    expect(r.guide.steps.s2!.checkpoint!.origin).toBe('inferred');
+    expect(r.guide.steps.s9!.warnings[0]!.interpretedFromDiagram).toBe(true);
+    expect(r.issues.filter((i) => i.code === 'quote_not_found')).toHaveLength(3);
+  });
+  it('matches ignoring case and whitespace', () => {
+    const g = valid();
+    g.steps.s2.sourceQuote = '  PRESS 4   dowels G into the top edge\n of each side panel A. ';
+    const r = ok(g);
+    expect(r.guide.steps.s2!.sourceQuote).toBeDefined();
+    expect(r.issues).toEqual([]);
+  });
+  it('a quote found only on a page that is not a source of the step is not accepted', () => {
+    const g = valid();
+    g.steps.s2.sourceQuote = 'WARNING: Attach the wall strap. An unsecured bookcase can tip over and cause serious injury.';
+    expect(ok(g).issues.map((i) => i.code)).toContain('quote_not_found');
+  });
+  it('records a single info issue when page text is not supplied', () => {
+    const r = ok(valid(), { pageCount: 6 });
+    expect(r.issues.filter((i) => i.code === 'quotes_unverified')).toHaveLength(1);
+    expect(r.guide.steps.s2!.sourceQuote).toBeDefined();
+  });
+});
+
+describe('hardening', () => {
+  it('whitespace-only quotes are not quotes', () => {
+    const g = valid();
+    g.steps.s2.sourceQuote = '   ';
+    g.steps.s5.warnings[0].sourceQuote = ' ';
+    const r = ok(g);
+    expect(r.guide.steps.s2!.confidence).toBe('low');
+    expect(r.guide.steps.s5!.warnings[0]!.interpretedFromDiagram).toBe(true);
+    expect(r.issues.filter((i) => i.code === 'blank_quote_removed')).toHaveLength(2);
+  });
+  it('reports removing a quote from inferred guidance', () => {
+    const g = valid();
+    g.steps.s6.why = { text: 'Helps.', origin: 'inferred', sourceQuote: 'Fit the second side panel' };
+    expect(ok(g).issues.map((i) => i.code)).toContain('inferred_quote_removed');
+  });
+  it('rejects empty phases, zero steps, and oversized text', () => {
+    const a = valid();
+    a.phases.push({ id: 'e', title: 'E', stepIds: [] });
+    expect(fail(a)).not.toHaveLength(0);
+    const b = valid();
+    b.steps = {};
+    b.phases = [{ id: 'p', title: 'P', stepIds: ['x'] }];
+    expect(fail(b)).not.toHaveLength(0);
+    const c = valid();
+    c.steps.s2.instruction = 'a'.repeat(10000);
+    expect(fail(c)).not.toHaveLength(0);
+  });
+  it('strips unicode and spelled quantities from inferred guidance', () => {
+    for (const text of ['Use \u00bd the force.', 'Use one screw.', 'A quarter turn.', 'Twenty of them.']) {
+      const g = valid();
+      g.steps.s6.why = { text, origin: 'inferred' };
+      expect(ok(g).guide.steps.s6!.why, text).toBeUndefined();
+    }
+  });
 });

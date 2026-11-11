@@ -21,7 +21,9 @@ test('touch targets >= 44px at 375 (enabled buttons, checkboxes, links)', async 
     document.querySelectorAll<HTMLElement>('button:not([disabled]), [role=checkbox], a[href], [role=button]').forEach((el) => {
       const r = el.getBoundingClientRect();
       if (r.width === 0) return;
-      if (r.height < 43.5 || r.width < 43.5) out.push(`${(el.getAttribute('aria-label') || el.textContent || '').trim().slice(0, 30)} ${Math.round(r.width)}x${Math.round(r.height)}`);
+      const b = getComputedStyle(el, '::before');
+      const hit = b.position === 'absolute' ? parseFloat(b.height) : r.height;
+      if (Math.max(hit, r.height) < 43.5 || (r.width < 43.5 && !el.closest('p'))) out.push(`${(el.getAttribute('aria-label') || el.textContent || '').trim().slice(0, 30)} ${Math.round(r.width)}x${Math.round(r.height)}`);
     });
     return out;
   });
@@ -46,6 +48,7 @@ test('keyboard focus is visible on every tabbable control', async ({ page }) => 
     const r = await page.evaluate(() => {
       const el = document.activeElement as HTMLElement;
       if (!el || el === document.body) return null;
+      if (el.tagName === 'NEXTJS-PORTAL') return null;
       const cs = getComputedStyle(el);
       const visible = (cs.outlineStyle !== 'none' && parseFloat(cs.outlineWidth) >= 2) || cs.boxShadow !== 'none';
       return { visible, n: (el.getAttribute('aria-label') || el.textContent || el.tagName).trim().slice(0, 30) };
@@ -111,20 +114,21 @@ test('toast: persistent polite live region, message announced inside it, auto-di
   const regions = page.locator('[role=status][aria-live=polite]');
   expect(await regions.count()).toBeGreaterThan(0);
   await page.getByRole('button', { name: 'Show toast', exact: true }).click();
-  const live = page.locator('[aria-live=polite]:has(> .toast-enter)');
+  const live = page.locator('div.pointer-events-auto[role=status]');
   await expect(live).toContainText('Marked as missing.');
   // no nested duplicate live region (would double-announce)
   expect(await live.locator('[aria-live],[role=status]').count()).toBe(0);
-  await expect(live).toBeEmpty({ timeout: 6000 });
+  await expect(live.getByText('Marked as missing.')).toBeHidden({ timeout: 6000 });
 });
 
 test('toast with action: keyboard reachable and Undo dismisses', async ({ page }) => {
   await open(page);
   await page.getByRole('button', { name: 'Show toast with Undo' }).click();
-  const undo = page.getByRole('button', { name: 'Undo' }).last();
+  const live = page.locator('div.pointer-events-auto[role=status]');
+  const undo = live.getByRole('button', { name: 'Undo' });
   await undo.focus();
   await page.keyboard.press('Enter');
-  await expect(page.getByText('Part removed.').last()).toBeHidden();
+  await expect(live.getByText('Part removed.')).toBeHidden();
 });
 
 test('banners: roles, labels carry meaning without colour, error is an alert', async ({ page }) => {

@@ -79,6 +79,13 @@ describe('MockProvider.verifyGuide / simplifyStep', () => {
     expect((await p.simplifyStep({ guide, stepId: 's9', level: 'simpler' })).text).toContain(guide.steps.s9!.instruction);
     expect(guide.steps.s9!.warnings[0]!.sourceQuote).toBeDefined();
   });
+  it('simplest never drops a quantity', async () => {
+    const r = await new MockProvider().simplifyStep({ guide, stepId: 's7', level: 'simplest' });
+    expect(r.text).toContain('16');
+  });
+  it('rejects inherited ids', async () => {
+    await expect(new MockProvider().simplifyStep({ guide, stepId: 'constructor', level: 'simpler' })).rejects.toBeInstanceOf(AIProviderError);
+  });
   it('rejects unknown steps', async () => {
     await expect(new MockProvider().simplifyStep({ guide, stepId: 'zz', level: 'simpler' })).rejects.toBeInstanceOf(AIProviderError);
   });

@@ -22,15 +22,24 @@ export type ValidationResult =
 
 export interface ValidateOptions {
   pageCount: number;
+  /** Plain text of each page (index = pageIndex). When given, every sourceQuote is checked against its step's pages. */
+  pageTexts?: string[];
 }
+
+const normaliseText = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim();
+const isBlank = (q: string | undefined) => q !== undefined && q.trim() === '';
 
 /** Smallest region side (fraction of the page) that is still treated as a real area. */
 export const MIN_REGION_SIDE = 0.01;
 
-const NUMBER_WORDS = 'two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|dozen|twice|double|triple|pair';
-const QUANTITY_RE = new RegExp(`\\d|\\b(?:${NUMBER_WORDS})\\b`, 'i');
+const NUMBER_WORDS = [
+  'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen',
+  'seventeen', 'eighteen', 'nineteen', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety', 'hundred', 'hundreds', 'thousand',
+  'half', 'halves', 'quarter', 'quarters', 'third', 'thirds', 'dozen', 'dozens', 'twice', 'double', 'triple', 'pair', 'pairs', 'couple', 'several',
+].join('|');
+const QUANTITY_RE = new RegExp(`\\p{N}|\\b(?:${NUMBER_WORDS})\\b`, 'iu');
 
-/** True when the text contains a digit or a spelled-out quantity ("two screws"). */
+/** True when the text contains any Unicode numeric character or a spelled-out quantity ("two screws", "half"). */
 export function containsQuantity(text: string): boolean {
   return QUANTITY_RE.test(text);
 }
@@ -172,6 +181,30 @@ export function validateGuide(raw: unknown, opts: ValidateOptions): ValidationRe
     if (goodSources.length === 0) err('no_valid_source', `${p}.sources`, `Step "${sid}" has no source with a valid page index.`);
     step.sources = goodSources;
 
+    // Quotes: blank quotes are not quotes; with page text available, quotes must really appear on the step's pages.
+    const pageHay = opts.pageTexts ? goodSources.map((src) => normaliseText(opts.pageTexts?.[src.pageIndex] ?? '')) : undefined;
+    let stepQuoteRemoved = false;
+    const checkQuote = (q: string | undefined, qPath: string): string | undefined => {
+      if (q === undefined) return undefined;
+      if (isBlank(q)) {
+        issue('blank_quote_removed', qPath, 'A blank source quote was removed.');
+        return undefined;
+      }
+      if (pageHay && !pageHay.some((h) => h.includes(normaliseText(q)))) {
+        issue('quote_not_found', qPath, 'Source quote does not appear on the step\'s source pages and was removed.');
+        if (qPath === `${p}.sourceQuote`) stepQuoteRemoved = true;
+        return undefined;
+      }
+      return q;
+    };
+    step.sourceQuote = checkQuote(step.sourceQuote, `${p}.sourceQuote`);
+    step.warnings.forEach((w, i) => (w.sourceQuote = checkQuote(w.sourceQuote, `${p}.warnings[${i}].sourceQuote`)));
+    for (const field of ['why', 'commonMistake', 'checkpoint'] as const) {
+      const g = step[field];
+      if (g) g.sourceQuote = checkQuote(g.sourceQuote, `${p}.${field}.sourceQuote`);
+    }
+    if (stepQuoteRemoved && step.confidence !== 'low') step.confidence = 'low';
+
     // Highlights: must carry a valid page and resolvable part ids.
     step.highlights = step.highlights.filter((h, i) => {
       if (!validPage(h.source.pageIndex)) {
@@ -205,7 +238,10 @@ export function validateGuide(raw: unknown, opts: ValidateOptions): ValidationRe
           delete step[field];
           issue('inferred_quantity_stripped', `${p}.${field}`, 'Inferred guidance contained a number or quantity and was removed (measurements must come from the manual).');
         } else {
-          delete g.sourceQuote;
+          if (g.sourceQuote !== undefined) {
+            delete g.sourceQuote;
+            issue('inferred_quote_removed', `${p}.${field}`, 'Inferred guidance carried a source quote; the quote was removed.');
+          }
         }
       }
     }
@@ -216,6 +252,8 @@ export function validateGuide(raw: unknown, opts: ValidateOptions): ValidationRe
       issue('numbers_without_quote', p, 'Step text contains numbers or quantities but has no source quote; confidence set to low.');
     }
   }
+
+  if (!opts.pageTexts) issue('quotes_unverified', '', 'Quotes not verified against page text.', 'info');
 
   if (errors.length > 0) return { ok: false, errors };
   return { ok: true, guide, issues };

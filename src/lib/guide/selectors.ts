@@ -1,11 +1,19 @@
 import type { Guide, Part, Phase, Step, Tool } from './schema';
 
+/** Own-property lookup so ids like "constructor" never resolve to inherited members. */
+function getOwn<T>(rec: Record<string, T>, id: string): T | undefined {
+  return Object.hasOwn(rec, id) ? rec[id] : undefined;
+}
+
+
 /** Steps in manual order (phases in order, then each phase's stepIds). Unknown ids are skipped. */
+export { getOwn };
+
 export function orderedSteps(guide: Guide): Step[] {
   const out: Step[] = [];
   for (const phase of guide.phases) {
     for (const id of phase.stepIds) {
-      const step = guide.steps[id];
+      const step = getOwn(guide.steps, id);
       if (step) out.push(step);
     }
   }
@@ -24,7 +32,7 @@ export interface StepPart {
 
 /** Parts used by a step, resolved to full records. */
 export function partsForStep(guide: Guide, stepId: string): StepPart[] {
-  const step = guide.steps[stepId];
+  const step = getOwn(guide.steps, stepId);
   if (!step) return [];
   const out: StepPart[] = [];
   for (const pu of step.partsUsed) {
@@ -35,7 +43,7 @@ export function partsForStep(guide: Guide, stepId: string): StepPart[] {
 }
 
 export function toolsForStep(guide: Guide, stepId: string): Tool[] {
-  const step = guide.steps[stepId];
+  const step = getOwn(guide.steps, stepId);
   if (!step) return [];
   return step.toolsUsed.map((id) => guide.tools.find((t) => t.id === id)).filter((t): t is Tool => t !== undefined);
 }
@@ -52,6 +60,6 @@ export function progressPercentage(guide: Guide, completedStepIds: Iterable<stri
   const total = Object.keys(guide.steps).length;
   if (total === 0) return 0;
   const done = new Set<string>();
-  for (const id of completedStepIds) if (guide.steps[id]) done.add(id);
-  return Math.round((done.size / total) * 100);
+  for (const id of completedStepIds) if (getOwn(guide.steps, id)) done.add(id);
+  return Math.min(100, Math.round((done.size / total) * 100));
 }

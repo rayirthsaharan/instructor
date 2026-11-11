@@ -1,5 +1,6 @@
 import fixture from '../../../fixtures/lumen-bookcase.guide.json';
-import { orderedSteps } from '../guide/selectors';
+import { getOwn, orderedSteps } from '../guide/selectors';
+import { containsQuantity } from '../guide/validate';
 import { guideSchema, type Guide, type Step } from '../guide/schema';
 import {
   AIProviderError,
@@ -104,10 +105,14 @@ export class MockProvider implements AIProvider {
 
   async simplifyStep(input: SimplifyStepInput): Promise<SimplifyStepResult> {
     await sleep(0, input.signal);
-    const step = input.guide.steps[input.stepId];
+    const step = getOwn(input.guide.steps, input.stepId);
     if (!step) throw new AIProviderError(`Unknown step "${input.stepId}".`, 'bad_response', false);
-    const first = step.instruction.split(/(?<=[.!?])\s+/)[0] ?? step.instruction;
-    return { text: input.level === 'simplest' ? first : `In short: ${step.instruction}` };
+    const sentences = step.instruction.split(/(?<=[.!?])\s+/);
+    const first = sentences[0] ?? step.instruction;
+    // Never drop a quantity: if later sentences carry numbers, keep the whole instruction.
+    const dropped = sentences.slice(1).join(' ');
+    const keepAll = input.level !== 'simplest' || containsQuantity(dropped);
+    return { text: keepAll ? (input.level === 'simplest' ? step.instruction : `In short: ${step.instruction}`) : first };
   }
 
   private compose(input: AnswerQuestionInput): { text: string; grounded: boolean; citations: { stepId: string; pageIndex: number; region?: Step['sources'][number]['region'] }[] } {

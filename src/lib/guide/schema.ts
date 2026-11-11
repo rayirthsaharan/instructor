@@ -4,6 +4,11 @@ import { z } from 'zod';
 export const CURRENT_SCHEMA_VERSION = 1 as const;
 
 /** Normalised 0..1 rectangle, relative to the exact page image sent to the model. */
+const id = () => z.string().min(1).max(100);
+const short = () => z.string().min(1).max(300);
+const long = () => z.string().min(1).max(4000);
+const quote = () => z.string().max(2000);
+
 export const regionSchema = z
   .object({
     x: z.number().min(0).max(1),
@@ -14,9 +19,9 @@ export const regionSchema = z
   .refine((r) => r.x + r.w <= 1 + 1e-9 && r.y + r.h <= 1 + 1e-9, 'region extends beyond the page');
 
 export const sourceRefSchema = z.object({
-  pageIndex: z.number().int().min(0),
+  pageIndex: z.number().int().min(0).max(100000),
   /** Diagram panel detected in code; preferred over raw coordinates (ARCHITECTURE section 10, item 3). */
-  panelId: z.string().min(1).optional(),
+  panelId: id().optional(),
   region: regionSchema.optional(),
   /** True when the exact area is unknown and the UI must show the page/panel with an "approximate area" note. */
   regionFallback: z.boolean().default(false),
@@ -24,94 +29,97 @@ export const sourceRefSchema = z.object({
 
 /** Guidance that is either the manual's own words (with a quote) or labelled as inferred by Instructor. */
 export const guidanceSchema = z.object({
-  text: z.string().min(1),
+  text: long(),
   origin: z.enum(['manual', 'inferred']),
-  sourceQuote: z.string().min(1).optional(),
+  sourceQuote: quote().optional(),
 });
 
 export const warningSchema = z.object({
-  text: z.string().min(1),
+  text: long(),
   severity: z.enum(['caution', 'warning']),
   /** Verbatim text from the manual. Required when the manual states the warning in words. */
-  sourceQuote: z.string().min(1).optional(),
+  sourceQuote: quote().optional(),
   interpretedFromDiagram: z.boolean().default(false),
 });
 
 export const partSchema = z.object({
-  id: z.string().min(1),
-  name: z.string().min(1),
-  manualLabel: z.string().min(1).optional(),
-  quantity: z.number().int().positive().optional(),
-  description: z.string().optional(),
+  id: id(),
+  name: short(),
+  manualLabel: short().optional(),
+  quantity: z.number().int().positive().max(100000).optional(),
+  description: z.string().max(2000).optional(),
   source: sourceRefSchema,
 });
 
 export const toolSchema = z.object({
-  id: z.string().min(1),
-  name: z.string().min(1),
+  id: id(),
+  name: short(),
   included: z.boolean(),
   source: sourceRefSchema.optional(),
 });
 
 export const highlightSchema = z.object({
   source: sourceRefSchema,
-  label: z.string().optional(),
-  partId: z.string().min(1).optional(),
+  label: z.string().max(300).optional(),
+  partId: id().optional(),
 });
 
 export const stepSchema = z.object({
-  id: z.string().min(1),
-  phaseId: z.string().min(1),
-  title: z.string().min(1),
-  instruction: z.string().min(1),
-  partsUsed: z.array(z.object({ partId: z.string().min(1), quantity: z.number().int().positive().optional() })).default([]),
-  toolsUsed: z.array(z.string().min(1)).default([]),
+  id: id(),
+  phaseId: id(),
+  title: short(),
+  instruction: long(),
+  partsUsed: z.array(z.object({ partId: id(), quantity: z.number().int().positive().max(100000).optional() })).max(100).default([]),
+  toolsUsed: z.array(id()).max(100).default([]),
   why: guidanceSchema.optional(),
   commonMistake: guidanceSchema.optional(),
   checkpoint: guidanceSchema.optional(),
-  warnings: z.array(warningSchema).default([]),
-  sourceQuote: z.string().min(1).optional(),
+  warnings: z.array(warningSchema).max(20).default([]),
+  sourceQuote: quote().optional(),
   irreversible: z.boolean().default(false),
   confidence: z.enum(['high', 'medium', 'low']),
   interpretedFromDiagram: z.boolean().default(false),
-  sources: z.array(sourceRefSchema).min(1),
-  highlights: z.array(highlightSchema).default([]),
+  sources: z.array(sourceRefSchema).min(1).max(20),
+  highlights: z.array(highlightSchema).max(50).default([]),
 });
 
 export const phaseSchema = z.object({
-  id: z.string().min(1),
-  title: z.string().min(1),
-  stepIds: z.array(z.string().min(1)),
+  id: id(),
+  title: short(),
+  stepIds: z.array(id()).min(1).max(1000),
 });
 
 export const glossaryEntrySchema = z.object({
-  term: z.string().min(1),
-  definition: z.string().min(1),
+  term: short(),
+  definition: long(),
   source: sourceRefSchema.optional(),
 });
 
 export const unreadablePageSchema = z.object({
   pageIndex: z.number().int().min(0),
-  reason: z.string().optional(),
+  reason: z.string().max(1000).optional(),
 });
 
 export const guideSchema = z.object({
   schemaVersion: z.literal(CURRENT_SCHEMA_VERSION),
-  language: z.string().min(2),
-  title: z.string().min(1),
-  summary: z.string(),
-  category: z.string().min(1),
-  estimatedMinutes: z.number().int().positive().optional(),
+  language: z.string().min(2).max(35),
+  title: short(),
+  summary: z.string().max(4000),
+  category: short(),
+  estimatedMinutes: z.number().int().positive().max(100000).optional(),
   difficulty: z.union([z.literal(1), z.literal(2), z.literal(3)]),
-  peopleNeeded: z.number().int().min(1).default(1),
+  peopleNeeded: z.number().int().min(1).max(100).default(1),
   safetyCritical: z.boolean().default(false),
-  tools: z.array(toolSchema).default([]),
-  parts: z.array(partSchema).default([]),
-  phases: z.array(phaseSchema).min(1),
+  tools: z.array(toolSchema).max(200).default([]),
+  parts: z.array(partSchema).max(500).default([]),
+  phases: z.array(phaseSchema).min(1).max(100),
   /** Unordered map by id. Order lives only in `phases[].stepIds`. */
-  steps: z.record(z.string(), stepSchema),
-  glossary: z.array(glossaryEntrySchema).default([]),
-  unreadablePages: z.array(unreadablePageSchema).default([]),
+  steps: z
+    .record(z.string(), stepSchema)
+    .refine((m) => Object.keys(m).length >= 1, 'a guide needs at least one step')
+    .refine((m) => Object.keys(m).length <= 1000, 'too many steps'),
+  glossary: z.array(glossaryEntrySchema).max(500).default([]),
+  unreadablePages: z.array(unreadablePageSchema).max(1000).default([]),
 });
 
 export type Region = z.infer<typeof regionSchema>;
