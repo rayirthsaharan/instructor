@@ -310,7 +310,7 @@ Read-aloud speaks the banner text, then the quote when it differs.
 
 ### 7.14 Skeleton and processing
 - **Skeleton**: `surface-sunken` blocks, radius matching the real element, static tone, no shimmer or pulse (the processing arc and button spinner are the only "working" indicators). Skeletons mirror the final layout (same heights) so nothing shifts. Text skeletons are 60-90% width lines. `aria-hidden="true"` with one visually hidden "Loading" status per region.
-- **Processing stage list**: four rows - "Reading pages", "Finding parts", "Building steps", "Double-checking". Row: marker 24 + `body-lg` label + optional `body-sm` detail. Marker states: pending (empty ring `ink-subtle`), active (ring with a rotating 90-degree `accent` arc, 1s linear; reduced motion: solid `accent` ring), done (`success` check disc), failed (`danger` cross disc). The active row label is weight 600. The list is `aria-live="polite"`; each stage change is announced once.
+- **Processing stage list**: one row per stage the API reports, never more (D-015) - "Reading pages", "Finding parts and building steps", "Double-checking", "Finishing" (mapping and detail lines: USER_FLOWS section 4). Row: marker 24 + `body-lg` label + optional `body-sm` detail. Marker states: pending (empty ring `ink-subtle`), active (ring with a rotating 90-degree `accent` arc, 1s linear; reduced motion: solid `accent` ring), done (`success` check disc), failed (`danger` cross disc). The active row label is weight 600. The list is `aria-live="polite"`; each stage change is announced once.
 - **Spinner**: only inside buttons (20px). Never a full-screen spinner.
 
 ### 7.15 Smaller parts

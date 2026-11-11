@@ -1,6 +1,6 @@
 # Instructor - User Flows and Screen Specs
 
-Status: **v1.** Owner: `ui-ux-designer`. Tokens and components are defined in `docs/DESIGN_SYSTEM.md` (referred to as DS). Data names (`step.checkpoint`, `unreadablePages`) refer to the Guide contract in `docs/ARCHITECTURE.md` section 4 as amended by its section 10. Aligned with D-007, D-009 and D-010.
+Status: **v1.** Owner: `ui-ux-designer`. Tokens and components are defined in `docs/DESIGN_SYSTEM.md` (referred to as DS). Data names (`step.checkpoint`, `unreadablePages`) refer to the Guide contract in `docs/ARCHITECTURE.md` section 4 as amended by its section 10. Aligned with D-007, D-009, D-010 and D-015 (sections 3, 4 and 10.3).
 
 Layout references: **375** (`sm`), **768** (`md`), **1280** (`lg`). Page numbers shown to users are `pageIndex + 1`.
 
@@ -98,7 +98,17 @@ Purpose: get the pages in, in the right order, with specific errors.
 | Password-protected PDF | "This PDF is locked with a password. Remove the password, or take photos of the pages." |
 | Corrupt / unreadable file | "We couldn't open that file. It may be damaged. Try downloading it again or use photos." |
 | Upload failed (network) | "The upload stopped. Check your connection." + "Try again" (keeps the selected files) |
-| Limit reached (config) | Info banner: "You've used this month's free guides." (Analyse disabled; no payment UI in MVP) |
+| Too many uploads (`rate_limited`, HTTP 429 or 503) | "Too many uploads in a short time. Wait a little, then try again." + "Try again" (keeps the selected files) |
+| Monthly quota used (`quota_exceeded`, config, off by default) | Info banner: "You've used this month's free guides." |
+| Anything else | "The upload didn't go through. Try again." + "Try again" (keeps the selected files) |
+
+`rate_limited` and `quota_exceeded` are different situations and never share copy (D-015):
+- **`rate_limited`** is temporary. Error banner; the selected files stay; "Analyse manual" stays enabled, so the user can simply try again. The copy names no duration: the server's wait varies from seconds to minutes and a stated time would be a guess.
+- **`quota_exceeded`** will not clear by retrying. Info banner (not an error: nothing went wrong), no "Try again"; the selected files stay visible; "Analyse manual" is disabled and its helper repeats the banner sentence. No payment UI in MVP.
+
+Error banner labels (`label`, DS 7.12 "label names the problem"), in table order: "FILE TYPE NOT SUPPORTED", "FILE TOO LARGE", "TOO MANY PAGES", "PDF IS LOCKED", "COULDN'T OPEN FILE", "UPLOAD STOPPED", "TOO MANY UPLOADS", and "UPLOAD FAILED" for anything else. The Info banner has no label.
+
+The tip line ("Photograph each page flat...") is about photos: hide it once a PDF is selected.
 
 Loading: thumbnails show skeleton tiles while the browser decodes/converts (HEIC). Empty: the dropzone itself.
 
@@ -112,14 +122,23 @@ The URL is the job's identity. Opening it at any time (refresh, Back, Library ca
 
 **Content hierarchy**
 1. First-page thumbnail (120 wide, 3:4) with bracket corners.
-2. `display-lg` "Reading your manual".
-3. Stage list (DS 7.14), driven only by the job's real stage and progress: "Reading pages" (detail: "Page 8 of 20" when known), "Finding parts", "Building steps", "Double-checking" (detail: "Comparing numbers and part labels with the original").
+2. `display-lg` "Reading your manual" (failed state: "We couldn't finish your guide" - the title must not claim work is still going on).
+3. Stage list (DS 7.14), driven only by the job's real stage and progress. It has exactly one row per stage the API reports (D-015), so a row never turns "done" for work the server did not report:
+
+   | Row | API stage(s) | Detail line (`body-sm`), only while the row is active |
+   |---|---|---|
+   | "Reading pages" | `ingest`, `render` | "Page 8 of 20" once the rendered-page count is known; otherwise none |
+   | "Finding parts and building steps" | `analyse` | none |
+   | "Double-checking" | `verify` | "Comparing numbers and part labels with the original" |
+   | "Finishing" | `publish` | none |
+
+   Finding parts and building steps is one row because it is one stage; it is not split to look busier. Queued (not started): all four rows pending, and "Reading pages" carries the detail "Waiting to start" - no row is shown active until the server reports a stage.
 4. `body` note: "This usually takes about a minute. You can leave this page - we'll keep going."
 5. Quiet button "Back to library".
 
 No percentage bar and no invented time countdown: the stage list is the progress. No tips carousel.
 
-**Layout**: one centred column at every width (max-width 480). 375: thumbnail above title, content top-aligned at 48 from the header. 768 / 1280: vertically centred block; thumbnail left of the title at 1280.
+**Layout**: one centred column at every width (max-width 480). The screen has no header bar; "Back to library" (item 5, or the action inside the error banner when failed) is its single back affordance. 375: thumbnail above title, content top-aligned at 48 from the top of the viewport. 768 / 1280: vertically centred block; thumbnail left of the title at 1280.
 
 **Interactions**: none required. When the job finishes, navigate (replace history entry) to the Overview. If the user left, the Library card flips to "Ready" and a toast appears if the app is open: "Your guide is ready" + "Open".
 
@@ -128,7 +147,7 @@ No percentage bar and no invented time countdown: the stage list is the progress
 - Loading the job state: stage-list skeleton (4 rows). Document not found / not owned by this session: "This manual isn't on this device." + "Back to library".
 - Rejected, failed, partially unreadable: see section 10.
 - Connection lost while polling: info banner "Reconnecting... your manual is still being read." Polling resumes silently.
-- Slow (stage unchanged > 60s): detail line under the active stage "Still working - long manuals take longer." Nothing else changes.
+- Slow (stage unchanged > 60s): detail line under the active stage "Still working - long manuals take longer." If the row already has a detail, the two are joined: "Page 8 of 20. Still working - long manuals take longer." Nothing else changes.
 
 ---
 
@@ -389,14 +408,14 @@ Trigger: `guide.unreadablePages` is not empty; the guide is still produced.
 
 ### 10.3 Failed analysis
 Trigger: job status failed.
-Processing screen: the failed stage row gets the danger marker; stages before it stay done. Below: Error banner with a stage-specific message and one action.
+Processing screen: the title becomes "We couldn't finish your guide"; the failed stage row gets the danger marker; stages before it stay done, stages after it stay pending. The "about a minute" note and the standalone "Back to library" are removed. Below the list: Error banner (label "COULDN'T FINISH") with a stage-specific message. Actions inside the banner: the Primary in the table, then Quiet "Back to library".
 
-| Failed at | Message | Action |
+| Failed at (row, section 4) | Message | Action |
 |---|---|---|
 | Reading pages | "We couldn't read this file's pages." | "Try again" / "Use a different file" |
-| Finding parts / Building steps | "We couldn't build a guide from this manual. This is on our side." | "Try again" |
-| Double-checking | "We built the steps but couldn't verify them against the original, so we haven't shown them." | "Try again" |
-| Repeated failure (3rd) | Adds: "It's still not working. Your manual is saved; try again later." | "Back to library" |
+| Finding parts and building steps | "We couldn't build a guide from this manual. This is on our side." | "Try again" |
+| Double-checking, Finishing | "We built the steps but couldn't verify them against the original, so we haven't shown them." | "Try again" |
+| Repeated failure (3rd) | Adds: "It's still not working. Your manual is saved; try again later." | "Back to library" (Primary; no "Try again") |
 
 "Try again" restarts from the failed stage (stages are idempotent); the list resumes, it does not restart from the top. The Library shows the failed card until the user retries or deletes it. An unverified guide is never shown.
 
