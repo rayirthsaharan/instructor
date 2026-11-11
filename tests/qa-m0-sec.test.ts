@@ -7,7 +7,7 @@ import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import { openDb, closeDb, runMigrations, getJobArtifact, type Db } from '@/lib/db';
 import { DbJobQueue, HandlerRegistry, runOnce, runWorker } from '@/lib/jobs';
-import type { Job, JobQueue } from '@/lib/jobs';
+import type { JobQueue } from '@/lib/jobs';
 import { LocalStorage, StorageKeyError } from '@/lib/storage';
 import { loadConfig, ConfigError } from '@/lib/config';
 import { validateCitations, validateGuide } from '@/lib/guide/validate';

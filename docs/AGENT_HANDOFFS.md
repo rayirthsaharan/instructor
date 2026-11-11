@@ -121,3 +121,9 @@ Task: M0 security and correctness review (read-only).
 Done: Verdict "close after fixes". Rulings: (a) fencing token must be required, remove remembered-token map; (b) `put` through an escaping symlink must throw, never unlink; (c) add `src/lib/config.ts` rejecting weak `SESSION_SECRET` in production. Defects: 1 zombie-worker writes unfenced (AbortSignal + transactional complete); 2 schema-parsed guide counts as validated (brand `ValidatedGuide`, validate citations and simplifications); 3 ownership CHECK on analyses; 4 repositories and JobQueue must be async for portability; 5 a DB error kills the worker; 6 `jobs.document_id` needs a foreign key.
 Open issues / risks: all accepted (D-012).
 Next: engineer applies all; QA re-checks; orchestrator closes M0.
+
+## H-016 | 2026-11-11 | from: qa-engineer -> to: orchestrator
+Task: re-check of M0 security fixes (D-012/H-015). Added tests/qa-m0-sec.test.ts (29 tests).
+Verdict: PASS WITH MINOR ISSUES. `npm run check`: typecheck + lint OK; 362 pass, 3 fail (intentional, confirmed defects).
+Verified OK: fencing on heartbeat/complete/fail/completeWithArtifacts; AbortSignal on lease loss; transient heartbeat/claim/complete errors; symlink put/get/delete (dir, leaf, dangling, in-root); config rules; brand has one cast only; citation and simplification checks; migration upgrade preserves data, CHECK/FK enforced, foreign_keys ON. qa-m0a.test.ts changes weaken nothing.
+Open defects: (1) major-minor: JobContext.queue.saveArtifact is unfenced (zombie can write). (2) minor: migration 0001 crashes on pre-existing ownerless mock analyses rows (CHECK fails in INSERT..SELECT). (3) minor: NUMBER_WORDS lacks zero/single/both, so introduced quantities slip through simplifyStepChecked.
