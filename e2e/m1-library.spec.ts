@@ -4,7 +4,7 @@ import { FakeApi, guide, newPage, noHorizontalScroll, SHOT, VIEWPORTS, type VpNa
 const shots: VpName[] = ['375', '1280'];
 
 const populated = () => [
-  guide({ id: 'g1', documentId: 'd1', title: 'Lumen 3-shelf bookcase assembly', progress: { currentStepId: 's7', completedCount: 6, percent: 25 }, updatedAt: Date.parse('2026-11-11T10:00:00Z') }),
+  guide({ id: 'g1', documentId: 'd1', title: 'Lumen 3-shelf bookcase assembly', progress: { currentStepId: 's7', currentStepTitle: 'Attach the side panels', completedCount: 6, percent: 25 }, updatedAt: Date.parse('2026-11-11T10:00:00Z') }),
   guide({ id: 'g2', documentId: 'd2', title: 'Brio espresso machine setup', stepCount: 12, estimatedMinutes: 20, updatedAt: Date.parse('2026-11-10T10:00:00Z') }),
   guide({ id: 'g3', documentId: 'd3', title: 'Nova bike light installation', stepCount: 8, estimatedMinutes: null, progress: { currentStepId: null, completedCount: 8, percent: 100 }, updatedAt: Date.parse('2026-11-09T10:00:00Z') }),
   guide({ id: null, documentId: 'd4', title: null, status: 'processing', stepCount: 0, estimatedMinutes: null, updatedAt: Date.parse('2026-11-08T10:00:00Z') }),
@@ -25,14 +25,14 @@ for (const scheme of ['light', 'dark'] as const) {
       await expect(page.getByText('Check your parts first')).toBeVisible();
       await expect(page.getByText('Guides are saved on this device.')).toBeVisible();
       expect(await noHorizontalScroll(page)).toBeLessThanOrEqual(0);
-      await page.screenshot({ path: `${SHOT}/library-empty-${vp}-${scheme}.png`, fullPage: true });
+      await page.screenshot({ path: `${SHOT}/library-empty-${vp}-${scheme}.png`, fullPage: true, animations: 'disabled' });
 
       // Loading
       api.guidesDelayMs = 1500;
       api.guides = populated();
       await page.goto('/');
       await expect(page.getByRole('status').getByText('Loading')).toBeAttached();
-      await page.screenshot({ path: `${SHOT}/library-loading-${vp}-${scheme}.png`, fullPage: true });
+      await page.screenshot({ path: `${SHOT}/library-loading-${vp}-${scheme}.png`, fullPage: true, animations: 'disabled' });
 
       // Error, then recover
       api.guidesDelayMs = 0;
@@ -40,7 +40,7 @@ for (const scheme of ['light', 'dark'] as const) {
       await page.goto('/');
       await expect(page.getByText("We couldn't load your guides.")).toBeVisible();
       await expect(page.getByRole('link', { name: 'Add a manual' }).first()).toBeVisible();
-      await page.screenshot({ path: `${SHOT}/library-error-${vp}-${scheme}.png`, fullPage: true });
+      await page.screenshot({ path: `${SHOT}/library-error-${vp}-${scheme}.png`, fullPage: true, animations: 'disabled' });
       api.guidesFail = false;
       await page.getByRole('button', { name: 'Try again' }).click();
 
@@ -48,7 +48,7 @@ for (const scheme of ['light', 'dark'] as const) {
       await expect(page.getByTestId('continue-hero')).toBeVisible();
       await expect(page.getByTestId('guide-card')).toHaveCount(5);
       expect(await noHorizontalScroll(page)).toBeLessThanOrEqual(0);
-      await page.screenshot({ path: `${SHOT}/library-populated-${vp}-${scheme}.png`, fullPage: true });
+      await page.screenshot({ path: `${SHOT}/library-populated-${vp}-${scheme}.png`, fullPage: true, animations: 'disabled' });
       await context.close();
     });
   }
@@ -63,7 +63,7 @@ test('populated library: copy, states, links, sorting and hero', async ({ browse
 
   const hero = page.getByTestId('continue-hero');
   await expect(hero.getByRole('heading', { name: 'Lumen 3-shelf bookcase assembly' })).toBeVisible();
-  await expect(hero.getByText('Step 7 of 24')).toBeVisible();
+  await expect(hero.getByText('Step 7 of 24 - Attach the side panels')).toBeVisible();
   await expect(hero.getByRole('link', { name: 'Continue' })).toHaveAttribute('href', '/g/g1/play');
 
   const cards = page.getByTestId('guide-card');
@@ -104,7 +104,7 @@ test('delete: menu, confirm copy, Cancel keeps it, Delete removes it with a toas
   await expect(dialog).toBeVisible();
   await expect(dialog).toContainText("The guide and the uploaded manual will be removed from this device's library.");
   await expect(dialog.getByRole('button', { name: 'Cancel' })).toBeFocused();
-  await page.screenshot({ path: `${SHOT}/library-delete-confirm-375-light.png` });
+  await page.screenshot({ path: `${SHOT}/library-delete-confirm-375-light.png`, animations: 'disabled' });
   await dialog.getByRole('button', { name: 'Cancel' }).click();
   await expect(page.getByTestId('guide-card')).toHaveCount(5);
 
@@ -165,5 +165,28 @@ test('1280: the hero sits beside a drop tile; dropping a file goes to Capture wi
   await expect(page).toHaveURL(/\/new$/);
   await expect(page.getByTestId('pdf-row')).toContainText('dropped.pdf');
   expect(VIEWPORTS['1280'].viewport.width).toBe(1280);
+  await context.close();
+});
+
+test('1280: cards in a row have equal height and the hero has no dead gap before the progress', async ({ browser }) => {
+  const { page, context } = await newPage(browser, '1280');
+  const api = new FakeApi();
+  api.guides = [
+    guide({ id: 'g1', documentId: 'd1', title: 'Lumen 3-shelf bookcase assembly with a very long title that wraps onto several lines in a card', updatedAt: 5 }),
+    guide({ id: 'g2', documentId: 'd2', title: 'Brio', stepCount: 12, updatedAt: 4 }),
+    guide({ id: 'g3', documentId: 'd3', title: 'Nova', stepCount: 8, updatedAt: 3 }),
+    guide({ id: 'g4', documentId: 'd4', title: 'Hero guide', progress: { currentStepId: 's7', currentStepTitle: 'Attach the side panels', completedCount: 6, percent: 25 }, updatedAt: 9 }),
+  ];
+  await api.install(page);
+  await page.goto('/');
+  await expect(page.getByTestId('guide-card')).toHaveCount(4);
+  const heights = await page.getByTestId('guide-card').evaluateAll((els) => els.slice(0, 3).map((e) => Math.round(e.getBoundingClientRect().height)));
+  expect(new Set(heights).size, `card heights ${heights}`).toBe(1);
+  const gap = await page.getByTestId('continue-hero').evaluate((hero) => {
+    const step = hero.querySelector('[data-testid="hero-step"]')!.getBoundingClientRect();
+    const bar = hero.querySelector('[role="progressbar"], [aria-label*="rogress"]')?.getBoundingClientRect();
+    return bar ? bar.top - step.bottom : 0;
+  });
+  expect(gap).toBeLessThanOrEqual(40);
   await context.close();
 });

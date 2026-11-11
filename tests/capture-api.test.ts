@@ -134,12 +134,12 @@ describe('document status outcomes', () => {
     const { documentId } = await (await upload(c, fixture('mock-failure.pdf'))).json();
     await app.drain();
     const failed = await status(c, documentId);
-    expect(failed).toMatchObject({ status: 'failed', error: { code: 'analysis_unavailable', message: expect.any(String) } });
+    expect(failed).toMatchObject({ status: 'failed', retryCount: 0, error: { code: 'analysis_unavailable', message: expect.any(String) } });
     const retry = await c.call(retryDoc, `/api/documents/${documentId}/retry`, { method: 'POST' }, { id: documentId });
     expect(retry.status).toBe(202);
-    expect((await retry.json()).status).toBe('queued');
+    expect(await retry.json()).toMatchObject({ status: 'queued', retryCount: 1 });
     expect(await app.drain()).toBe(3);
-    expect((await status(c, documentId)).status).toBe('failed');
+    expect(await status(c, documentId)).toMatchObject({ status: 'failed', retryCount: 1, attempts: 3 });
 
     const ok = await readyGuide(c);
     const conflict = await c.call(retryDoc, `/api/documents/${ok.documentId}/retry`, { method: 'POST' }, { id: ok.documentId });
@@ -204,7 +204,7 @@ describe('guides', () => {
     expect(list.map((g: { status: string }) => g.status)).toEqual(['queued', 'failed', 'ready']);
     expect(list[2]).toMatchObject({
       id: ready.guideId, title: 'Lumen 3-shelf bookcase', stepCount: expect.any(Number), estimatedMinutes: 45,
-      progress: { currentStepId: null, completedCount: 0, percent: 0 }, thumbnailPage: 0, updatedAt: expect.any(Number),
+      progress: { currentStepId: null, currentStepTitle: null, completedCount: 0, percent: 0 }, thumbnailPage: 0, updatedAt: expect.any(Number),
     });
     expect(list[0]).toMatchObject({ id: null, title: null, stepCount: 0 });
   }, 30_000);
@@ -232,6 +232,7 @@ describe('guides', () => {
     const list = await (await c.call(listGuides, '/x')).json();
     expect(list[0].progress).toMatchObject({ currentStepId: second, completedCount: 1 });
     expect(list[0].progress.percent).toBeGreaterThan(0);
+    expect(list[0].progress.currentStepTitle).toBe(guide.steps[second!].title);
 
     for (const bad of [
       { ...good, currentStepId: 'nope' },

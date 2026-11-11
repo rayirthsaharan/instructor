@@ -43,6 +43,7 @@ Other codes: `not_found` (404), `invalid_request` (400, bad progress JSON or ids
   stage: "ingest"|"render"|"analyse"|"verify"|"publish"|null,   // null while queued and once ready
   progress: 0..1, pageCount: number|null, pagesRendered: number,
   guideId: string|null, attempts: number,   // pipeline starts for the latest job (0 before the first, max 3)
+  retryCount: number,   // times the user called POST /retry for this document (persisted). The UI's "still not working" copy uses this (>= 2), not `attempts`
   error: { code, message }|null, title: string|null }
 ```
 - `rejected` = "not a manual" (`error.code = "not_a_manual"`, message is the reason). No guide exists.
@@ -52,7 +53,7 @@ Other codes: `not_found` (404), `invalid_request` (400, bad progress JSON or ids
 ### LibraryItem
 ```
 { id: string|null, documentId, title: string|null, stepCount, estimatedMinutes: number|null,
-  progress: { currentStepId: string|null, completedCount, percent: 0..100 },
+  progress: { currentStepId: string|null, currentStepTitle: string|null, completedCount, percent: 0..100 },  // title of the current step, null if none
   status, updatedAt: epoch ms, thumbnailPage: 0 }
 ```
 **Deviation from the brief:** documents that have no guide yet (queued, processing, failed, rejected) have `id: null`, `title: null`, `stepCount: 0`; link them through `documentId` (`/d/[documentId]`). `estimatedMinutes` is `null` when the manual gives none. Thumbnail: `/api/documents/<documentId>/pages/0/image`.

@@ -31,7 +31,7 @@ for (const scheme of ['light', 'dark'] as const) {
       const bg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
       expect(bg).toBe(scheme === 'dark' ? 'rgb(20, 19, 16)' : 'rgb(246, 243, 236)');
 
-      await page.screenshot({ path: `test-results/ui-gallery-${scheme}-${vp.name}.png`, fullPage: true });
+      await page.screenshot({ path: `test-results/ui-gallery-${scheme}-${vp.name}.png`, fullPage: true, animations: 'disabled' });
       await context.close();
     });
   }

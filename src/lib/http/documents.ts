@@ -20,6 +20,8 @@ export interface DocumentView {
   guideId: string | null;
   /** How many times the pipeline has started for the latest job (0 before the first). */
   attempts: number;
+  /** How many times the user has pressed "Try again" (POST /retry) for this document. */
+  retryCount: number;
   error: { code: string; message: string } | null;
   title: string | null;
 }
@@ -48,6 +50,7 @@ export async function documentView(ctx: AppContext, doc: DocumentRecord): Promis
     pagesRendered: await countPages(ctx.db, doc.id),
     guideId: guide?.id ?? null,
     attempts: job?.attempts ?? 0,
+    retryCount: doc.retryCount,
     error,
     title: guide?.title ?? null,
   };

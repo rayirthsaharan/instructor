@@ -34,11 +34,14 @@ export async function listGuides(ctx: AppContext, session: SessionInfo): Promise
     let stepCount = 0;
     let estimatedMinutes: number | null = null;
     let percent = 0;
+    let currentStepTitle: string | null = null;
     if (row.guide && row.analysis && row.progress) {
       const guide = readStoredGuide({ guide: row.guide, document: row.document, analysis: row.analysis, progress: row.progress });
       stepCount = Object.keys(guide.steps).length;
       estimatedMinutes = guide.estimatedMinutes ?? null;
       percent = progressPercentage(guide, row.progress.completedStepIds);
+      const cur = row.progress.currentStepId;
+      currentStepTitle = (cur && getOwn(guide.steps, cur)?.title) || null;
     }
     out.push({
       id: row.guide?.id ?? null,
@@ -48,6 +51,7 @@ export async function listGuides(ctx: AppContext, session: SessionInfo): Promise
       estimatedMinutes,
       progress: {
         currentStepId: row.progress?.currentStepId ?? null,
+        currentStepTitle,
         completedCount: row.progress?.completedStepIds.length ?? 0,
         percent,
       },

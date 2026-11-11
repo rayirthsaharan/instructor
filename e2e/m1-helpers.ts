@@ -11,6 +11,7 @@ export type Doc = {
   error: { code: string; message: string } | null;
   title: string | null;
   attempts?: number;
+  retryCount?: number;
 };
 
 export type GuideRow = {
@@ -19,7 +20,7 @@ export type GuideRow = {
   title: string | null;
   stepCount: number;
   estimatedMinutes: number | null;
-  progress: { currentStepId: string | null; completedCount: number; percent: number };
+  progress: { currentStepId: string | null; currentStepTitle?: string | null; completedCount: number; percent: number };
   status: 'queued' | 'processing' | 'ready' | 'failed' | 'rejected';
   updatedAt: number;
   thumbnailPage: number | null;

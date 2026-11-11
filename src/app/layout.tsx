@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { Atkinson_Hyperlegible_Mono, Atkinson_Hyperlegible_Next, Bricolage_Grotesque } from 'next/font/google';
+import { RouteFocus } from '@/components/features/route-focus';
 import { ToastProvider } from '@/components/ui';
 import './globals.css';
 
@@ -44,7 +45,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     // suppressHydrationWarning: a manual theme switch sets data-theme on <html> on the client.
     <html lang="en" className={`${display.variable} ${text.variable} ${label.variable}`} suppressHydrationWarning>
       <body>
-        <ToastProvider>{children}</ToastProvider>
+        <ToastProvider>
+          <RouteFocus />
+          {children}
+        </ToastProvider>
       </body>
     </html>
   );

@@ -14,8 +14,10 @@ export interface DocumentState {
   guideId: string | null;
   error: { code: string; message: string } | null;
   title: string | null;
-  /** Runs so far; optional until the API reports it. */
+  /** Pipeline runs so far, including the server's own automatic retries. Not used for copy. */
   attempts?: number;
+  /** Times the user pressed "Try again" (POST /retry). Drives the repeated-failure copy. */
+  retryCount?: number;
 }
 
 export interface GuideSummary {
@@ -25,7 +27,7 @@ export interface GuideSummary {
   title: string | null;
   stepCount: number;
   estimatedMinutes: number | null;
-  progress: { currentStepId: string | null; completedCount: number; percent: number };
+  progress: { currentStepId: string | null; currentStepTitle?: string | null; completedCount: number; percent: number };
   status: DocumentStatus;
   /** Epoch milliseconds (ISO strings are tolerated). */
   updatedAt: number | string;

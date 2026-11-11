@@ -20,13 +20,13 @@ for (const scheme of ['light', 'dark'] as const) {
         await expect(page.getByText('or drop them here')).toBeVisible();
       }
       expect(await noHorizontalScroll(page)).toBeLessThanOrEqual(0);
-      await page.screenshot({ path: `${SHOT}/capture-empty-${vp}-${scheme}.png`, fullPage: true });
+      await page.screenshot({ path: `${SHOT}/capture-empty-${vp}-${scheme}.png`, fullPage: true, animations: 'disabled' });
 
       // Error banner above the zone; the zone stays usable
       await page.getByTestId('file-input').setInputFiles({ name: 'notes.txt', mimeType: 'text/plain', buffer: Buffer.from('hi') });
       await expect(page.getByText("That file type isn't supported. Use a PDF, or JPEG, PNG, HEIC or WebP photos.")).toBeVisible();
       await expect(page.getByTestId('dropzone')).toBeVisible();
-      await page.screenshot({ path: `${SHOT}/capture-error-${vp}-${scheme}.png`, fullPage: true });
+      await page.screenshot({ path: `${SHOT}/capture-error-${vp}-${scheme}.png`, fullPage: true, animations: 'disabled' });
 
       // Photos
       await page.getByTestId('file-input').setInputFiles([1, 2, 3, 4, 5, 6, 7].map(photoFile));
@@ -34,7 +34,7 @@ for (const scheme of ['light', 'dark'] as const) {
       await expect(page.getByText('7 pages')).toBeVisible();
       await expect(page.getByRole('button', { name: 'Analyse manual' })).toBeEnabled();
       expect(await noHorizontalScroll(page)).toBeLessThanOrEqual(0);
-      await page.screenshot({ path: `${SHOT}/capture-photos-${vp}-${scheme}.png`, fullPage: true });
+      await page.screenshot({ path: `${SHOT}/capture-photos-${vp}-${scheme}.png`, fullPage: true, animations: 'disabled' });
 
       // PDF
       await page.getByRole('button', { name: /Remove page/ }).first().waitFor();
@@ -52,7 +52,7 @@ test('capture: PDF row, remove with Undo', async ({ browser }) => {
   await expect(row).toContainText('cooler-manual.pdf');
   await expect(row).toContainText('3.0 MB');
   await expect(page.getByText('1 PDF - 3.0 MB')).toBeVisible();
-  await page.screenshot({ path: `${SHOT}/capture-pdf-768-light.png`, fullPage: true });
+  await page.screenshot({ path: `${SHOT}/capture-pdf-768-light.png`, fullPage: true, animations: 'disabled' });
   await page.getByRole('button', { name: 'Remove cooler-manual.pdf' }).click();
   await expect(page.getByTestId('dropzone')).toBeVisible();
   await page.getByRole('button', { name: 'Undo' }).click();
@@ -126,7 +126,7 @@ test('capture: replacing photos with a PDF and a PDF with photos asks first', as
   await expect(page.getByTestId('pdf-row')).toBeVisible();
   await page.getByTestId('file-input').setInputFiles(photoFile(9));
   await expect(page.getByRole('dialog', { name: 'Replace the PDF with these photos?' })).toBeVisible();
-  await page.screenshot({ path: `${SHOT}/capture-replace-768-light.png` });
+  await page.screenshot({ path: `${SHOT}/capture-replace-768-light.png`, animations: 'disabled' });
   await page.getByRole('dialog').getByRole('button', { name: 'Replace' }).click();
   await expect(page.getByTestId('page-tile')).toHaveCount(1);
   await context.close();
@@ -184,6 +184,10 @@ test('upload: success replaces history with /d/<id>, files sent in order', async
   await context.close();
 });
 
+const bannerLabels: Record<string, string> = {
+  unsupported_type: 'FILE TYPE NOT SUPPORTED', too_large: 'FILE TOO LARGE', too_many_pages: 'TOO MANY PAGES', encrypted_pdf: 'PDF IS LOCKED',
+  corrupt_file: "COULDN'T OPEN FILE", empty: 'UPLOAD FAILED', rate_limited: 'TOO MANY UPLOADS',
+};
 const serverErrors: Array<[string, number, string, string]> = [
   ['unsupported_type', 415, 'x', "That file type isn't supported. Use a PDF, or JPEG, PNG, HEIC or WebP photos."],
   ['too_large', 413, 'x', "That's over the 40 MB limit. Try a smaller PDF, or photos of the pages instead."],
@@ -191,8 +195,8 @@ const serverErrors: Array<[string, number, string, string]> = [
   ['encrypted_pdf', 422, 'x', 'This PDF is locked with a password. Remove the password, or take photos of the pages.'],
   ['corrupt_file', 422, 'x', "We couldn't open that file. It may be damaged. Try downloading it again or use photos."],
   ['empty', 400, 'x', 'Add a PDF or at least one page photo.'],
-  ['rate_limited', 429, 'x', 'Too many uploads right now. Wait a few minutes and try again.'],
-  ['rate_limited', 503, 'x', 'Too many uploads right now. Wait a few minutes and try again.'],
+  ['rate_limited', 429, 'x', 'Too many uploads in a short time. Wait a little, then try again.'],
+  ['rate_limited', 503, 'x', 'Too many uploads in a short time. Wait a little, then try again.'],
   ['quota_exceeded', 429, 'x', "You've used this month's free guides."],
 ];
 for (const [code, status, serverMessage, copy] of serverErrors) {
@@ -206,11 +210,14 @@ for (const [code, status, serverMessage, copy] of serverErrors) {
     await page.getByRole('button', { name: 'Analyse manual' }).click();
     await expect(page.getByText(copy, { exact: true }).first()).toBeVisible();
     await expect(page).toHaveURL(/\/new$/);
+    const bannerLabel = bannerLabels[code];
+    if (bannerLabel) await expect(page.getByRole('main').getByText(bannerLabel, { exact: true })).toBeVisible();
+    else await expect(page.getByText('Problem', { exact: true })).toHaveCount(0);
     await expect(page.getByTestId('pdf-row')).toBeVisible();
     if (code === 'quota_exceeded') await expect(page.getByRole('button', { name: 'Analyse manual' })).toBeDisabled();
     else await expect(page.getByRole('button', { name: 'Analyse manual' })).toBeEnabled();
     if (code === 'rate_limited') await expect(page.getByRole('main').getByRole('button', { name: 'Try again' })).toBeVisible();
-    if (code === 'quota_exceeded') await page.screenshot({ path: `${SHOT}/capture-limit-768-light.png`, fullPage: true });
+    if (code === 'quota_exceeded') await page.screenshot({ path: `${SHOT}/capture-limit-768-light.png`, fullPage: true, animations: 'disabled' });
     await context.close();
   });
 }
@@ -226,7 +233,7 @@ test('upload network failure: "The upload stopped" + Try again keeps the files a
   await page.getByRole('button', { name: 'Analyse manual' }).click();
   await expect(page.getByText('The upload stopped. Check your connection.')).toBeVisible();
   await expect(page.getByTestId('page-tile')).toHaveCount(2);
-  await page.screenshot({ path: `${SHOT}/capture-network-375-light.png`, fullPage: true });
+  await page.screenshot({ path: `${SHOT}/capture-network-375-light.png`, fullPage: true, animations: 'disabled' });
   api.uploadAbort = false;
   await page.getByRole('main').getByRole('button', { name: 'Try again' }).click();
   await expect(page).toHaveURL(/\/d\/doc1$/);
@@ -252,5 +259,38 @@ test('"Start again" banner from ?again=', async ({ browser }) => {
   await expect(page.getByText('Add every page again, including pages 7, 8 and 12. Your current guide stays in your library.')).toBeVisible();
   await page.goto('/new');
   await expect(page.getByText(/Add every page again/)).toHaveCount(0);
+  await context.close();
+});
+
+test('the photo tip is hidden once a PDF is selected', async ({ browser }) => {
+  for (const vp of ['375', '1280'] as const) {
+    const { page, context } = await newPage(browser, vp);
+    await new FakeApi().install(page);
+    await page.goto('/new');
+    await page.getByTestId('file-input').setInputFiles(pdfFile());
+    await expect(page.getByTestId('pdf-row')).toBeVisible();
+    await expect(page.getByText('Photograph each page flat, in good light, one page per photo.')).toHaveCount(0);
+    await context.close();
+  }
+});
+
+test('focus: route change lands on the h1; removing a tile focuses a neighbour; removing the last file focuses the dropzone', async ({ browser }) => {
+  const { page, context } = await newPage(browser, '375');
+  await new FakeApi().install(page);
+  await page.goto('/');
+  await page.getByRole('link', { name: 'Add a manual' }).first().click();
+  await expect(page).toHaveURL(/\/new$/);
+  await expect(page.getByRole('heading', { name: 'Add your manual', level: 1 })).toBeFocused();
+
+  await page.getByTestId('file-input').setInputFiles([1, 2, 3].map(photoFile));
+  await expect(page.getByTestId('page-tile')).toHaveCount(3);
+  await page.getByRole('button', { name: 'Remove page 2' }).focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByTestId('page-tile')).toHaveCount(2);
+  await expect(page.getByRole('button', { name: 'Remove page 2' })).toBeFocused(); // the next tile moved up
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('button', { name: 'Remove page 1' })).toBeFocused(); // no next tile: the previous one
+  await page.keyboard.press('Enter');
+  await expect(page.getByTestId('dropzone').getByRole('button').first()).toBeFocused();
   await context.close();
 });

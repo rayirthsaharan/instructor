@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { cn } from './cn';
 import { Icon } from './Icon';
 import { IconButton } from './IconButton';
@@ -35,8 +35,29 @@ export function PageThumbnailGrid({
 }) {
   const [dragFrom, setDragFrom] = useState<number | null>(null);
   const [dragOver, setDragOver] = useState<number | null>(null);
+  const listRef = useRef<HTMLUListElement>(null);
+  const removedAt = useRef<number | null>(null);
+
+  // After a removal the focused button is gone: focus the next tile's remove button, else the previous one,
+  // else the "Add more pages" tile.
+  useEffect(() => {
+    const at = removedAt.current;
+    if (at === null) return;
+    removedAt.current = null;
+    const list = listRef.current;
+    if (!list) return;
+    const tileEls = Array.from(list.querySelectorAll<HTMLElement>('[data-testid="page-tile"]'));
+    const tile = tileEls[at] ?? tileEls[at - 1];
+    const target = tile?.querySelector<HTMLElement>('button[aria-label^="Remove page"]') ?? list.querySelector<HTMLElement>('button:not([aria-label])');
+    target?.focus();
+  }, [tiles.length]);
+
   return (
-    <ul className="grid grid-cols-3 gap-3 md:grid-cols-5 lg:grid-cols-6" aria-label="Page photos, in reading order">
+    <ul
+      ref={listRef}
+      className="grid grid-cols-3 gap-3 md:grid-cols-5 lg:grid-cols-6"
+      aria-label="Page photos, in reading order"
+    >
       {tiles.map((t, i) => (
         <li
           key={t.id}
@@ -87,7 +108,10 @@ export function PageThumbnailGrid({
               <IconButton
                 icon="close"
                 aria-label={`Remove page ${i + 1}`}
-                onClick={() => onRemove(i)}
+                onClick={() => {
+                  removedAt.current = i;
+                  onRemove(i);
+                }}
                 disabled={disabled}
                 className="absolute right-0 top-0 bg-surface/90"
               />

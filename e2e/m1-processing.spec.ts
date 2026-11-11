@@ -19,17 +19,17 @@ for (const scheme of ['light', 'dark'] as const) {
       await expect(page.getByText('Page 8 of 20')).toBeVisible();
       await expect(page.getByText('This usually takes about a minute. You can leave this page - we\'ll keep going.')).toBeVisible();
       expect(await noHorizontalScroll(page)).toBeLessThanOrEqual(0);
-      await page.screenshot({ path: `${SHOT}/processing-running-${vp}-${scheme}.png`, fullPage: true });
+      await page.screenshot({ path: `${SHOT}/processing-running-${vp}-${scheme}.png`, fullPage: true, animations: 'disabled' });
 
       api.docs['bad'] = doc({ id: 'bad', status: 'failed', stage: 'verify', error: { code: 'verify_failed', message: 'x' } });
       await page.goto('/d/bad');
       await expect(page.getByText("We built the steps but couldn't verify them against the original, so we haven't shown them.")).toBeVisible();
-      await page.screenshot({ path: `${SHOT}/processing-failed-${vp}-${scheme}.png`, fullPage: true });
+      await page.screenshot({ path: `${SHOT}/processing-failed-${vp}-${scheme}.png`, fullPage: true, animations: 'disabled' });
 
       api.docs['rej'] = doc({ id: 'rej', status: 'rejected', stage: null, error: { code: 'not_a_manual', message: 'x' } });
       await page.goto('/d/rej');
       await expect(page.getByRole('heading', { name: "This doesn't look like instructions" })).toBeVisible();
-      await page.screenshot({ path: `${SHOT}/processing-rejected-${vp}-${scheme}.png`, fullPage: true });
+      await page.screenshot({ path: `${SHOT}/processing-rejected-${vp}-${scheme}.png`, fullPage: true, animations: 'disabled' });
 
       // Loading skeleton while the first answer is on its way
       await page.route('**/api/documents/slow', async (r) => {
@@ -38,7 +38,7 @@ for (const scheme of ['light', 'dark'] as const) {
       });
       await page.goto('/d/slow');
       await expect(page.getByRole('status').getByText('Loading')).toBeAttached();
-      await page.screenshot({ path: `${SHOT}/processing-loading-${vp}-${scheme}.png`, fullPage: true });
+      await page.screenshot({ path: `${SHOT}/processing-loading-${vp}-${scheme}.png`, fullPage: true, animations: 'disabled' });
       await context.close();
     });
   }
@@ -66,7 +66,7 @@ test('stages follow the real state and are announced politely', async ({ browser
   api.docs['j'] = doc({ id: 'j', stage: 'verify', pagesRendered: 12, pageCount: 12 });
   await expect(page.getByText('Comparing numbers and part labels with the original')).toBeVisible({ timeout: 8000 });
   expect(await stageText(page)).toEqual(['done:Reading pages', 'done:Finding parts and building steps', 'active:Double-checking', 'pending:Finishing']);
-  await page.screenshot({ path: `${SHOT}/processing-verify-768-light.png`, fullPage: true });
+  await page.screenshot({ path: `${SHOT}/processing-verify-768-light.png`, fullPage: true, animations: 'disabled' });
   await context.close();
 });
 
@@ -82,7 +82,7 @@ test('ready: redirects (replace) to /g/<guideId> and the placeholder shows the t
   await expect(page).toHaveURL(/\/g\/g7$/, { timeout: 8000 });
   await expect(page.getByRole('heading', { name: 'Orchard garden shed assembly' })).toBeVisible();
   await expect(page.getByText('Guide overview coming next')).toBeVisible();
-  await page.screenshot({ path: `${SHOT}/guide-placeholder-375-light.png` });
+  await page.screenshot({ path: `${SHOT}/guide-placeholder-375-light.png`, animations: 'disabled' });
   // The Processing URL is not left in history
   await page.goBack();
   await expect(page).not.toHaveURL(/\/d\/j$/);
@@ -116,6 +116,8 @@ test('failed: stage-specific message, failed marker, Try again resumes; third fa
   expect(await stageText(page)).toEqual(['failed:Reading pages', 'pending:Finding parts and building steps', 'pending:Double-checking', 'pending:Finishing']);
   await expect(page.getByRole('link', { name: 'Use a different file' })).toHaveAttribute('href', '/new');
 
+  await expect(page.getByRole('heading', { name: "We couldn't finish your guide", level: 1 })).toBeVisible();
+
   // Try again -> job runs
   api.docs['f'] = doc({ id: 'f', stage: 'render' });
   await page.getByRole('button', { name: 'Try again' }).click();
@@ -123,15 +125,29 @@ test('failed: stage-specific message, failed marker, Try again resumes; third fa
   await expect(page.getByTestId('state-processing')).toHaveAttribute('data-status', 'processing');
 
   // Fails in analyse after the first retry: finding-parts copy, retry still offered
-  api.docs['f'] = doc({ id: 'f', status: 'failed', stage: 'analyse', attempts: 2, error: { code: 'x', message: 'x' } });
+  api.docs['f'] = doc({ id: 'f', status: 'failed', stage: 'analyse', attempts: 3, retryCount: 1, error: { code: 'x', message: 'x' } });
   await expect(page.getByText("We couldn't build a guide from this manual. This is on our side.", { exact: true })).toBeVisible({ timeout: 8000 });
   expect((await stageText(page))[0]).toBe('done:Reading pages');
   await page.getByRole('button', { name: 'Try again' }).click();
-  api.docs['f'] = doc({ id: 'f', status: 'failed', stage: 'analyse', attempts: 3, error: { code: 'x', message: 'x' } });
+  api.docs['f'] = doc({ id: 'f', status: 'failed', stage: 'analyse', attempts: 3, retryCount: 2, error: { code: 'x', message: 'x' } });
   await expect(page.getByText(/It's still not working\. Your manual is saved; try again later\./)).toBeVisible({ timeout: 8000 });
   await expect(page.getByRole('button', { name: 'Try again' })).toHaveCount(0);
   await expect(page.getByRole('link', { name: 'Back to library' })).toBeVisible();
-  await page.screenshot({ path: `${SHOT}/processing-failed-repeated-768-light.png`, fullPage: true });
+  await page.screenshot({ path: `${SHOT}/processing-failed-repeated-768-light.png`, fullPage: true, animations: 'disabled' });
+  await context.close();
+});
+
+test('a publish-stage failure uses the same failed title and never "Reading your manual"', async ({ browser }) => {
+  const { page, context } = await newPage(browser, '375');
+  const api = new FakeApi();
+  api.docs['p'] = doc({ id: 'p', status: 'failed', stage: 'publish', attempts: 3, retryCount: 0, error: { code: 'x', message: 'x' } });
+  await api.install(page);
+  await page.goto('/d/p');
+  await expect(page.getByRole('heading', { name: "We couldn't finish your guide", level: 1 })).toBeVisible();
+  await expect(page.getByText('Reading your manual')).toHaveCount(0);
+  // The server's own 3 attempts do not count as the user's repeated failure.
+  await expect(page.getByRole('button', { name: 'Try again' })).toBeVisible();
+  await expect(page.getByText(/still not working/)).toHaveCount(0);
   await context.close();
 });
 
@@ -179,7 +195,7 @@ test('document not found', async ({ browser }) => {
   await expect(page.getByRole('heading', { name: "This manual isn't on this device." })).toBeVisible();
   await page.getByRole('link', { name: 'Back to library' }).click();
   await expect(page).toHaveURL(/\/$/);
-  await page.screenshot({ path: `${SHOT}/processing-notfound-375-light.png` });
+  await page.screenshot({ path: `${SHOT}/processing-notfound-375-light.png`, animations: 'disabled' });
   await context.close();
 });
 
@@ -192,7 +208,7 @@ test('connection lost: reconnecting banner, then silent recovery', async ({ brow
   await expect(page.getByTestId('state-processing')).toBeVisible();
   api.docFail = true;
   await expect(page.getByText('Reconnecting... your manual is still being read.')).toBeVisible({ timeout: 10000 });
-  await page.screenshot({ path: `${SHOT}/processing-reconnecting-768-light.png`, fullPage: true });
+  await page.screenshot({ path: `${SHOT}/processing-reconnecting-768-light.png`, fullPage: true, animations: 'disabled' });
   api.docFail = false;
   await expect(page.getByText('Reconnecting...')).toHaveCount(0, { timeout: 15000 });
   await context.close();

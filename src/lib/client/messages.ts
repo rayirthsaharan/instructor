@@ -12,7 +12,7 @@ export const MSG = {
   corrupt: "We couldn't open that file. It may be damaged. Try downloading it again or use photos.",
   network: 'The upload stopped. Check your connection.',
   limit: "You've used this month's free guides.",
-  rateLimited: 'Too many uploads right now. Wait a few minutes and try again.',
+  rateLimited: 'Too many uploads in a short time. Wait a little, then try again.',
   empty: 'Add a PDF or at least one page photo.',
   oneKind: 'Add one PDF, or photos of the pages - not both.',
   onePdf: 'Add one PDF at a time.',
@@ -25,6 +25,8 @@ export function tooManyPages(pages?: number | null): string {
 }
 
 export interface MappedUploadError {
+  /** Error banner label (USER_FLOWS 3); absent for the info banner. */
+  label?: string;
   message: string;
   /** Info banner (not an error) for the free-limit case. */
   kind: 'error' | 'info';
@@ -36,28 +38,37 @@ export interface MappedUploadError {
 export function uploadErrorMessage(code: string, serverMessage = ''): MappedUploadError {
   switch (code) {
     case 'unsupported_type':
-      return { message: MSG.unsupported, kind: 'error', retry: false };
+      return { label: 'FILE TYPE NOT SUPPORTED', message: MSG.unsupported, kind: 'error', retry: false };
     case 'too_large':
-      return { message: MSG.tooLarge, kind: 'error', retry: false };
+      return { label: 'FILE TOO LARGE', message: MSG.tooLarge, kind: 'error', retry: false };
     case 'too_many_pages': {
       const n = /(\d+)\s*pages?/i.exec(serverMessage);
-      return { message: tooManyPages(n ? Number(n[1]) : null), kind: 'error', retry: false };
+      return { label: 'TOO MANY PAGES', message: tooManyPages(n ? Number(n[1]) : null), kind: 'error', retry: false };
     }
     case 'encrypted_pdf':
-      return { message: MSG.encrypted, kind: 'error', retry: false };
+      return { label: 'PDF IS LOCKED', message: MSG.encrypted, kind: 'error', retry: false };
     case 'corrupt_file':
-      return { message: MSG.corrupt, kind: 'error', retry: false };
+      return { label: "COULDN'T OPEN FILE", message: MSG.corrupt, kind: 'error', retry: false };
     case 'empty':
-      return { message: MSG.empty, kind: 'error', retry: false };
+      return { label: 'UPLOAD FAILED', message: MSG.empty, kind: 'error', retry: false };
     case 'rate_limited':
-      return { message: MSG.rateLimited, kind: 'error', retry: true };
+      return { label: 'TOO MANY UPLOADS', message: MSG.rateLimited, kind: 'error', retry: true };
     case 'quota_exceeded':
       return { message: MSG.limit, kind: 'info', retry: false };
     case 'network':
-      return { message: MSG.network, kind: 'error', retry: true };
+      return { label: 'UPLOAD STOPPED', message: MSG.network, kind: 'error', retry: true };
     default:
-      return { message: 'The upload didn\'t go through. Try again.', kind: 'error', retry: true };
+      return { label: 'UPLOAD FAILED', message: "The upload didn't go through. Try again.", kind: 'error', retry: true };
   }
+}
+
+/** Banner label for a client-side selection error message (same labels as the server codes). */
+export function errorLabel(message: string): string {
+  if (message === MSG.unsupported) return 'FILE TYPE NOT SUPPORTED';
+  if (message === MSG.tooLarge) return 'FILE TOO LARGE';
+  if (message === MSG.corrupt || message === MSG.heic) return "COULDN'T OPEN FILE";
+  if (message.endsWith(`The limit is ${MAX_PAGES}. If your product is one section of it, upload just those pages.`)) return 'TOO MANY PAGES';
+  return 'UPLOAD FAILED';
 }
 
 /** Row of the four-row stage list (DS 7.14). */
@@ -79,9 +90,12 @@ export function stageRow(stage: DocumentStage | null): number {
   }
 }
 
-/** Section 10.3. `repeated` = third failure. */
-export function failureMessage(stage: DocumentStage | null, code: string | undefined, attempts: number | null | undefined): { message: string; repeated: boolean; retryAllowed: boolean; differentFile: boolean } {
-  const repeated = (attempts ?? 0) >= 3;
+/**
+ * Section 10.3. `repeated` = third failure = the user has already retried twice. The server's own automatic
+ * attempts (`attempts`) say nothing about what the user has seen, so that argument is ignored.
+ */
+export function failureMessage(stage: DocumentStage | null, code: string | undefined, _attempts?: number | null, retryCount?: number | null): { message: string; repeated: boolean; retryAllowed: boolean; differentFile: boolean } {
+  const repeated = (retryCount ?? 0) >= 2;
   let message: string;
   if (code && /unreadable/.test(code)) {
     message = "We couldn't read these pages. Try photos in brighter light, with each page flat and filling the frame.";

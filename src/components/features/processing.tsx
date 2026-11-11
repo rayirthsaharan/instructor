@@ -73,7 +73,7 @@ function Loading() {
 function Failed({ doc, onRetried }: { doc: DocumentState; onRetried: () => void }) {
   const [busy, setBusy] = useState(false);
   const [retryError, setRetryError] = useState(false);
-  const f = failureMessage(doc.stage, doc.error?.code, doc.attempts);
+  const f = failureMessage(doc.stage, doc.error?.code, doc.attempts, doc.retryCount);
 
   const retry = async () => {
     setBusy(true);
@@ -137,7 +137,7 @@ export function ProcessingScreen() {
     <main className={column} data-testid="state-processing" data-status={doc.status}>
       <div className="flex flex-col gap-6 lg:flex-row lg:items-center">
         <Thumb documentId={doc.id} />
-        <h1 className="type-display-lg">Reading your manual</h1>
+        <h1 className="type-display-lg">{failed ? "We couldn't finish your guide" : 'Reading your manual'}</h1>
       </div>
       {reconnecting && (
         <div role="status">

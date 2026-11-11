@@ -21,6 +21,8 @@ export const documents = sqliteTable('documents', {
   originalFilesJson: text('original_files_json').notNull().default('[]'),
   errorCode: text('error_code'),
   errorMessage: text('error_message'),
+  // Number of user-initiated retries (POST /retry); the UI's "still not working" copy depends on it.
+  retryCount: integer('retry_count').notNull().default(0),
   createdAt: integer('created_at').notNull(),
 }, (t) => [index('documents_session_idx').on(t.sessionId), index('documents_hash_idx').on(t.contentHash)]);
 

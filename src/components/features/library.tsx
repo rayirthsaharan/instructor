@@ -67,10 +67,10 @@ function LibraryCard({ g, onDelete }: { g: GuideSummary; onDelete: (g: GuideSumm
   const title = g.title?.trim() || 'New manual';
   const ready = state !== 'processing' && state !== 'failed' && !!g.id;
   return (
-    <li className="relative" data-testid="guide-card" data-state={state}>
+    <li className="relative flex" data-testid="guide-card" data-state={state}>
       <Link
         href={guideHref(g)}
-        className="flex min-h-24 items-center gap-4 rounded-md border border-line bg-surface p-4 pr-14 text-ink no-underline t-fast hover:border-ink-subtle active:bg-surface-sunken lg:flex-col lg:items-stretch lg:p-5 lg:pr-5"
+        className="flex min-h-24 flex-1 items-center gap-4 rounded-md border border-line bg-surface p-4 pr-14 text-ink no-underline t-fast hover:border-ink-subtle active:bg-surface-sunken lg:flex-col lg:items-stretch lg:p-5 lg:pr-5"
       >
         <Thumb g={g} className="h-[85px] w-16 shrink-0 lg:aspect-[3/4] lg:h-auto lg:w-32" />
         <div className="min-w-0 flex-1">
@@ -97,7 +97,7 @@ function ContinueHero({ g }: { g: GuideSummary }) {
   return (
     <section aria-labelledby="continue-h" className="lg:col-span-8">
       <Card
-        className="grid grid-cols-[5rem_1fr] content-start gap-x-4 gap-y-4 md:grid-cols-[10rem_1fr] md:gap-x-6 lg:p-6"
+        className="grid grid-cols-[5rem_1fr] content-start gap-x-4 gap-y-4 md:grid-cols-[10rem_1fr] md:grid-rows-[auto_1fr] md:gap-x-6 lg:p-6"
         data-testid="continue-hero"
       >
         <PageImage
@@ -110,8 +110,12 @@ function ContinueHero({ g }: { g: GuideSummary }) {
           <h2 id="continue-h" className="type-display-md line-clamp-3">
             {title}
           </h2>
+          <p className="type-body-sm mt-1 text-ink-muted" data-testid="hero-step">
+            Step {current} of {g.stepCount}
+            {g.progress.currentStepTitle ? ` - ${g.progress.currentStepTitle}` : ''}
+          </p>
         </div>
-        <div className="col-span-2 flex flex-col gap-4 md:col-span-1 md:self-end">
+        <div className="col-span-2 flex flex-col gap-4 md:col-span-1 md:self-start">
           <SegmentedProgress
             phases={[{ steps: g.stepCount }]}
             current={current}

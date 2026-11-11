@@ -19,7 +19,7 @@ import { ApiError, createDocument } from '@/lib/client/api';
 import { takePendingFiles } from '@/lib/client/handoff';
 import { convertHeicToJpeg } from '@/lib/client/heic';
 import { useCoarsePointer, useIsDesktop } from '@/lib/client/hooks';
-import { MSG, pageList, uploadErrorMessage, type MappedUploadError } from '@/lib/client/messages';
+import { errorLabel, MSG, pageList, uploadErrorMessage, type MappedUploadError } from '@/lib/client/messages';
 import { classifyFile, formatBytes, insertAt, move, planAdd, type AddPlan } from '@/lib/client/selection';
 import { IconLink, pageGutters } from './common';
 
@@ -108,7 +108,7 @@ export function CaptureScreen({ againPages = [] }: { againPages?: number[] }) {
         const jpeg = await convertHeicToJpeg(it.file);
         if (!jpeg) {
           setItems((prev) => prev.filter((p) => p.id !== it.id));
-          setProblems([{ message: MSG.heic, kind: 'error', retry: false }]);
+          setProblems([{ label: 'COULDN\'T OPEN FILE', message: MSG.heic, kind: 'error', retry: false }]);
           return;
         }
         const src = URL.createObjectURL(jpeg);
@@ -122,7 +122,7 @@ export function CaptureScreen({ againPages = [] }: { againPages?: number[] }) {
       if (files.length === 0) return;
       const current = itemsRef.current;
       const plan = planAdd(current.map((i) => i.file), files);
-      setProblems(plan.errors.map((message) => ({ message, kind: 'error', retry: false })));
+      setProblems(plan.errors.map((message) => ({ label: errorLabel(message), message, kind: 'error' as const, retry: false })));
       const accepted = plan.accepted.map((i) => files[i]).filter((f): f is File => !!f);
       if (accepted.length === 0) return;
       if (plan.replace) {
@@ -158,9 +158,18 @@ export function CaptureScreen({ againPages = [] }: { againPages?: number[] }) {
     };
   }, [addFiles]);
 
+  // Removing the last file brings the dropzone back: put focus on its first button (tiles handle their own focus).
+  const removedLast = useRef(false);
+  useEffect(() => {
+    if (!removedLast.current) return;
+    removedLast.current = false;
+    if (items.length === 0) document.querySelector<HTMLElement>('[data-testid="dropzone"] button')?.focus();
+  }, [items.length]);
+
   const removeAt = (index: number) => {
     const item = itemsRef.current[index];
     if (!item) return;
+    removedLast.current = itemsRef.current.length === 1;
     setItems((prev) => prev.filter((p) => p.id !== item.id));
     setProblems([]);
     toast.show({
@@ -229,7 +238,7 @@ export function CaptureScreen({ againPages = [] }: { againPages?: number[] }) {
               key={p.message}
               kind={p.kind === 'info' ? 'info' : 'error'}
               live
-              label={p.kind === 'info' ? undefined : 'Problem'}
+              label={p.kind === 'info' ? undefined : p.label}
               action={
                 p.retry ? (
                   <Button variant="quiet" onClick={upload}>
@@ -295,7 +304,7 @@ export function CaptureScreen({ againPages = [] }: { againPages?: number[] }) {
             />
           )}
 
-          <p className="type-body-sm text-ink-muted lg:hidden">{TIP}</p>
+          {!pdf && <p className="type-body-sm text-ink-muted lg:hidden">{TIP}</p>}
           <p role="status" className="sr-only">
             {announce}
           </p>
@@ -307,7 +316,7 @@ export function CaptureScreen({ againPages = [] }: { againPages?: number[] }) {
               What works best
             </h2>
             <ul className="type-body flex flex-col gap-2">
-              <li>{TIP}</li>
+              {!pdf && <li>{TIP}</li>}
               <li>Use one PDF, or photos of the pages - not both.</li>
               <li>Up to 60 pages and 40 MB.</li>
             </ul>

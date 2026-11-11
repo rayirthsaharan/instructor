@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { parseErrorResponse } from '@/lib/client/api';
-import { failureMessage, MSG, pageList, tooManyPages, uploadErrorMessage } from '@/lib/client/messages';
+import { errorLabel, failureMessage, MSG, pageList, tooManyPages, uploadErrorMessage } from '@/lib/client/messages';
 import { classifyFile, insertAt, move, planAdd } from '@/lib/client/selection';
 import { nextDelay, POLL_ERROR_MAX_MS, POLL_MAX_MS, POLL_MIN_MS } from '@/lib/client/poll';
 import { buildRows } from '@/lib/client/stages';
@@ -89,7 +89,7 @@ describe('error code mapping', () => {
     expect(uploadErrorMessage('encrypted_pdf').message).toBe(MSG.encrypted);
     expect(uploadErrorMessage('corrupt_file').message).toBe(MSG.corrupt);
     expect(uploadErrorMessage('empty').message).toBe(MSG.empty);
-    expect(uploadErrorMessage('rate_limited')).toMatchObject({ message: 'Too many uploads right now. Wait a few minutes and try again.', kind: 'error', retry: true });
+    expect(uploadErrorMessage('rate_limited')).toMatchObject({ message: 'Too many uploads in a short time. Wait a little, then try again.', label: 'TOO MANY UPLOADS', kind: 'error', retry: true });
     expect(uploadErrorMessage('quota_exceeded')).toMatchObject({ message: MSG.limit, kind: 'info', retry: false });
     expect(uploadErrorMessage('network')).toMatchObject({ message: MSG.network, retry: true });
   });
@@ -98,6 +98,16 @@ describe('error code mapping', () => {
       'This manual has 84 pages. The limit is 60. If your product is one section of it, upload just those pages.',
     );
     expect(uploadErrorMessage('too_many_pages', '').message).toContain('too many pages');
+  });
+  it('labels every upload error as in USER_FLOWS 3', () => {
+    const label = (c: string) => uploadErrorMessage(c).label;
+    expect(['unsupported_type', 'too_large', 'too_many_pages', 'encrypted_pdf', 'corrupt_file', 'rate_limited', 'network', 'whatever'].map(label)).toEqual([
+      'FILE TYPE NOT SUPPORTED', 'FILE TOO LARGE', 'TOO MANY PAGES', 'PDF IS LOCKED', "COULDN'T OPEN FILE", 'TOO MANY UPLOADS', 'UPLOAD STOPPED', 'UPLOAD FAILED',
+    ]);
+    expect(label('quota_exceeded')).toBeUndefined();
+    expect(errorLabel(MSG.tooLarge)).toBe('FILE TOO LARGE');
+    expect(errorLabel(tooManyPages(84))).toBe('TOO MANY PAGES');
+    expect(errorLabel(MSG.oneKind)).toBe('UPLOAD FAILED');
   });
   it('parses the contract error body and falls back safely', () => {
     const e = parseErrorResponse(415, { error: { code: 'unsupported_type', message: 'nope' } });
@@ -113,7 +123,10 @@ describe('error code mapping', () => {
       differentFile: false,
     });
     expect(failureMessage('verify', undefined, 2).message).toContain("couldn't verify them against the original");
-    const third = failureMessage('analyse', undefined, 3);
+    // The server's own attempts never trigger the repeated copy; only the user's retries do (third failure = 2 retries).
+    expect(failureMessage('analyse', undefined, 3, 0)).toMatchObject({ repeated: false, retryAllowed: true });
+    expect(failureMessage('analyse', undefined, 3, 1).repeated).toBe(false);
+    const third = failureMessage('analyse', undefined, 3, 2);
     expect(third.message.endsWith("It's still not working. Your manual is saved; try again later.")).toBe(true);
     expect(third.retryAllowed).toBe(false);
     expect(failureMessage('ingest', 'all_pages_unreadable', 1).message).toMatch(/brighter light/);

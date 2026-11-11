@@ -27,6 +27,7 @@ export interface DocumentRecord {
   status: DocumentStatus;
   errorCode: string | null;
   errorMessage: string | null;
+  retryCount: number;
   createdAt: number;
 }
 
@@ -42,6 +43,7 @@ const toDoc = (r: DocRow): DocumentRecord => ({
   status: r.status as DocumentStatus,
   errorCode: r.errorCode,
   errorMessage: r.errorMessage,
+  retryCount: r.retryCount,
   createdAt: r.createdAt,
 });
 
@@ -80,6 +82,7 @@ export async function insertDocument(db: Db, input: NewDocument, now: number): P
     status: 'queued',
     errorCode: null,
     errorMessage: null,
+    retryCount: 0,
     createdAt: now,
   };
   unwrap(db).insert(documents).values(row).run();
@@ -113,7 +116,7 @@ export async function updateDocument(db: Db, id: string, patch: DocumentPatch): 
 export async function requeueFailedDocument(db: Db, id: string): Promise<boolean> {
   const res = unwrap(db)
     .update(documents)
-    .set({ status: 'queued', errorCode: null, errorMessage: null })
+    .set({ status: 'queued', errorCode: null, errorMessage: null, retryCount: sql`${documents.retryCount} + 1` })
     .where(and(eq(documents.id, id), eq(documents.status, 'failed')))
     .run();
   return res.changes > 0;
