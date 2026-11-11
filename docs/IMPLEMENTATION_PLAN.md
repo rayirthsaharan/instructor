@@ -7,11 +7,12 @@ Each task names its owner agent. Every feature task runs the feature loop in `CL
 - [x] Agent definitions, CLAUDE.md, project docs (orchestrator)
 - [x] `scripts/validate-agents.mjs` (software-engineer -> qa-engineer)
 - [x] Product vision, MVP and PRD drafted (orchestrator)
-- [~] Design system and user flows v1 (ui-ux-designer)
-- [~] Architecture risk review (senior-engineer)
+- [x] Design system and user flows v1 (ui-ux-designer)
+- [x] Architecture risk review (senior-engineer) - amendments in ARCHITECTURE section 10
 - [!] **User approval of PRD scope and stack** - gate for M0
 
 ## M0. Foundations
+- [ ] Align USER_FLOWS with D-007/D-009 (ui-ux-designer)
 - [ ] Scaffold app: Next.js + TS + Tailwind + Drizzle/SQLite + Vitest + Playwright; commands documented (software-engineer)
 - [ ] Design tokens and UI primitives from DESIGN_SYSTEM.md (software-engineer; designer reviews)
 - [ ] Guide schema + validators + fixture guide for a sample manual (software-engineer)

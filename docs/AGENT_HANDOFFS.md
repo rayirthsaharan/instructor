@@ -19,3 +19,31 @@ Done: Five ranked risks and six Guide-contract fixes; verdict "proceed with chan
 How to verify: n/a (review).
 Open issues / risks: panel detection approach is unproven until the M0 spike.
 Next: software-engineer follows ARCHITECTURE section 10 when scaffolding; senior-engineer runs the region spike in M0.
+
+## H-002 | 2026-11-11 | from: software-engineer -> to: qa-engineer
+Task: Agent-definition validator (project tooling).
+Done: `scripts/validate-agents.mjs`, `scripts/validate-agents.test.mjs`.
+How to verify: `node scripts/validate-agents.mjs [dir]`; `node --test scripts/*.test.mjs` (a bare directory argument does not work on Node 22).
+Open issues / risks: parses flat `key: value` frontmatter only; not wired into CI.
+Next: QA review.
+
+## H-003 | 2026-11-11 | from: qa-engineer -> to: software-engineer
+Task: Review of the validator.
+Done: 13 tests added. Verdict PASS WITH MINOR ISSUES. Defects: (1) major - designer no-Bash check bypassable via omitted/quoted/list `tools`; (2) minor - directory named `*.md` throws EISDIR; (3) minor - unclosed frontmatter followed by a later `---` is misparsed; (4) minor - headings inside code fences count.
+How to verify: `node --test scripts/*.test.mjs`.
+Open issues / risks: 3 and 4 accepted as known limitations (low impact for a lint script).
+Next: engineer fixes 1-2.
+
+## H-004 | 2026-11-11 | from: software-engineer -> to: orchestrator
+Task: Fix QA defects 1-2.
+Done: `tools` required for ui-ux-designer and normalised before the Bash check; only regular files are read; the two todo tests are now real tests.
+How to verify: orchestrator re-ran both commands: validator exit 0, 24/24 tests pass.
+Open issues / risks: none.
+Next: closed.
+
+## H-005 | 2026-11-11 | from: ui-ux-designer -> to: software-engineer
+Task: Design system and user flows v1.
+Done: `docs/DESIGN_SYSTEM.md` ("Chalk Line" identity, tokens, components), `docs/USER_FLOWS.md` (all screens, edge flows).
+How to verify: n/a (spec). Contrast ratios were hand-calculated; five pairs are only bounded.
+Open issues / risks: engineer must add an automated contrast test over the token pairs and report any failure to the designer rather than adjusting values. USER_FLOWS must be aligned with D-007/D-009 (highlight pages, processing URL, no re-analyse button).
+Next: build tokens first, then Source visual (DS 7.10) and Step player (flows section 6).

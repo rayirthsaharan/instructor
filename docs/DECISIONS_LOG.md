@@ -23,3 +23,9 @@ Status: proposed (needs user approval), accepted, superseded by D-nnn.
 
 ## D-007 | 2026-11-11 | senior-engineer (review), orchestrator (accepted) | accepted, subject to D-005 approval
 **Architecture amendments before coding:** separate worker process with leased jobs; dedupe keyed by content hash + pipeline version with global sharing for PDFs only; code-detected diagram panels chosen by id instead of model-drawn boxes; chunked analysis merged in code; hardened upload rendering; Guide contract fixes (highlights carry a page, single source of step order, `sourceQuote`, stable step ids). Details: ARCHITECTURE section 10. Reason: each item is cheap now and expensive after data exists.
+
+## D-008 | 2026-11-11 | ui-ux-designer | proposed (part of design v1)
+**Visual identity "Chalk Line" and interaction rules.** (1) Manual pages are never recoloured or inverted, including dark mode; a "Marks" toggle hides overlays. (2) Highlights are corner brackets plus a dim wash, because regions are coarse. (3) Only the primary button completes a step; swipes and arrows only navigate. (4) Irreversible steps: notice on the prior step, banner, "I checked - done"; non-modal, no hold gesture. (5) An unchecked checklist or missing part never blocks Start; checklist items are `unchecked | have | missing`. (6) Only low confidence shows a marker. (7) Fonts: Bricolage Grotesque, Atkinson Hyperlegible Next and Mono.
+
+## D-009 | 2026-11-11 | orchestrator | accepted
+**Answers to the designer's open questions.** (a) Highlights carry their own page (D-007 item 6); do not assume `sources[0]`. (b) `warnings[].severity` is the enum `caution | warning`. (c) "Replace and re-analyse" for an unreadable page is out of MVP; the UI offers "Start again with new photos" instead. (d) Processing has its own resumable URL `/d/[documentId]` (not `/new` in place), so leaving and returning works; this overrides USER_FLOWS section 1 until the designer aligns it in M0.
