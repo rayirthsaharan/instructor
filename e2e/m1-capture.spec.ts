@@ -191,10 +191,12 @@ const serverErrors: Array<[string, number, string, string]> = [
   ['encrypted_pdf', 422, 'x', 'This PDF is locked with a password. Remove the password, or take photos of the pages.'],
   ['corrupt_file', 422, 'x', "We couldn't open that file. It may be damaged. Try downloading it again or use photos."],
   ['empty', 400, 'x', 'Add a PDF or at least one page photo.'],
-  ['rate_limited', 429, 'x', "You've used this month's free guides."],
+  ['rate_limited', 429, 'x', 'Too many uploads right now. Wait a few minutes and try again.'],
+  ['rate_limited', 503, 'x', 'Too many uploads right now. Wait a few minutes and try again.'],
+  ['quota_exceeded', 429, 'x', "You've used this month's free guides."],
 ];
 for (const [code, status, serverMessage, copy] of serverErrors) {
-  test(`upload error ${code} shows the specified message and keeps the form usable`, async ({ browser }) => {
+  test(`upload error ${code} (${status}) shows the specified message and keeps the form usable`, async ({ browser }) => {
     const { page, context } = await newPage(browser, '768');
     const api = new FakeApi();
     api.upload = { status, body: { error: { code, message: serverMessage } } };
@@ -205,9 +207,10 @@ for (const [code, status, serverMessage, copy] of serverErrors) {
     await expect(page.getByText(copy, { exact: true }).first()).toBeVisible();
     await expect(page).toHaveURL(/\/new$/);
     await expect(page.getByTestId('pdf-row')).toBeVisible();
-    if (code === 'rate_limited') await expect(page.getByRole('button', { name: 'Analyse manual' })).toBeDisabled();
+    if (code === 'quota_exceeded') await expect(page.getByRole('button', { name: 'Analyse manual' })).toBeDisabled();
     else await expect(page.getByRole('button', { name: 'Analyse manual' })).toBeEnabled();
-    if (code === 'rate_limited') await page.screenshot({ path: `${SHOT}/capture-limit-768-light.png`, fullPage: true });
+    if (code === 'rate_limited') await expect(page.getByRole('main').getByRole('button', { name: 'Try again' })).toBeVisible();
+    if (code === 'quota_exceeded') await page.screenshot({ path: `${SHOT}/capture-limit-768-light.png`, fullPage: true });
     await context.close();
   });
 }
@@ -227,5 +230,27 @@ test('upload network failure: "The upload stopped" + Try again keeps the files a
   api.uploadAbort = false;
   await page.getByRole('main').getByRole('button', { name: 'Try again' }).click();
   await expect(page).toHaveURL(/\/d\/doc1$/);
+  await context.close();
+});
+
+test('the photo tip is shown once on desktop and once on mobile', async ({ browser }) => {
+  for (const vp of ['375', '1280'] as const) {
+    const { page, context } = await newPage(browser, vp);
+    await new FakeApi().install(page);
+    await page.goto('/new');
+    await expect(page.getByText('Photograph each page flat, in good light, one page per photo.').locator('visible=true')).toHaveCount(1);
+    await context.close();
+  }
+});
+
+test('"Start again" banner from ?again=', async ({ browser }) => {
+  const { page, context } = await newPage(browser, '375');
+  await new FakeApi().install(page);
+  await page.goto('/new?again=7');
+  await expect(page.getByText('Add every page again, including page 7. Your current guide stays in your library.')).toBeVisible();
+  await page.goto('/new?again=12,7,8,x');
+  await expect(page.getByText('Add every page again, including pages 7, 8 and 12. Your current guide stays in your library.')).toBeVisible();
+  await page.goto('/new');
+  await expect(page.getByText(/Add every page again/)).toHaveCount(0);
   await context.close();
 });

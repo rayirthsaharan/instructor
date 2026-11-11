@@ -55,11 +55,13 @@ test('a document that is not a manual ends in the rejected state and can be remo
   await expect(card).toHaveCount(0);
 });
 
-test('a failing analysis ends in the failed state with Try again', async ({ page }) => {
+test('a failing analysis (3 attempts) ends in the failed state with the repeated-failure copy', async ({ page }) => {
+  test.setTimeout(120_000);
   await page.goto('/new');
   await page.getByTestId('file-input').setInputFiles(fx('mock-failure.pdf'));
   await page.getByRole('button', { name: 'Analyse manual' }).click();
-  await expect(page.getByRole('button', { name: 'Try again' })).toBeVisible({ timeout: 90_000 });
+  await expect(page.getByText(/It's still not working\. Your manual is saved; try again later\./)).toBeVisible({ timeout: 90_000 });
+  await expect(page.getByRole('link', { name: 'Back to library' })).toBeVisible();
   await expect(page.locator('[data-marker="failed"]')).toHaveCount(1);
 });
 

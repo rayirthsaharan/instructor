@@ -1,9 +1,9 @@
 import { getConfig } from '../config';
-import { ensureSession, getDb, sessionExists, type Db } from '../db';
+import { ensureSession, getDb, type Db } from '../db';
 import { createStorage } from '../storage';
 import type { StorageAdapter } from '../storage';
 import { DbJobQueue, type JobQueue } from '../jobs';
-import { SESSION_COOKIE, newSessionId, readCookie, sessionSecret, sessionSetCookie, verifySessionValue } from '../session/cookie';
+import { newSessionId, sessionCookieName, readCookie, sessionSecret, sessionSetCookie, verifySessionValue } from '../session/cookie';
 import { DbRateLimiter, type RateLimiter } from '../ratelimit';
 
 /** Everything a route handler needs. Tests build their own with an isolated database and storage. */
@@ -14,6 +14,10 @@ export interface AppContext {
   limiter: RateLimiter;
   secret: string;
   secureCookies: boolean;
+  /** Trusted reverse proxies in front of the app (config TRUST_PROXY_HOPS). 0 = no client IP is available. */
+  trustProxyHops: number;
+  /** Guides a session may create per 30 days; undefined = unlimited. */
+  freeGuidesPerMonth?: number;
   now: () => number;
 }
 
@@ -33,6 +37,8 @@ export function getAppContext(): AppContext {
       limiter: new DbRateLimiter(db),
       secret: sessionSecret(config.sessionSecret),
       secureCookies: config.isProduction,
+      trustProxyHops: config.trustProxyHops,
+      freeGuidesPerMonth: config.freeGuidesPerMonth,
       now: Date.now,
     };
   }
@@ -48,24 +54,26 @@ export interface SessionInfo {
   sessionId: string;
   /** Present only when a new cookie must be sent. */
   setCookie?: string;
+  /** Persists the session row. Called by the first write only, so cookieless reads leave nothing in the database. */
+  ensure: () => Promise<void>;
 }
 
-/** Reads the signed cookie; creates (and persists) a new session when absent or invalid. */
+/** Reads the signed cookie, or mints a new id (and cookie). Nothing is written to the database here. */
 export async function resolveSession(ctx: AppContext, req: Request): Promise<SessionInfo> {
-  const existing = verifySessionValue(readCookie(req.headers.get('cookie'), SESSION_COOKIE), ctx.secret);
-  if (existing) {
-    // A valid signature with no row (e.g. a reset database) is re-created rather than trusted blindly.
-    if (!(await sessionExists(ctx.db, existing))) await ensureSession(ctx.db, existing, ctx.now());
-    return { sessionId: existing };
-  }
-  const id = newSessionId();
-  await ensureSession(ctx.db, id, ctx.now());
-  return { sessionId: id, setCookie: sessionSetCookie(id, ctx.secret, ctx.secureCookies) };
+  const existing = verifySessionValue(readCookie(req.headers.get('cookie'), sessionCookieName(ctx.secureCookies)), ctx.secret);
+  const id = existing ?? newSessionId();
+  const ensure = () => ensureSession(ctx.db, id, ctx.now());
+  return { sessionId: id, ensure, ...(existing ? {} : { setCookie: sessionSetCookie(id, ctx.secret, ctx.secureCookies) }) };
 }
 
-/** First hop of the client IP. Behind a proxy this must be set by a trusted proxy; locally it falls back to "unknown". */
-export function clientIp(req: Request): string {
-  const fwd = req.headers.get('x-forwarded-for');
-  const first = fwd?.split(',')[0]?.trim();
-  return first && first.length <= 64 ? first : (req.headers.get('x-real-ip')?.trim().slice(0, 64) || 'unknown');
+/**
+ * The client IP, or undefined when none can be trusted. With `trustedHops` = 0 (default) forwarding headers are ignored
+ * entirely, because any client can send them. With N, the Nth entry from the right of X-Forwarded-For is used (the
+ * address the outermost trusted proxy saw).
+ */
+export function clientIp(req: Request, trustedHops: number): string | undefined {
+  if (trustedHops <= 0) return undefined;
+  const parts = (req.headers.get('x-forwarded-for') ?? '').split(',').map((p) => p.trim()).filter(Boolean);
+  const ip = parts[parts.length - trustedHops];
+  return ip && ip.length <= 64 ? ip : undefined;
 }

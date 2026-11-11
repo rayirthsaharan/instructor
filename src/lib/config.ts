@@ -17,6 +17,9 @@ const envSchema = z.object({
   AI_MODEL_CHAT: optionalString,
   WORKER_POLL_MS: z.preprocess(emptyToUndefined, z.coerce.number().int().min(10).max(3_600_000).default(1000)),
   SESSION_SECRET: optionalString,
+  RENDER_CHILD_PATH: optionalString,
+  TRUST_PROXY_HOPS: z.preprocess(emptyToUndefined, z.coerce.number().int().min(0).max(10).default(0)),
+  FREE_GUIDES_PER_MONTH: z.preprocess(emptyToUndefined, z.coerce.number().int().min(0).max(100000).optional()),
   MOCK_AI_DELAY_MS: z.preprocess(emptyToUndefined, z.coerce.number().int().min(0).max(120_000).default(0)),
 });
 
@@ -32,6 +35,12 @@ export interface AppConfig {
   workerPollMs: number;
   /** Artificial delay of the mock analysis so progress states are visible in local use. 0 in tests. */
   mockAiDelayMs: number;
+  /** Absolute path of the PDF render child script; undefined = resolved from the package root. */
+  renderChildPath?: string;
+  /** Number of trusted reverse proxies in front of the app. 0 = X-Forwarded-For and X-Real-IP are ignored entirely. */
+  trustProxyHops: number;
+  /** Guides a session may create per 30 days; undefined = unlimited. */
+  freeGuidesPerMonth?: number;
   /** Always set in production; may be undefined in development/test, where callers must generate an ephemeral one. */
   sessionSecret?: string;
 }
@@ -78,6 +87,9 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     aiModelChat: e.AI_MODEL_CHAT,
     workerPollMs: e.WORKER_POLL_MS,
     mockAiDelayMs: e.MOCK_AI_DELAY_MS,
+    renderChildPath: e.RENDER_CHILD_PATH,
+    trustProxyHops: e.TRUST_PROXY_HOPS,
+    freeGuidesPerMonth: e.FREE_GUIDES_PER_MONTH,
     sessionSecret: e.SESSION_SECRET,
   };
 }

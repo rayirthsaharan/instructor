@@ -1,6 +1,8 @@
 import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 
+/** Development name. In production (Secure cookies) the `__Host-` prefix is used: Secure, Path=/, no Domain. */
 export const SESSION_COOKIE = 'instructor_session';
+export const sessionCookieName = (secure: boolean) => (secure ? `__Host-${SESSION_COOKIE}` : SESSION_COOKIE);
 const MAX_AGE_SECONDS = 60 * 60 * 24 * 365;
 /** Used only outside production, where config allows SESSION_SECRET to be unset. Production refuses to start without a real one. */
 const DEV_SECRET = 'instructor-dev-only-session-secret-not-for-production';
@@ -51,7 +53,7 @@ export function sessionSecret(configured: string | undefined): string {
 
 /** Set-Cookie value: signed, httpOnly, SameSite=Lax, Secure in production. */
 export function sessionSetCookie(id: string, secret: string, secure: boolean): string {
-  const attrs = [`${SESSION_COOKIE}=${encodeURIComponent(signSessionId(id, secret))}`, 'Path=/', `Max-Age=${MAX_AGE_SECONDS}`, 'HttpOnly', 'SameSite=Lax'];
+  const attrs = [`${sessionCookieName(secure)}=${encodeURIComponent(signSessionId(id, secret))}`, 'Path=/', `Max-Age=${MAX_AGE_SECONDS}`, 'HttpOnly', 'SameSite=Lax'];
   if (secure) attrs.push('Secure');
   return attrs.join('; ');
 }

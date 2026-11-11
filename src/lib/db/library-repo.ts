@@ -453,3 +453,12 @@ export async function publishGuide(
     return guide;
   }, { behavior: 'immediate' });
 }
+
+export async function countSessionDocumentsSince(db: Db, sessionId: string, since: number): Promise<number> {
+  const r = unwrap(db)
+    .select({ n: sql<number>`count(*)` })
+    .from(documents)
+    .where(and(eq(documents.sessionId, sessionId), sql`${documents.createdAt} >= ${since}`))
+    .get();
+  return r?.n ?? 0;
+}

@@ -1,8 +1,10 @@
-import { ApiError } from '../http/respond';
+import { ApiError, readBoundedBody } from '../http/respond';
 import { MAX_PAGES, MAX_TOTAL_BYTES } from '../limits';
 import { contentHashFor } from '../pipeline/hash';
 import { ImageError, probeImage } from '../render/image';
 import { RenderError, probePdf } from '../render/pdf';
+
+export { readBoundedBody };
 import { MIME, sniffType } from './sniff';
 
 export interface ValidatedFile {
@@ -21,26 +23,9 @@ export interface ValidatedUpload {
 
 const BODY_OVERHEAD = 1024 * 1024; // multipart framing
 
-/** Reads the request body with a hard cap so an oversized upload is refused before it is held in memory. */
-export async function readBoundedBody(req: Request, limit = MAX_TOTAL_BYTES + BODY_OVERHEAD): Promise<Uint8Array> {
-  const tooLarge = () => new ApiError('too_large', 'These files are too big. The total must be under 40 MB.', 413);
-  const declared = Number(req.headers.get('content-length'));
-  if (Number.isFinite(declared) && declared > limit) throw tooLarge();
-  if (!req.body) return new Uint8Array();
-  const reader = req.body.getReader();
-  const chunks: Uint8Array[] = [];
-  let total = 0;
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    total += value.byteLength;
-    if (total > limit) {
-      await reader.cancel();
-      throw tooLarge();
-    }
-    chunks.push(value);
-  }
-  return Buffer.concat(chunks);
+/** Upload bodies: capped at the total limit plus multipart framing. */
+export function readUploadBody(req: Request, limit = MAX_TOTAL_BYTES + BODY_OVERHEAD): Promise<Uint8Array> {
+  return readBoundedBody(req, limit, 'These files are too big. The total must be under 40 MB.');
 }
 
 /** Parses the multipart body into the `files` entries, in the order given. */
@@ -49,7 +34,7 @@ export async function readUploadFiles(req: Request): Promise<Uint8Array[]> {
   if (!type.toLowerCase().startsWith('multipart/form-data')) {
     throw new ApiError('unsupported_type', 'Send the files as multipart form data in a field named "files".', 415);
   }
-  const body = await readBoundedBody(req);
+  const body = await readUploadBody(req);
   let form: FormData;
   try {
     form = await new Response(body as BodyInit, { headers: { 'content-type': type } }).formData();
@@ -93,7 +78,12 @@ export async function validateUpload(raw: Uint8Array[]): Promise<ValidatedUpload
       if (e instanceof RenderError && e.code === 'encrypted_pdf') {
         throw new ApiError('encrypted_pdf', 'This PDF is password protected. Remove the password and upload it again.', 422);
       }
-      throw new ApiError('corrupt_file', 'This PDF could not be opened. It may be damaged.', 422);
+      // Only a file the renderer actually rejected is "damaged". A missing or crashing renderer is our problem.
+      if (!(e instanceof RenderError) || e.code === 'corrupt_file' || e.code === 'render_timeout') {
+        throw new ApiError('corrupt_file', 'This PDF could not be opened. It may be damaged.', 422);
+      }
+      console.error('PDF renderer failed', e);
+      throw new ApiError('render_failed', 'We could not prepare PDFs right now. Please try again in a few minutes.', 503, 30);
     }
   }
 

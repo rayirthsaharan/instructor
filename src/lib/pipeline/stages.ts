@@ -92,8 +92,9 @@ export async function renderStage(deps: PipelineDeps, doc: DocumentRecord, repor
       async (p) => {
         if (signal?.aborted) throw new PipelineError('aborted', 'Cancelled', true);
         const key = pageKey(doc.contentHash, p.index, 'png');
-        await deps.storage.put(key, p.png);
+        // Reference first, file second: a concurrent delete of an identical document then sees this reference and keeps the image.
         await upsertPage(deps.db, { documentId: doc.id, index: p.index, imagePath: key, width: p.width, height: p.height, textContent: p.text });
+        await deps.storage.put(key, p.png);
         await progress(++rendered);
       },
       { maxDim: PAGE_IMAGE_MAX_DIM, ...deps.renderLimits },
@@ -104,14 +105,15 @@ export async function renderStage(deps: PipelineDeps, doc: DocumentRecord, repor
       if (signal?.aborted) throw new PipelineError('aborted', 'Cancelled', true);
       const img = await normaliseImage(originals[index]!);
       const key = pageKey(doc.contentHash, index, img.ext);
-      await deps.storage.put(key, img.data);
       await upsertPage(deps.db, { documentId: doc.id, index, imagePath: key, width: img.width, height: img.height, textContent: null });
+      await deps.storage.put(key, img.data);
       await progress(++rendered);
     }
   }
 
   const all = await listPages(deps.db, doc.id);
-  if (all.length !== pageCount) throw new PipelineError('render_failed', 'Some pages could not be prepared. Please try again.', true);
+  const stored = await Promise.all(all.map((p) => deps.storage.exists(p.imagePath)));
+  if (all.length !== pageCount || !stored.every(Boolean)) throw new PipelineError('render_failed', 'Some pages could not be prepared. Please try again.', true);
   return all;
 }
 

@@ -111,7 +111,8 @@ describe('POST /api/documents', () => {
     app.clock.now += UPLOAD_LIMIT_PER_SESSION.windowMs + 1;
     expect((await upload(c, fixture('mock-failure.pdf'))).status).toBe(201);
 
-    // IP limit: many fresh sessions from one address
+    // IP limit (only when a proxy is trusted): many fresh sessions from one address
+    app.ctx.trustProxyHops = 1;
     let last = 201;
     for (let i = 0; i < 40 && last === 201; i++) {
       last = (await new TestClient().call(postDocument, '/api/documents', { method: 'POST', headers: { 'x-forwarded-for': '203.0.113.9' }, body: uploadForm({ data: fixture('mock-failure.pdf') }) })).status;

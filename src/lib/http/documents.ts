@@ -1,9 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import {
-  countPages, deleteDocumentCascade, getGuideForDocument, getLatestJobForDocument, getOwnedDocument, getPage, insertDocument,
+  countPages, countSessionDocumentsSince, deleteDocumentCascade, getGuideForDocument, getLatestJobForDocument, getOwnedDocument, getPage, insertDocument,
   requeueFailedDocument, updateDocument, type DocumentRecord, type DocumentStatus, type OriginalFile,
 } from '../db';
-import { UPLOAD_LIMIT_PER_IP, UPLOAD_LIMIT_PER_SESSION } from '../limits';
+import { MAX_CONCURRENT_UPLOADS, QUOTA_WINDOW_MS, UPLOAD_LIMIT_GLOBAL, UPLOAD_LIMIT_PER_IP, UPLOAD_LIMIT_PER_SESSION } from '../limits';
 import { JOB_TYPE } from '../pipeline/types';
 import { readUploadFiles, validateUpload } from '../upload/validate';
 import { clientIp, type AppContext, type SessionInfo } from './context';
@@ -18,6 +18,8 @@ export interface DocumentView {
   pageCount: number | null;
   pagesRendered: number;
   guideId: string | null;
+  /** How many times the pipeline has started for the latest job (0 before the first). */
+  attempts: number;
   error: { code: string; message: string } | null;
   title: string | null;
 }
@@ -45,6 +47,7 @@ export async function documentView(ctx: AppContext, doc: DocumentRecord): Promis
     pageCount: doc.pageCount,
     pagesRendered: await countPages(ctx.db, doc.id),
     guideId: guide?.id ?? null,
+    attempts: job?.attempts ?? 0,
     error,
     title: guide?.title ?? null,
   };
@@ -57,15 +60,32 @@ async function ownedDocument(ctx: AppContext, session: SessionInfo, rawId: strin
 }
 
 async function enforceUploadLimits(ctx: AppContext, session: SessionInfo, req: Request): Promise<void> {
+  const ip = clientIp(req, ctx.trustProxyHops);
   const checks = [
     await ctx.limiter.hit(`upload:session:${session.sessionId}`, UPLOAD_LIMIT_PER_SESSION.limit, UPLOAD_LIMIT_PER_SESSION.windowMs),
-    await ctx.limiter.hit(`upload:ip:${clientIp(req)}`, UPLOAD_LIMIT_PER_IP.limit, UPLOAD_LIMIT_PER_IP.windowMs),
+    // No trustworthy IP: never share one bucket between everybody; the generous global ceiling below is the backstop.
+    ...(ip ? [await ctx.limiter.hit(`upload:ip:${ip}`, UPLOAD_LIMIT_PER_IP.limit, UPLOAD_LIMIT_PER_IP.windowMs)] : []),
+    await ctx.limiter.hit('upload:global', UPLOAD_LIMIT_GLOBAL.limit, UPLOAD_LIMIT_GLOBAL.windowMs),
   ];
   const blocked = checks.find((c) => !c.allowed);
   if (blocked) {
     const secs = Math.max(1, Math.ceil(blocked.retryAfterMs / 1000));
     throw new ApiError('rate_limited', 'You have uploaded a lot in a short time. Please wait a little and try again.', 429, secs);
   }
+}
+
+async function enforceQuota(ctx: AppContext, session: SessionInfo): Promise<void> {
+  if (ctx.freeGuidesPerMonth === undefined) return;
+  const used = await countSessionDocumentsSince(ctx.db, session.sessionId, ctx.now() - QUOTA_WINDOW_MS);
+  if (used >= ctx.freeGuidesPerMonth) {
+    throw new ApiError('quota_exceeded', `You have used your ${ctx.freeGuidesPerMonth} guides for this month.`, 403);
+  }
+}
+
+// Reading and probing an upload is the expensive part (memory, a child process); only a couple may run at once.
+let activeUploads = 0;
+export function setActiveUploadsForTests(n: number): void {
+  activeUploads = n;
 }
 
 async function removeKeys(storage: StorageAdapter, keys: string[]): Promise<void> {
@@ -80,7 +100,16 @@ async function removeKeys(storage: StorageAdapter, keys: string[]): Promise<void
 
 export async function createDocument(req: Request, ctx: AppContext, session: SessionInfo): Promise<Response> {
   await enforceUploadLimits(ctx, session, req);
-  const upload = await validateUpload(await readUploadFiles(req));
+  await enforceQuota(ctx, session);
+  if (activeUploads >= MAX_CONCURRENT_UPLOADS) throw new ApiError('rate_limited', 'We are busy with other uploads. Please try again in a moment.', 503, 5);
+  activeUploads++;
+  let upload;
+  try {
+    upload = await validateUpload(await readUploadFiles(req));
+  } finally {
+    activeUploads--;
+  }
+  await session.ensure();
 
   const id = randomUUID();
   const originals: OriginalFile[] = upload.files.map((f, i) => ({
@@ -154,7 +183,7 @@ export async function getPageImage(ctx: AppContext, session: SessionInfo, rawId:
     throw notFound('That page');
   }
   return new Response(new Uint8Array(data), {
-    headers: { ...FILE_HEADERS, 'Content-Type': type, 'Content-Length': String(data.length), 'Cache-Control': 'private, max-age=3600' },
+    headers: { ...FILE_HEADERS, 'Content-Type': type, 'Content-Length': String(data.length), 'Cache-Control': 'private, no-cache' },
   });
 }
 

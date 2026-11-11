@@ -50,7 +50,7 @@ export function createTestApp(opts: { provider?: AIProvider; deps?: Partial<Pipe
   const storage = createStorage(join(dir, 'files'));
   const queue = new DbJobQueue(db, () => clock.now);
   const ctx: AppContext = {
-    db, storage, queue, limiter: new DbRateLimiter(db, () => clock.now), secret: 'test-secret-test-secret-test-secret!', secureCookies: false, now: () => clock.now,
+    db, storage, queue, limiter: new DbRateLimiter(db, () => clock.now), secret: 'test-secret-test-secret-test-secret!', secureCookies: false, trustProxyHops: 0, now: () => clock.now,
   };
   const deps: PipelineDeps = { db, storage, provider: opts.provider ?? provider, now: () => clock.now, ...opts.deps };
   const registry = new HandlerRegistry();

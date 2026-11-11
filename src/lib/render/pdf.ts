@@ -1,8 +1,10 @@
 import { fork } from 'node:child_process';
-import { readFile } from 'node:fs/promises';
-import { existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { existsSync, realpathSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { getConfig } from '../config';
 
 /**
  * PDF probing and rasterising run in a child process with time and memory limits (ARCHITECTURE section 10, item 5).
@@ -10,7 +12,8 @@ import { fileURLToPath } from 'node:url';
  * (pdfjs-dist, @napi-rs/canvas) are loaded by the child script and never enter the Next bundle.
  */
 
-export type RenderErrorCode = 'encrypted_pdf' | 'corrupt_file' | 'render_failed' | 'render_timeout';
+/** `render_unavailable`: the renderer itself is missing or cannot start. That is our fault, never the user's file. */
+export type RenderErrorCode = 'encrypted_pdf' | 'corrupt_file' | 'render_failed' | 'render_timeout' | 'render_unavailable';
 
 export class RenderError extends Error {
   constructor(message: string, public readonly code: RenderErrorCode) {
@@ -44,18 +47,61 @@ type ChildMessage =
   | { type: 'done' }
   | { type: 'error'; code: RenderErrorCode; message: string };
 
-/** The child script lives next to this file; under Next's bundle `import.meta.url` is not a file path, so fall back to cwd. */
-function childScript(): string {
-  const candidates = [join(process.cwd(), 'src', 'lib', 'render', 'pdf-child.mjs')];
+/** Walks up from this file to the package root, so the default does not depend on the working directory. */
+function packageRoot(): string | undefined {
   try {
-    const here = fileURLToPath(new URL('./pdf-child.mjs', import.meta.url));
-    candidates.unshift(here);
+    let dir = dirname(fileURLToPath(import.meta.url));
+    for (let i = 0; i < 12; i++) {
+      if (existsSync(join(dir, 'package.json')) && existsSync(join(dir, 'src', 'lib', 'render', 'pdf-child.mjs'))) return dir;
+      const up = dirname(dir);
+      if (up === dir) break;
+      dir = up;
+    }
   } catch {
     /* not a file URL */
   }
-  const found = candidates.find((p) => existsSync(p));
-  if (!found) throw new RenderError('PDF renderer is not installed', 'render_failed');
-  return found;
+  return undefined;
+}
+
+/** `RENDER_CHILD_PATH` if set, otherwise `<package root>/src/lib/render/pdf-child.mjs`. */
+export function renderChildPath(): string {
+  const configured = getConfig().renderChildPath;
+  if (configured) return configured;
+  const root = packageRoot();
+  return root ? join(root, 'src', 'lib', 'render', 'pdf-child.mjs') : '';
+}
+
+/** Throws RenderError('render_unavailable') with a clear message when the renderer script cannot be found. */
+export function assertRendererAvailable(): string {
+  const path = renderChildPath();
+  if (!path || !existsSync(path)) {
+    throw new RenderError(`PDF renderer script not found at "${path || '(unresolved)'}". Set RENDER_CHILD_PATH to the location of src/lib/render/pdf-child.mjs.`, 'render_unavailable');
+  }
+  return path;
+}
+
+/**
+ * Node permission model for the child: it may read only its script and the two libraries it loads, and write only its
+ * own empty temp directory. Native addons are allowed because the canvas backend is one; they are not restricted by the model.
+ */
+export function childExecArgv(script: string, workDir: string, maxHeapMb: number): string[] {
+  const root = packageRoot() ?? dirname(script);
+  const real = (p: string) => {
+    try {
+      return realpathSync(p);
+    } catch {
+      return p;
+    }
+  };
+  const reads = [real(script), real(join(root, 'node_modules', 'pdfjs-dist')), real(join(root, 'node_modules', '@napi-rs'))];
+  return [
+    `--max-old-space-size=${maxHeapMb}`,
+    '--permission',
+    '--allow-addons',
+    '--disable-warning=SecurityWarning',
+    ...reads.map((p) => `--allow-fs-read=${p}`),
+    `--allow-fs-write=${real(workDir)}`,
+  ];
 }
 
 async function rssBytes(pid: number): Promise<number | undefined> {
@@ -70,10 +116,39 @@ async function rssBytes(pid: number): Promise<number | undefined> {
 function run(request: Record<string, unknown>, limits: RenderLimits, onMessage: (m: ChildMessage) => Promise<void> | void): Promise<void> {
   const stepTimeout = limits.stepTimeoutMs ?? 60_000;
   const maxRss = limits.maxRssBytes ?? 1024 * 1024 * 1024;
+  return runInWorkDir(request, limits, onMessage, stepTimeout, maxRss);
+}
+
+async function runInWorkDir(
+  request: Record<string, unknown>,
+  limits: RenderLimits,
+  onMessage: (m: ChildMessage) => Promise<void> | void,
+  stepTimeout: number,
+  maxRss: number,
+): Promise<void> {
+  const script = assertRendererAvailable();
+  const workDir = await mkdtemp(join(tmpdir(), 'render-'));
+  try {
+    await spawnChild(script, workDir, request, limits, onMessage, stepTimeout, maxRss);
+  } finally {
+    await rm(workDir, { recursive: true, force: true });
+  }
+}
+
+function spawnChild(
+  script: string,
+  workDir: string,
+  request: Record<string, unknown>,
+  limits: RenderLimits,
+  onMessage: (m: ChildMessage) => Promise<void> | void,
+  stepTimeout: number,
+  maxRss: number,
+): Promise<void> {
   return new Promise<void>((resolve, reject) => {
-    const child = fork(childScript(), [], {
+    const child = fork(script, [], {
+      cwd: workDir,
       serialization: 'advanced',
-      execArgv: [`--max-old-space-size=${limits.maxHeapMb ?? 768}`],
+      execArgv: childExecArgv(script, workDir, limits.maxHeapMb ?? 768),
       env: { NODE_ENV: 'production' },
       stdio: ['ignore', 'ignore', 'ignore', 'ipc'],
     });
@@ -115,7 +190,7 @@ function run(request: Record<string, unknown>, limits: RenderLimits, onMessage: 
         if (m.type === 'done' || m.type === 'probe') finish();
       });
     });
-    child.on('error', (e) => finish(new RenderError(`Renderer failed to start: ${e.message}`, 'render_failed')));
+    child.on('error', (e) => finish(new RenderError(`Renderer failed to start: ${e.message}`, 'render_unavailable')));
     child.on('exit', (code, signal) => {
       // Let queued messages drain first, then treat an exit without a result as a crash.
       void chain.then(() => finish(new RenderError(`Renderer exited unexpectedly (${signal ?? code})`, 'render_failed')));

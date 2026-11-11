@@ -10,6 +10,7 @@ export type Doc = {
   guideId: string | null;
   error: { code: string; message: string } | null;
   title: string | null;
+  attempts?: number;
 };
 
 export type GuideRow = {

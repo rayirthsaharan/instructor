@@ -113,4 +113,4 @@ All via `npm run <script>` (copy `.env.example` to `.env.local` first; `AI_PROVI
 | `db:migrate` | Apply migrations to `DATABASE_PATH` (default `./data/instructor.db`, gitignored) |
 | `validate:agents` | Validate `.claude/agents/*.md` |
 
-Env: `DATABASE_PATH`, `STORAGE_ROOT` (default `./data/files`), `AI_PROVIDER`, `WORKER_POLL_MS`, `SESSION_SECRET` (required in production), `MOCK_AI_DELAY_MS` (mock analysis delay, default 0). HTTP contract: `docs/API.md`. All SQL lives in `src/lib/db`; other code uses its repository functions and the opaque `Db` handle.
+Env: `DATABASE_PATH`, `STORAGE_ROOT` (default `./data/files`), `AI_PROVIDER`, `WORKER_POLL_MS`, `SESSION_SECRET` (required in production), `MOCK_AI_DELAY_MS` (mock analysis delay, default 0), `RENDER_CHILD_PATH` (default: found from the package root), `TRUST_PROXY_HOPS` (default 0), `FREE_GUIDES_PER_MONTH` (default unlimited). HTTP contract: `docs/API.md`. All SQL lives in `src/lib/db`; other code uses its repository functions and the opaque `Db` handle.

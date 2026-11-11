@@ -2,6 +2,7 @@ import { getAppContext, resolveSession, type AppContext, type SessionInfo } from
 
 export type ApiErrorCode =
   | 'unsupported_type' | 'too_large' | 'too_many_pages' | 'encrypted_pdf' | 'corrupt_file' | 'empty' | 'rate_limited'
+  | 'quota_exceeded' | 'render_failed' | 'forbidden'
   | 'not_found' | 'invalid_request' | 'conflict' | 'internal';
 
 export class ApiError extends Error {
@@ -38,6 +39,7 @@ export async function handle(
   let session: SessionInfo | undefined;
   let res: Response;
   try {
+    assertSameOrigin(req);
     session = await resolveSession(ctx, req);
     res = await fn(ctx, session);
   } catch (e) {
@@ -57,12 +59,53 @@ export function parseId(id: string): string {
   return id;
 }
 
+/** Reads a request body with a hard cap; over the cap is refused (413 `too_large`) without buffering the rest. */
+export async function readBoundedBody(req: Request, limit: number, message = 'The request is too large.'): Promise<Uint8Array> {
+  const tooLarge = () => new ApiError('too_large', message, 413);
+  const declared = Number(req.headers.get('content-length'));
+  if (Number.isFinite(declared) && declared > limit) throw tooLarge();
+  if (!req.body) return new Uint8Array();
+  const reader = req.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > limit) {
+      await reader.cancel();
+      throw tooLarge();
+    }
+    chunks.push(value);
+  }
+  return Buffer.concat(chunks);
+}
+
 export async function readJson(req: Request, maxBytes = 256 * 1024): Promise<unknown> {
-  const text = await req.text();
-  if (Buffer.byteLength(text) > maxBytes) throw new ApiError('invalid_request', 'The request is too large.', 413);
+  const body = await readBoundedBody(req, maxBytes);
   try {
-    return JSON.parse(text) as unknown;
+    return JSON.parse(Buffer.from(body).toString('utf8')) as unknown;
   } catch {
     throw new ApiError('invalid_request', 'The request body is not valid JSON.', 400);
+  }
+}
+
+/** Rejects state-changing requests that the browser says come from another site. Same-origin and non-browser clients pass. */
+export function assertSameOrigin(req: Request): void {
+  if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') return;
+  const fetchSite = req.headers.get('sec-fetch-site');
+  if (fetchSite && fetchSite !== 'same-origin' && fetchSite !== 'none') throw new ApiError('forbidden', 'This request came from another site.', 403);
+  const origin = req.headers.get('origin');
+  if (origin && origin !== 'null') {
+    let host: string | undefined;
+    try {
+      host = new URL(origin).host;
+    } catch {
+      /* invalid origin falls through to rejection */
+    }
+    const expected = req.headers.get('host') ?? new URL(req.url).host;
+    if (host !== expected) throw new ApiError('forbidden', 'This request came from another site.', 403);
+  } else if (origin === 'null') {
+    throw new ApiError('forbidden', 'This request came from another site.', 403);
   }
 }

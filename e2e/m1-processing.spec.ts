@@ -52,20 +52,20 @@ test('stages follow the real state and are announced politely', async ({ browser
   api.docs['j'] = doc({ id: 'j', status: 'queued', stage: null, pageCount: null, pagesRendered: null, progress: 0 });
   await page.goto('/d/j');
   await expect(page.getByRole('list', { name: 'Progress' })).toHaveAttribute('aria-live', 'polite');
-  expect(await stageText(page)).toEqual(['pending:Reading pages', 'pending:Finding parts', 'pending:Building steps', 'pending:Double-checking']);
+  expect(await stageText(page)).toEqual(['pending:Reading pages', 'pending:Finding parts and building steps', 'pending:Double-checking', 'pending:Finishing']);
   await expect(page.getByText('Waiting to start')).toBeVisible();
 
   api.docs['j'] = doc({ id: 'j', stage: 'render', pagesRendered: 3, pageCount: 12 });
   await expect(page.getByText('Page 3 of 12')).toBeVisible({ timeout: 6000 });
-  expect(await stageText(page)).toEqual(['active:Reading pages', 'pending:Finding parts', 'pending:Building steps', 'pending:Double-checking']);
+  expect(await stageText(page)).toEqual(['active:Reading pages', 'pending:Finding parts and building steps', 'pending:Double-checking', 'pending:Finishing']);
 
   api.docs['j'] = doc({ id: 'j', stage: 'analyse', pagesRendered: 12, pageCount: 12 });
   await expect.poll(async () => (await stageText(page))[0], { timeout: 8000 }).toBe('done:Reading pages');
-  expect((await stageText(page))[1]).toBe('active:Finding parts');
+  expect((await stageText(page))[1]).toBe('active:Finding parts and building steps');
 
   api.docs['j'] = doc({ id: 'j', stage: 'verify', pagesRendered: 12, pageCount: 12 });
   await expect(page.getByText('Comparing numbers and part labels with the original')).toBeVisible({ timeout: 8000 });
-  expect(await stageText(page)).toEqual(['done:Reading pages', 'done:Finding parts', 'done:Building steps', 'active:Double-checking']);
+  expect(await stageText(page)).toEqual(['done:Reading pages', 'done:Finding parts and building steps', 'active:Double-checking', 'pending:Finishing']);
   await page.screenshot({ path: `${SHOT}/processing-verify-768-light.png`, fullPage: true });
   await context.close();
 });
@@ -102,7 +102,7 @@ test('opening a finished job later redirects straight away; a reload mid-job res
   await page.goto('/d/mid');
   await expect(page.getByTestId('state-processing')).toBeVisible();
   await page.reload();
-  await expect.poll(async () => (await stageText(page))[1]).toBe('active:Finding parts');
+  await expect.poll(async () => (await stageText(page))[1]).toBe('active:Finding parts and building steps');
   await context.close();
 });
 
@@ -113,7 +113,7 @@ test('failed: stage-specific message, failed marker, Try again resumes; third fa
   await api.install(page);
   await page.goto('/d/f');
   await expect(page.getByText("We couldn't read this file's pages.", { exact: true })).toBeVisible();
-  expect(await stageText(page)).toEqual(['failed:Reading pages', 'pending:Finding parts', 'pending:Building steps', 'pending:Double-checking']);
+  expect(await stageText(page)).toEqual(['failed:Reading pages', 'pending:Finding parts and building steps', 'pending:Double-checking', 'pending:Finishing']);
   await expect(page.getByRole('link', { name: 'Use a different file' })).toHaveAttribute('href', '/new');
 
   // Try again -> job runs
@@ -123,11 +123,11 @@ test('failed: stage-specific message, failed marker, Try again resumes; third fa
   await expect(page.getByTestId('state-processing')).toHaveAttribute('data-status', 'processing');
 
   // Fails in analyse after the first retry: finding-parts copy, retry still offered
-  api.docs['f'] = doc({ id: 'f', status: 'failed', stage: 'analyse', error: { code: 'x', message: 'x' } });
+  api.docs['f'] = doc({ id: 'f', status: 'failed', stage: 'analyse', attempts: 2, error: { code: 'x', message: 'x' } });
   await expect(page.getByText("We couldn't build a guide from this manual. This is on our side.", { exact: true })).toBeVisible({ timeout: 8000 });
   expect((await stageText(page))[0]).toBe('done:Reading pages');
   await page.getByRole('button', { name: 'Try again' }).click();
-  api.docs['f'] = doc({ id: 'f', status: 'failed', stage: 'analyse', error: { code: 'x', message: 'x' } });
+  api.docs['f'] = doc({ id: 'f', status: 'failed', stage: 'analyse', attempts: 3, error: { code: 'x', message: 'x' } });
   await expect(page.getByText(/It's still not working\. Your manual is saved; try again later\./)).toBeVisible({ timeout: 8000 });
   await expect(page.getByRole('button', { name: 'Try again' })).toHaveCount(0);
   await expect(page.getByRole('link', { name: 'Back to library' })).toBeVisible();
