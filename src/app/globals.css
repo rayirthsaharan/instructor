@@ -1,3 +1,424 @@
 @import 'tailwindcss';
 
-/* Design tokens are filled in by the design-system task. */
+/*
+ * Design tokens - docs/DESIGN_SYSTEM.md ("Chalk Line"). Values are copied 1:1 from the spec.
+ * Light values live in `@theme static` (so Tailwind emits every token and builds utilities like
+ * `bg-surface`, `text-ink-muted`, `rounded-sm`). Dark values override the same variables:
+ *   1. automatically via prefers-color-scheme (unless the page forces light), and
+ *   2. explicitly via <html data-theme="dark">.
+ * tests/contrast.test.ts parses this file, so keep the two dark blocks identical.
+ */
+
+@custom-variant dark {
+  @media (prefers-color-scheme: dark) {
+    &:where(:root:not([data-theme='light']) *) {
+      @slot;
+    }
+  }
+  &:where(:root[data-theme='dark'] *) {
+    @slot;
+  }
+}
+
+@theme static {
+  /* 2.1 neutral and accent */
+  --color-bg: #f6f3ec;
+  --color-surface: #ffffff;
+  --color-surface-raised: #ffffff;
+  --color-surface-sunken: #ece8de;
+  --color-ink: #1b1a17;
+  --color-ink-muted: #5c584f;
+  --color-ink-subtle: #8a857a;
+  --color-line: #ddd8cc;
+  --color-accent: #1f4fd8;
+  --color-accent-hover: #173fb3;
+  --color-accent-pressed: #12328f;
+  --color-on-accent: #ffffff;
+  --color-accent-soft: #e4ebfd;
+  --color-scrim: rgba(27, 26, 23, 0.48);
+
+  /* 2.2 semantic: fg / soft / solid / on (text on solid) */
+  --color-warn-fg: #8a5300;
+  --color-warn-soft: #fff1d0;
+  --color-warn-solid: #f2a900;
+  --color-warn-on: #1b1a17;
+  --color-danger-fg: #b3261e;
+  --color-danger-soft: #fce9e6;
+  --color-danger-solid: #b3261e;
+  --color-danger-on: #ffffff;
+  --color-success-fg: #1e6b3a;
+  --color-success-soft: #e3f3e6;
+  --color-success-solid: #1e6b3a;
+  --color-success-on: #ffffff;
+  --color-unsure-fg: #6b3fa0;
+  --color-unsure-soft: #f0e8fa;
+  --color-unsure-solid: #6b3fa0;
+  --color-unsure-on: #ffffff;
+
+  /* 3 typography families (next/font sets --font-bricolage / --font-atkinson / --font-atkinson-mono) */
+  --font-display: var(--font-bricolage), ui-sans-serif, system-ui, sans-serif;
+  --font-text: var(--font-atkinson), system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-label: var(--font-atkinson-mono), ui-monospace, 'SF Mono', Menlo, monospace;
+
+  /* 4 radius */
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-full: 999px;
+
+  /* 4 elevation (used as shadow-elev-N) */
+  --shadow-elev-0: 0 0 0 1px var(--color-line);
+  --shadow-elev-1: 0 1px 2px rgba(27, 26, 23, 0.08), 0 2px 8px rgba(27, 26, 23, 0.06);
+  --shadow-elev-2: 0 8px 24px rgba(27, 26, 23, 0.14), 0 2px 6px rgba(27, 26, 23, 0.08);
+
+  /* 5 motion */
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* 6 breakpoints: sm is the mobile base (0-599) */
+  --breakpoint-sm: initial;
+  --breakpoint-xl: initial;
+  --breakpoint-2xl: initial;
+  --breakpoint-md: 37.5rem;
+  --breakpoint-lg: 64rem;
+}
+
+:root {
+  color-scheme: light;
+
+  /* 4 spacing (4px base) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --gutter: 16px;
+
+  --elev-0: var(--shadow-elev-0);
+  --elev-1: var(--shadow-elev-1);
+  --elev-2: var(--shadow-elev-2);
+
+  /* 5 motion durations */
+  --dur-instant: 80ms;
+  --dur-fast: 140ms;
+  --dur-base: 220ms;
+  --dur-slow: 360ms;
+
+  /* 2.3 diagram marking: one value for both themes (the page is always light) */
+  --mark-stroke: #1f4fd8;
+  --mark-halo: #ffffff;
+  --mark-fill: rgba(31, 79, 216, 0.1);
+  --mark-fill-active: rgba(31, 79, 216, 0.22);
+  --mark-dim: rgba(246, 243, 236, 0.62);
+  --mark-callout-bg: #1f4fd8;
+  --mark-callout-fg: #ffffff;
+  --mark-unsure-stroke: #6b3fa0;
+  --mark-cite-stroke: #1f4fd8;
+}
+
+@media (min-width: 37.5rem) {
+  :root {
+    --gutter: 24px;
+  }
+}
+@media (min-width: 64rem) {
+  :root {
+    --gutter: 32px;
+  }
+}
+
+/* Dark: automatic. Keep identical to the explicit block below. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+    --color-bg: #141310;
+    --color-surface: #1e1c18;
+    --color-surface-raised: #29261f;
+    --color-surface-sunken: #0e0d0b;
+    --color-ink: #f2eee4;
+    --color-ink-muted: #b5afa2;
+    --color-ink-subtle: #8a857a;
+    --color-line: #38342b;
+    --color-accent: #8fb0ff;
+    --color-accent-hover: #a9c2ff;
+    --color-accent-pressed: #c2d4ff;
+    --color-on-accent: #0e1a3d;
+    --color-accent-soft: #1a2547;
+    --color-scrim: rgba(0, 0, 0, 0.6);
+    --color-warn-fg: #f5c04a;
+    --color-warn-soft: #3a2c0a;
+    --color-warn-solid: #f5c04a;
+    --color-warn-on: #1b1a17;
+    --color-danger-fg: #ff8a7a;
+    --color-danger-soft: #401612;
+    --color-danger-solid: #ff8a7a;
+    --color-danger-on: #3a0a06;
+    --color-success-fg: #7fd49a;
+    --color-success-soft: #12301c;
+    --color-success-solid: #7fd49a;
+    --color-success-on: #0b2414;
+    --color-unsure-fg: #c9a8f5;
+    --color-unsure-soft: #2a1d42;
+    --color-unsure-solid: #c9a8f5;
+    --color-unsure-on: #1f1233;
+    --shadow-elev-1: 0 1px 2px rgba(0, 0, 0, 0.5), 0 0 0 1px var(--color-line);
+    --shadow-elev-2: 0 12px 32px rgba(0, 0, 0, 0.6);
+  }
+}
+
+/* Dark: explicit override (<html data-theme="dark">). */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --color-bg: #141310;
+  --color-surface: #1e1c18;
+  --color-surface-raised: #29261f;
+  --color-surface-sunken: #0e0d0b;
+  --color-ink: #f2eee4;
+  --color-ink-muted: #b5afa2;
+  --color-ink-subtle: #8a857a;
+  --color-line: #38342b;
+  --color-accent: #8fb0ff;
+  --color-accent-hover: #a9c2ff;
+  --color-accent-pressed: #c2d4ff;
+  --color-on-accent: #0e1a3d;
+  --color-accent-soft: #1a2547;
+  --color-scrim: rgba(0, 0, 0, 0.6);
+  --color-warn-fg: #f5c04a;
+  --color-warn-soft: #3a2c0a;
+  --color-warn-solid: #f5c04a;
+  --color-warn-on: #1b1a17;
+  --color-danger-fg: #ff8a7a;
+  --color-danger-soft: #401612;
+  --color-danger-solid: #ff8a7a;
+  --color-danger-on: #3a0a06;
+  --color-success-fg: #7fd49a;
+  --color-success-soft: #12301c;
+  --color-success-solid: #7fd49a;
+  --color-success-on: #0b2414;
+  --color-unsure-fg: #c9a8f5;
+  --color-unsure-soft: #2a1d42;
+  --color-unsure-solid: #c9a8f5;
+  --color-unsure-on: #1f1233;
+  --shadow-elev-1: 0 1px 2px rgba(0, 0, 0, 0.5), 0 0 0 1px var(--color-line);
+  --shadow-elev-2: 0 12px 32px rgba(0, 0, 0, 0.6);
+}
+
+/* 3 typography scale (rem; >= 1024 sizes in the media query below) */
+:root {
+  --t-display-xl: 2rem;
+  --t-display-xl-lh: 2.25rem;
+  --t-display-lg: 1.625rem;
+  --t-display-lg-lh: 1.875rem;
+  --t-display-md: 1.25rem;
+  --t-display-md-lh: 1.625rem;
+  --t-glance: 1.375rem;
+  --t-glance-lh: 1.875rem;
+  --t-body-lg-lh: 1.625rem;
+  --t-button: 1.0625rem;
+}
+@media (min-width: 64rem) {
+  :root {
+    --t-display-xl: 2.75rem;
+    --t-display-xl-lh: 3rem;
+    --t-display-lg: 2rem;
+    --t-display-lg-lh: 2.25rem;
+    --t-display-md: 1.375rem;
+    --t-display-md-lh: 1.75rem;
+    --t-glance: 1.5rem;
+    --t-glance-lh: 2.125rem;
+    --t-body-lg-lh: 1.75rem;
+    --t-button: 1rem;
+  }
+}
+
+@layer base {
+  html {
+    background: var(--color-bg);
+  }
+  body {
+    background: var(--color-bg);
+    color: var(--color-ink);
+    font-family: var(--font-text);
+    font-size: 1rem;
+    line-height: 1.5rem;
+    -webkit-text-size-adjust: 100%;
+  }
+  /* Global focus ring: 2px accent, 2px offset, keyboard focus only. Never removed. */
+  :focus-visible,
+  [data-force-focus] {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+  /* On accent-filled elements: 2px surface gap, then 2px accent. */
+  .focus-on-accent:focus-visible,
+  .focus-on-accent[data-force-focus] {
+    outline: none;
+    box-shadow:
+      0 0 0 2px var(--color-surface),
+      0 0 0 4px var(--color-accent);
+  }
+}
+
+@layer components {
+  .type-display-xl {
+    font: 700 var(--t-display-xl) / var(--t-display-xl-lh) var(--font-display);
+    letter-spacing: -0.02em;
+  }
+  .type-display-lg {
+    font: 700 var(--t-display-lg) / var(--t-display-lg-lh) var(--font-display);
+    letter-spacing: -0.015em;
+  }
+  .type-display-md {
+    font: 600 var(--t-display-md) / var(--t-display-md-lh) var(--font-display);
+    letter-spacing: -0.01em;
+  }
+  .type-glance {
+    font: 500 var(--t-glance) / var(--t-glance-lh) var(--font-text);
+    max-width: 34ch;
+  }
+  .type-body-lg {
+    font: 400 1.125rem / var(--t-body-lg-lh) var(--font-text);
+  }
+  .type-body {
+    font: 400 1rem / 1.5rem var(--font-text);
+  }
+  .type-body-sm {
+    font: 400 0.875rem / 1.25rem var(--font-text);
+    letter-spacing: 0.005em;
+  }
+  .type-label {
+    font: 600 0.8125rem / 1rem var(--font-label);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    font-variant-numeric: tabular-nums;
+  }
+  .type-tag {
+    font: 600 0.875rem / 1rem var(--font-label);
+    letter-spacing: 0.02em;
+    font-variant-numeric: tabular-nums;
+  }
+  .type-button {
+    font: 600 var(--t-button) / 1.5rem var(--font-text);
+  }
+
+  /* Colour/opacity-only transitions (no transforms; press never scales). */
+  .t-instant {
+    transition: color var(--dur-instant) var(--ease-out), background-color var(--dur-instant) var(--ease-out),
+      border-color var(--dur-instant) var(--ease-out), opacity var(--dur-instant) var(--ease-out);
+  }
+  .t-fast {
+    transition: color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out),
+      border-color var(--dur-fast) var(--ease-out), opacity var(--dur-fast) var(--ease-out);
+  }
+
+  /* Spinner: the only looping motion in this task. Static arc under reduced motion. */
+  .spinner {
+    animation: spin 1s linear infinite;
+  }
+
+  /* Sheet / dialog built on <dialog>: translateY + scrim fade, dur-base; exit uses ease-in. */
+  dialog.sheet,
+  dialog.modal {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    max-width: none;
+    max-height: none;
+    overflow: visible;
+  }
+  dialog.sheet {
+    position: fixed;
+    inset: auto 0 0 0;
+    margin: 0 auto;
+    width: 100%;
+    max-width: 35rem;
+    transform: translateY(100%);
+    transition: transform var(--dur-base) var(--ease-in), display var(--dur-base) allow-discrete,
+      overlay var(--dur-base) allow-discrete;
+  }
+  dialog.sheet[open] {
+    transform: translateY(0);
+    transition-timing-function: var(--ease-out);
+  }
+  @starting-style {
+    dialog.sheet[open] {
+      transform: translateY(100%);
+    }
+  }
+  dialog.modal {
+    margin: auto;
+    width: calc(100% - 2rem);
+    max-width: 25rem;
+    opacity: 0;
+    transition: opacity var(--dur-fast) var(--ease-in), display var(--dur-fast) allow-discrete,
+      overlay var(--dur-fast) allow-discrete;
+  }
+  dialog.modal[open] {
+    opacity: 1;
+    transition-timing-function: var(--ease-out);
+  }
+  @starting-style {
+    dialog.modal[open] {
+      opacity: 0;
+    }
+  }
+  dialog.sheet::backdrop,
+  dialog.modal::backdrop {
+    background: var(--color-scrim);
+    opacity: 0;
+    transition: opacity var(--dur-base) var(--ease-in), display var(--dur-base) allow-discrete,
+      overlay var(--dur-base) allow-discrete;
+  }
+  dialog.sheet[open]::backdrop,
+  dialog.modal[open]::backdrop {
+    opacity: 1;
+  }
+  @starting-style {
+    dialog.sheet[open]::backdrop,
+    dialog.modal[open]::backdrop {
+      opacity: 0;
+    }
+  }
+
+  .toast-enter {
+    animation: fade-in var(--dur-fast) var(--ease-out);
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+/* 5 reduced motion: no transforms, every transition is an 80ms opacity change, spinner is static. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-property: opacity !important;
+    transition-duration: 80ms !important;
+    animation-duration: 80ms !important;
+    animation-iteration-count: 1 !important;
+  }
+  dialog.sheet,
+  dialog.sheet[open] {
+    transform: none !important;
+  }
+  .spinner {
+    animation: none !important;
+  }
+}

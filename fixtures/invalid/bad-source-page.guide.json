@@ -1,0 +1,73 @@
+{
+  "schemaVersion": 1,
+  "language": "en",
+  "title": "Tiny",
+  "summary": "",
+  "category": "misc",
+  "difficulty": 1,
+  "peopleNeeded": 1,
+  "safetyCritical": false,
+  "tools": [],
+  "parts": [
+    {
+      "id": "bolt",
+      "name": "Bolt",
+      "source": {
+        "pageIndex": 0,
+        "regionFallback": true
+      }
+    }
+  ],
+  "phases": [
+    {
+      "id": "p1",
+      "title": "All",
+      "stepIds": [
+        "a",
+        "b"
+      ]
+    }
+  ],
+  "steps": {
+    "a": {
+      "partsUsed": [],
+      "toolsUsed": [],
+      "warnings": [],
+      "irreversible": false,
+      "confidence": "high",
+      "interpretedFromDiagram": false,
+      "highlights": [],
+      "id": "a",
+      "phaseId": "p1",
+      "title": "First",
+      "instruction": "Do the first thing.",
+      "sources": [
+        {
+          "pageIndex": 0,
+          "regionFallback": true
+        }
+      ]
+    },
+    "b": {
+      "partsUsed": [],
+      "toolsUsed": [],
+      "warnings": [],
+      "irreversible": false,
+      "confidence": "high",
+      "interpretedFromDiagram": false,
+      "highlights": [],
+      "id": "b",
+      "phaseId": "p1",
+      "title": "Second",
+      "instruction": "Do the second thing.",
+      "sources": [
+        {
+          "pageIndex": 99,
+          "regionFallback": false
+        }
+      ]
+    }
+  },
+  "glossary": [],
+  "unreadablePages": []
+}

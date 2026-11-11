@@ -1,0 +1,721 @@
+{
+  "schemaVersion": 1,
+  "language": "en",
+  "title": "Lumen 3-shelf bookcase",
+  "summary": "Assemble the Lumen 3-shelf bookcase from flat-pack panels, then fix it to the wall.",
+  "category": "furniture",
+  "estimatedMinutes": 45,
+  "difficulty": 1,
+  "peopleNeeded": 2,
+  "safetyCritical": true,
+  "tools": [
+    {
+      "id": "phillips",
+      "name": "Phillips screwdriver",
+      "included": false,
+      "source": {
+        "pageIndex": 0,
+        "regionFallback": true
+      }
+    },
+    {
+      "id": "hammer",
+      "name": "Hammer",
+      "included": false,
+      "source": {
+        "pageIndex": 0,
+        "regionFallback": true
+      }
+    },
+    {
+      "id": "hex-key",
+      "name": "Hex key",
+      "included": true,
+      "source": {
+        "pageIndex": 0,
+        "regionFallback": true
+      }
+    }
+  ],
+  "parts": [
+    {
+      "id": "side-panel",
+      "name": "Side panel",
+      "manualLabel": "A",
+      "quantity": 2,
+      "source": {
+        "pageIndex": 1,
+        "panelId": "p2-a",
+        "region": {
+          "x": 0.04,
+          "y": 0.2,
+          "w": 0.3,
+          "h": 0.22
+        },
+        "regionFallback": false
+      }
+    },
+    {
+      "id": "top-panel",
+      "name": "Top panel",
+      "manualLabel": "B",
+      "quantity": 1,
+      "source": {
+        "pageIndex": 1,
+        "panelId": "p2-b",
+        "region": {
+          "x": 0.36,
+          "y": 0.2,
+          "w": 0.3,
+          "h": 0.22
+        },
+        "regionFallback": false
+      }
+    },
+    {
+      "id": "shelf",
+      "name": "Shelf",
+      "manualLabel": "C",
+      "quantity": 2,
+      "source": {
+        "pageIndex": 1,
+        "panelId": "p2-c",
+        "region": {
+          "x": 0.68,
+          "y": 0.2,
+          "w": 0.3,
+          "h": 0.22
+        },
+        "regionFallback": false
+      }
+    },
+    {
+      "id": "back-panel",
+      "name": "Back panel",
+      "manualLabel": "D",
+      "quantity": 1,
+      "source": {
+        "pageIndex": 1,
+        "panelId": "p2-d",
+        "region": {
+          "x": 0.04,
+          "y": 0.45,
+          "w": 0.3,
+          "h": 0.22
+        },
+        "regionFallback": false
+      }
+    },
+    {
+      "id": "cam-bolt",
+      "name": "Cam bolt",
+      "manualLabel": "E",
+      "quantity": 8,
+      "source": {
+        "pageIndex": 1,
+        "panelId": "p2-e",
+        "region": {
+          "x": 0.36,
+          "y": 0.45,
+          "w": 0.3,
+          "h": 0.22
+        },
+        "regionFallback": false
+      }
+    },
+    {
+      "id": "cam-lock",
+      "name": "Cam lock",
+      "manualLabel": "F",
+      "quantity": 8,
+      "source": {
+        "pageIndex": 1,
+        "panelId": "p2-f",
+        "region": {
+          "x": 0.68,
+          "y": 0.45,
+          "w": 0.3,
+          "h": 0.22
+        },
+        "regionFallback": false
+      }
+    },
+    {
+      "id": "dowel",
+      "name": "Wooden dowel",
+      "manualLabel": "G",
+      "quantity": 8,
+      "source": {
+        "pageIndex": 1,
+        "panelId": "p2-g",
+        "region": {
+          "x": 0.04,
+          "y": 0.7,
+          "w": 0.3,
+          "h": 0.22
+        },
+        "regionFallback": false
+      }
+    },
+    {
+      "id": "nail",
+      "name": "Nail",
+      "manualLabel": "H",
+      "quantity": 16,
+      "source": {
+        "pageIndex": 1,
+        "panelId": "p2-h",
+        "region": {
+          "x": 0.36,
+          "y": 0.7,
+          "w": 0.3,
+          "h": 0.22
+        },
+        "regionFallback": false
+      }
+    },
+    {
+      "id": "wall-strap-kit",
+      "name": "Wall strap kit",
+      "manualLabel": "I",
+      "quantity": 1,
+      "description": "Strap, wall bracket and fixings.",
+      "source": {
+        "pageIndex": 1,
+        "panelId": "p2-i",
+        "region": {
+          "x": 0.68,
+          "y": 0.7,
+          "w": 0.3,
+          "h": 0.22
+        },
+        "regionFallback": false
+      }
+    }
+  ],
+  "phases": [
+    {
+      "id": "prepare",
+      "title": "Get ready",
+      "stepIds": [
+        "s1",
+        "s2",
+        "s3"
+      ]
+    },
+    {
+      "id": "frame",
+      "title": "Build the frame",
+      "stepIds": [
+        "s4",
+        "s5",
+        "s6"
+      ]
+    },
+    {
+      "id": "finish",
+      "title": "Finish and secure",
+      "stepIds": [
+        "s7",
+        "s8",
+        "s9",
+        "s10"
+      ]
+    }
+  ],
+  "steps": {
+    "s1": {
+      "partsUsed": [],
+      "toolsUsed": [],
+      "warnings": [],
+      "irreversible": false,
+      "confidence": "high",
+      "interpretedFromDiagram": false,
+      "highlights": [
+        {
+          "source": {
+            "pageIndex": 1,
+            "regionFallback": true
+          },
+          "label": "Parts list"
+        }
+      ],
+      "id": "s1",
+      "phaseId": "prepare",
+      "title": "Check the parts",
+      "instruction": "Unpack everything onto the carton and check each part against the parts list. Keep the small fittings together in a bowl.",
+      "sourceQuote": "Check that all parts are present before you begin.",
+      "sources": [
+        {
+          "pageIndex": 0,
+          "regionFallback": true
+        },
+        {
+          "pageIndex": 1,
+          "regionFallback": true
+        }
+      ],
+      "why": {
+        "text": "Finding a missing part now is easier than discovering it halfway through.",
+        "origin": "inferred"
+      }
+    },
+    "s2": {
+      "partsUsed": [
+        {
+          "partId": "dowel",
+          "quantity": 8
+        },
+        {
+          "partId": "side-panel",
+          "quantity": 2
+        }
+      ],
+      "toolsUsed": [],
+      "warnings": [],
+      "irreversible": false,
+      "confidence": "high",
+      "interpretedFromDiagram": false,
+      "highlights": [
+        {
+          "source": {
+            "pageIndex": 2,
+            "panelId": "p3-a",
+            "regionFallback": false,
+            "region": {
+              "x": 0.14,
+              "y": 0.208,
+              "w": 0.558,
+              "h": 0.175
+            }
+          },
+          "label": "Dowels",
+          "partId": "dowel"
+        },
+        {
+          "source": {
+            "pageIndex": 2,
+            "panelId": "p3-a",
+            "regionFallback": false,
+            "region": {
+              "x": 0.158,
+              "y": 0.376,
+              "w": 0.558,
+              "h": 0.057
+            }
+          },
+          "label": "Side panel",
+          "partId": "side-panel"
+        }
+      ],
+      "id": "s2",
+      "phaseId": "prepare",
+      "title": "Insert the dowels",
+      "instruction": "Press 4 dowels (G) into the top edge of each side panel (A).",
+      "sourceQuote": "Press 4 dowels G into the top edge of each side panel A.",
+      "sources": [
+        {
+          "pageIndex": 2,
+          "panelId": "p3-a",
+          "regionFallback": false
+        }
+      ],
+      "why": {
+        "text": "The dowels line up the top panel so it cannot slip sideways.",
+        "origin": "inferred"
+      },
+      "commonMistake": {
+        "text": "Pushing a dowel in at an angle can split the panel edge.",
+        "origin": "inferred"
+      },
+      "checkpoint": {
+        "text": "Dowels should be firm and straight.",
+        "origin": "manual",
+        "sourceQuote": "Dowels should be firm and straight."
+      }
+    },
+    "s3": {
+      "partsUsed": [
+        {
+          "partId": "cam-bolt",
+          "quantity": 8
+        },
+        {
+          "partId": "side-panel",
+          "quantity": 2
+        }
+      ],
+      "toolsUsed": [
+        "phillips"
+      ],
+      "warnings": [],
+      "irreversible": false,
+      "confidence": "high",
+      "interpretedFromDiagram": false,
+      "highlights": [
+        {
+          "source": {
+            "pageIndex": 2,
+            "panelId": "p3-b",
+            "regionFallback": false,
+            "region": {
+              "x": 0.122,
+              "y": 0.616,
+              "w": 0.342,
+              "h": 0.274
+            }
+          },
+          "label": "Cam bolts",
+          "partId": "cam-bolt"
+        }
+      ],
+      "id": "s3",
+      "phaseId": "prepare",
+      "title": "Fit the cam bolts",
+      "instruction": "Screw 4 cam bolts (E) into the inner face of each side panel (A) at the marked holes, using the Phillips screwdriver.",
+      "sourceQuote": "Screw 4 cam bolts E into the inner face of each side panel A.",
+      "sources": [
+        {
+          "pageIndex": 2,
+          "panelId": "p3-b",
+          "regionFallback": false
+        }
+      ],
+      "checkpoint": {
+        "text": "Each bolt should stand straight out from the panel face.",
+        "origin": "inferred"
+      }
+    },
+    "s4": {
+      "partsUsed": [
+        {
+          "partId": "cam-lock",
+          "quantity": 8
+        },
+        {
+          "partId": "shelf",
+          "quantity": 2
+        }
+      ],
+      "toolsUsed": [],
+      "warnings": [
+        {
+          "text": "A cam lock turned the wrong way will not grip the bolt.",
+          "severity": "caution",
+          "interpretedFromDiagram": true
+        }
+      ],
+      "irreversible": false,
+      "confidence": "medium",
+      "interpretedFromDiagram": true,
+      "highlights": [
+        {
+          "source": {
+            "pageIndex": 3,
+            "panelId": "p4-a",
+            "regionFallback": false,
+            "region": {
+              "x": 0.185,
+              "y": 0.33,
+              "w": 0.585,
+              "h": 0.133
+            }
+          },
+          "label": "Cam locks",
+          "partId": "cam-lock"
+        }
+      ],
+      "id": "s4",
+      "phaseId": "frame",
+      "title": "Press in the cam locks",
+      "instruction": "Press a cam lock (F) into each round hole on the ends of both shelves, with the arrow on the lock pointing towards the nearest shelf end.",
+      "sources": [
+        {
+          "pageIndex": 3,
+          "panelId": "p4-a",
+          "regionFallback": false
+        }
+      ]
+    },
+    "s5": {
+      "partsUsed": [
+        {
+          "partId": "side-panel",
+          "quantity": 1
+        },
+        {
+          "partId": "shelf",
+          "quantity": 2
+        }
+      ],
+      "toolsUsed": [
+        "phillips"
+      ],
+      "warnings": [
+        {
+          "text": "Work on the carton or a soft cloth so the panels are not scratched.",
+          "severity": "caution",
+          "sourceQuote": "CAUTION: Work on the carton or a soft cloth to protect the panels.",
+          "interpretedFromDiagram": false
+        }
+      ],
+      "irreversible": false,
+      "confidence": "high",
+      "interpretedFromDiagram": false,
+      "highlights": [
+        {
+          "source": {
+            "pageIndex": 3,
+            "panelId": "p4-b",
+            "regionFallback": false,
+            "region": {
+              "x": 0.095,
+              "y": 0.616,
+              "w": 0.585,
+              "h": 0.285
+            }
+          },
+          "label": "Shelves and side panel",
+          "partId": "shelf"
+        }
+      ],
+      "id": "s5",
+      "phaseId": "frame",
+      "title": "Join the shelves to the first side",
+      "instruction": "Lay one side panel flat. Slot both shelves onto the cam bolts, then turn each cam lock clockwise until it stops.",
+      "sources": [
+        {
+          "pageIndex": 3,
+          "panelId": "p4-b",
+          "regionFallback": false
+        }
+      ]
+    },
+    "s6": {
+      "partsUsed": [
+        {
+          "partId": "side-panel",
+          "quantity": 1
+        },
+        {
+          "partId": "top-panel",
+          "quantity": 1
+        }
+      ],
+      "toolsUsed": [],
+      "warnings": [],
+      "irreversible": false,
+      "confidence": "high",
+      "interpretedFromDiagram": false,
+      "highlights": [
+        {
+          "source": {
+            "pageIndex": 4,
+            "panelId": "p5-a",
+            "regionFallback": true
+          },
+          "label": "Top panel",
+          "partId": "top-panel"
+        }
+      ],
+      "id": "s6",
+      "phaseId": "frame",
+      "title": "Add the second side and the top",
+      "instruction": "Fit the second side panel over the shelves, then lower the top panel (B) onto the dowels. Check that all edges are flush.",
+      "sources": [
+        {
+          "pageIndex": 4,
+          "panelId": "p5-a",
+          "regionFallback": false
+        }
+      ]
+    },
+    "s7": {
+      "partsUsed": [
+        {
+          "partId": "back-panel",
+          "quantity": 1
+        },
+        {
+          "partId": "nail",
+          "quantity": 16
+        }
+      ],
+      "toolsUsed": [
+        "hammer"
+      ],
+      "warnings": [
+        {
+          "text": "The back panel cannot be taken off again without damaging it.",
+          "severity": "warning",
+          "sourceQuote": "WARNING: Once nailed, the back panel cannot be removed without damage.",
+          "interpretedFromDiagram": false
+        }
+      ],
+      "irreversible": true,
+      "confidence": "high",
+      "interpretedFromDiagram": false,
+      "highlights": [
+        {
+          "source": {
+            "pageIndex": 4,
+            "panelId": "p5-b",
+            "regionFallback": false,
+            "region": {
+              "x": 0.185,
+              "y": 0.608,
+              "w": 0.45,
+              "h": 0.247
+            }
+          },
+          "label": "Back panel",
+          "partId": "back-panel"
+        }
+      ],
+      "id": "s7",
+      "phaseId": "finish",
+      "title": "Nail on the back panel",
+      "instruction": "Lay the frame face down. Nail the back panel (D) on using 16 nails (H) spaced evenly along every edge, checking that the frame is square as you go.",
+      "sourceQuote": "Nail the back panel on using 16 nails H spaced evenly along every edge.",
+      "sources": [
+        {
+          "pageIndex": 4,
+          "panelId": "p5-b",
+          "regionFallback": false
+        }
+      ]
+    },
+    "s8": {
+      "partsUsed": [],
+      "toolsUsed": [],
+      "warnings": [
+        {
+          "text": "Two adults are needed to stand the bookcase upright.",
+          "severity": "warning",
+          "sourceQuote": "WARNING: Two adults are needed to stand the bookcase upright.",
+          "interpretedFromDiagram": false
+        }
+      ],
+      "irreversible": false,
+      "confidence": "low",
+      "interpretedFromDiagram": false,
+      "highlights": [
+        {
+          "source": {
+            "pageIndex": 5,
+            "panelId": "p6-a",
+            "regionFallback": false,
+            "region": {
+              "x": 0.095,
+              "y": 0.197,
+              "w": 0.765,
+              "h": 0.247
+            }
+          },
+          "label": "Tip upright"
+        }
+      ],
+      "id": "s8",
+      "phaseId": "finish",
+      "title": "Stand the bookcase upright",
+      "instruction": "Ask a second person to help you tip the bookcase upright and slide it into its final position.",
+      "sources": [
+        {
+          "pageIndex": 5,
+          "panelId": "p6-a",
+          "regionFallback": false
+        }
+      ]
+    },
+    "s9": {
+      "partsUsed": [
+        {
+          "partId": "wall-strap-kit",
+          "quantity": 1
+        }
+      ],
+      "toolsUsed": [
+        "phillips"
+      ],
+      "warnings": [
+        {
+          "text": "Always attach the wall strap: an unsecured bookcase can tip over and cause serious injury.",
+          "severity": "warning",
+          "sourceQuote": "WARNING: Attach the wall strap. An unsecured bookcase can tip over and cause serious injury.",
+          "interpretedFromDiagram": false
+        }
+      ],
+      "irreversible": false,
+      "confidence": "high",
+      "interpretedFromDiagram": false,
+      "highlights": [
+        {
+          "source": {
+            "pageIndex": 5,
+            "panelId": "p6-b",
+            "regionFallback": false,
+            "region": {
+              "x": 0.122,
+              "y": 0.597,
+              "w": 0.558,
+              "h": 0.209
+            }
+          },
+          "label": "Wall strap",
+          "partId": "wall-strap-kit"
+        }
+      ],
+      "id": "s9",
+      "phaseId": "finish",
+      "title": "Fix the wall strap",
+      "instruction": "Fix the strap to the back of the top panel and to a wall stud or wall anchor. Pull the strap tight.",
+      "sources": [
+        {
+          "pageIndex": 5,
+          "panelId": "p6-b",
+          "regionFallback": false
+        }
+      ]
+    },
+    "s10": {
+      "partsUsed": [],
+      "toolsUsed": [],
+      "warnings": [
+        {
+          "text": "Do not climb on or hang from the bookcase.",
+          "severity": "caution",
+          "sourceQuote": "CAUTION: Do not climb on or hang from the bookcase.",
+          "interpretedFromDiagram": false
+        }
+      ],
+      "irreversible": false,
+      "confidence": "high",
+      "interpretedFromDiagram": false,
+      "highlights": [],
+      "id": "s10",
+      "phaseId": "finish",
+      "title": "Final check and loading",
+      "instruction": "Check that every cam lock is tight and the back panel is straight. Do not load more than 15 kg per shelf.",
+      "sourceQuote": "Maximum load per shelf: 15 kg.",
+      "sources": [
+        {
+          "pageIndex": 5,
+          "panelId": "p6-b",
+          "regionFallback": false
+        }
+      ]
+    }
+  },
+  "glossary": [
+    {
+      "term": "Cam lock",
+      "definition": "A round metal fitting that grips a cam bolt when turned.",
+      "source": {
+        "pageIndex": 1,
+        "panelId": "p2-f",
+        "regionFallback": true
+      }
+    }
+  ],
+  "unreadablePages": []
+}
