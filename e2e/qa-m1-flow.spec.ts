@@ -149,22 +149,27 @@ for (const vp of ['375', '1280'] as VpName[]) {
       await addPdfAndAnalyse(page, 'mock-failure.pdf');
       const failedMsg = page.getByText("We couldn't build a guide from this manual. This is on our side.");
       await expect(failedMsg).toBeVisible({ timeout: 90_000 });
-      // DEFECT: the server already retried 3 times (attempts=3), so the very first failure the user sees is treated as
-      // "repeated" and no Try again is offered; the retry path of USER_FLOWS 10.3 is unreachable from the UI.
-      await expect(page.getByRole('button', { name: 'Try again' }), 'first visible failure must offer Try again').toBeVisible();
+      const again = page.getByRole('button', { name: 'Try again' });
+      const repeated = page.getByText(/It's still not working\. Your manual is saved; try again later\./);
+      await expect(page.getByRole('heading', { level: 1, name: "We couldn't finish your guide" })).toBeVisible();
+      await expect(again, 'Try again after the first failure').toBeVisible();
+      await expect(repeated).toHaveCount(0);
       expect(await noHorizontalScroll(page)).toBeLessThanOrEqual(0);
-      // attempts is 3 after the first run: the spec's "repeated failure (3rd)" copy applies to the 3rd failed try
-      const body = await page.locator('main').innerText();
-      console.log(`[${vp}] first failure body:\n${body}`);
+      // retry 1 -> second failure: still Try again, no repeated copy; survives a reload
+      await again.click();
+      await expect(page.locator('[data-testid="state-processing"][data-status="failed"]')).toBeVisible({ timeout: 90_000 });
       await page.reload();
+      await expect(failedMsg).toBeVisible({ timeout: 90_000 });
+      await expect(again, 'Try again after the second failure').toBeVisible();
+      await expect(repeated).toHaveCount(0);
+      // retry 2 -> third failure: repeated copy, no Try again; survives a reload
+      await again.click();
+      await expect(repeated).toBeVisible({ timeout: 90_000 });
+      await expect(again).toHaveCount(0);
+      await page.reload();
+      await expect(repeated).toBeVisible();
+      await expect(again).toHaveCount(0);
       await expect(page.locator('[data-marker="failed"]')).toHaveCount(1);
-
-      const retry = page.getByRole('button', { name: 'Try again' });
-      if (await retry.count()) {
-        await retry.click();
-        await expect(page.getByText(/It's still not working\. Your manual is saved; try again later\./)).toBeVisible({ timeout: 90_000 });
-      }
-      console.log(`[${vp}] after retry body:\n${await page.locator('main').innerText()}`);
 
       await page.getByRole('link', { name: 'Back to library' }).first().click();
       const card = page.getByTestId('guide-card');
@@ -204,6 +209,7 @@ for (const vp of ['375', '1280'] as VpName[]) {
       await input.setInputFiles(fx('encrypted.pdf'));
       await page.getByRole('button', { name: 'Analyse manual' }).click();
       await expect(page.getByText('This PDF is locked with a password. Remove the password, or take photos of the pages.')).toBeVisible();
+      await expect(page.getByRole('alert').getByText(/^PDF is locked$/i)).toBeVisible();
       // files are kept, Analyse is available again
       await expect(page.getByRole('button', { name: 'Analyse manual' })).toBeEnabled();
       await page.getByRole('button', { name: /^Remove / }).click();
@@ -391,5 +397,43 @@ test('removing a page photo keeps keyboard focus inside the page grid', async ({
   await page.keyboard.press('Enter');
   await expect(page.getByTestId('page-tile')).toHaveCount(5);
   expect(await active(page), 'focus after removing a tile').not.toMatch(/^BODY\|/);
+  await context.close();
+});
+
+test('rate_limited upload shows its own copy and label; hero shows "Step n of m - title"', async ({ browser }) => {
+  test.setTimeout(120_000);
+  const context = await browser.newContext({ ...VIEWPORTS['1280'] });
+  const page = await context.newPage();
+  await page.route('**/api/documents', (route) =>
+    route.request().method() === 'POST'
+      ? route.fulfill({ status: 429, contentType: 'application/json', headers: { 'Retry-After': '60' }, body: JSON.stringify({ error: { code: 'rate_limited', message: 'x' } }) })
+      : route.continue(),
+  );
+  await page.goto('/new');
+  await page.getByTestId('file-input').setInputFiles(fx('not-a-manual.pdf'));
+  await page.getByRole('button', { name: 'Analyse manual' }).click();
+  await expect(page.getByText('Too many uploads in a short time. Wait a little, then try again.')).toBeVisible();
+  await expect(page.getByText(/monthly|free guides/i)).toHaveCount(0);
+  await expect(page.getByRole('alert').getByText(/too many uploads/i).first()).toBeVisible();
+  await page.unroute('**/api/documents');
+
+  await page.getByRole('button', { name: /^Remove / }).click();
+  await page.getByTestId('file-input').setInputFiles(fx('lumen-bookcase.pdf'));
+  await page.getByRole('button', { name: 'Analyse manual' }).click();
+  await expect(page).toHaveURL(GUIDE_URL, { timeout: 60_000 });
+  const second = await page.evaluate(async () => {
+    const list = (await (await fetch('/api/guides')).json()) as { id: string }[];
+    const g = (await (await fetch(`/api/guides/${list[0]!.id}`)).json()) as { id: string; guide: { phases: { stepIds: string[] }[]; steps: Record<string, { title: string }> } };
+    const ids = g.guide.phases.flatMap((p) => p.stepIds);
+    const step = { id: ids[1]!, title: g.guide.steps[ids[1]!]!.title };
+    await fetch(`/api/guides/${g.id}/progress`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ currentStepId: step.id, completedStepIds: [ids[0]!], checklist: {} }),
+    });
+    return { title: step.title, total: ids.length };
+  });
+  await page.goto('/');
+  await expect(page.getByTestId('hero-step')).toHaveText(`Step 2 of ${second.total} - ${second.title}`);
   await context.close();
 });

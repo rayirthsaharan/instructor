@@ -20,13 +20,14 @@ Each task names its owner agent. Every feature task runs the feature loop in `CL
 - [x] Senior-engineer security review and fixes (D-012)
 - [!] Spike: diagram-panel location accuracy on sample manuals (senior-engineer) - **needs user approval of test plan and cost first (D-010)**; scheduled after the mocked experience is complete
 
-## M1. Capture and pipeline
-- [ ] Session cookie, storage adapter, upload API with validation (software-engineer)
-- [ ] Capture screen: PDF/photos, reorder, errors (software-engineer)
-- [ ] Page rendering stage (software-engineer)
-- [ ] Job runner, stages, progress API, processing screen (software-engineer)
-- [ ] AnthropicProvider: analyse + verify with structured outputs (software-engineer; senior-engineer reviews prompts and injection posture)
-- [ ] Content-hash dedupe (software-engineer)
+## M1. Capture and pipeline - DONE 2026-11-11 (QA passed, security review applied, orchestrator verified)
+- [x] Anonymous session cookie, ownership scoping, storage, upload API with validation and rate limits
+- [x] Page rendering in a sandboxed child process (PDF) and image normalisation (photos)
+- [x] Pipeline stages ingest/render/analyse/verify/publish on the mock provider; content-hash dedupe with ownership rules
+- [x] Guides list, guide read, progress save, delete APIs (`docs/API.md`)
+- [x] Library, Capture and Processing screens (designer approved)
+- [x] Senior-engineer security review of the upload path (H-019) - all findings fixed
+- [ ] AnthropicProvider (real analysis + verify) - **deferred: needs user approval for API spend (D-010)**
 
 ## M2. Guide experience
 - [ ] Guide overview and prep checklist (F3)

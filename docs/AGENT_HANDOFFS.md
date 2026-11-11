@@ -172,3 +172,13 @@ Task: Visual review of M1 screens; align specs with D-015.
 Done: Verdict "approve with fixes". USER_FLOWS sections 3, 4, 10.3 and DESIGN_SYSTEM 7.14 updated (four real stages; separate `rate_limited` / `quota_exceeded` copy; per-error banner labels). Fixes requested: failed-state title, rate-limit copy, banner labels, equal card heights at 1280, hero "Step n of m - title", hide photo tip for PDFs; re-shoot screenshots with transitions off.
 Open issues / risks: publish-stage failure reuses the generic failure title (accepted, D-016).
 Next: engineer applies with QA's H-022 list.
+
+## H-023 | 2026-11-11 | from: qa-engineer -> to: orchestrator
+Task: re-check after M1 fixes. Verdict: PASS. `npm run check` 492/492; full e2e 110/110. Updated `e2e/qa-m1-flow.spec.ts`: mock-failure now retries twice (Try again after failures 1 and 2, repeated copy only at 3, retryCount survives reload); confirmed route-change h1 focus, tile-removal focus, "We couldn't finish your guide", rate_limited copy and label, per-error labels, hero "Step 2 of n - title". No open defects (rejected-card doc conflict from H-022 remains a doc matter).
+
+## H-024 | 2026-11-11 | from: software-engineer -> qa-engineer -> orchestrator
+Task: Final M1 fix list and re-check.
+Done: `retryCount` (user retries) drives the repeated-failure copy; focus moves to the h1 on route change and to the next tile after removing a photo; copy and label fixes; equal-height Library cards; hero shows the current step title (`currentStepTitle` in the API); screenshots taken with animations disabled; dev indicator hidden. QA corrected its mock-failure test to the spec (third failure) and passed everything.
+How to verify: orchestrator ran `npm run check` (492/492), `npm run build`, `npm run e2e -- --trace off` (110/110).
+Open issues / risks: see DEVELOPMENT_STATUS open issues.
+Next: M2.
