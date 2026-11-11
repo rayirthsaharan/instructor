@@ -47,3 +47,10 @@ Done: `docs/DESIGN_SYSTEM.md` ("Chalk Line" identity, tokens, components), `docs
 How to verify: n/a (spec). Contrast ratios were hand-calculated; five pairs are only bounded.
 Open issues / risks: engineer must add an automated contrast test over the token pairs and report any failure to the designer rather than adjusting values. USER_FLOWS must be aligned with D-007/D-009 (highlight pages, processing URL, no re-analyse button).
 Next: build tokens first, then Source visual (DS 7.10) and Step player (flows section 6).
+
+## H-006 | 2026-11-11 | from: ui-ux-designer -> to: software-engineer
+Task: Align specs with D-007, D-009, D-010.
+Done: `docs/USER_FLOWS.md`, `docs/DESIGN_SYSTEM.md` - highlights on their own page, severity enum, "Start again" actions, Processing at `/d/[documentId]`, new DS 7.16 Provenance (source quotes, interpretation tags, "Approximate area"), verbatim warnings (DS 7.12), motion trimmed to a functional budget.
+How to verify: n/a (spec).
+Open issues / risks: designer's questions answered in D-011; DS 7.16 should be re-read against D-011 when the step player is built.
+Next: engineer builds tokens and primitives from the design system.

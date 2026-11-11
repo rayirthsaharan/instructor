@@ -73,6 +73,9 @@ Colour is never the only signal. Each meaning has a fixed icon and a fixed word:
 | Success | check | "Done" | filled check disc |
 | Low confidence | dashed circle with "?" | "Double-check with the original" | dashed border, dashed brackets on the diagram |
 | Interpreted from diagram | eye | "Read from the picture" | uses `unsure` colours, solid border |
+| Approximate region (`regionFallback`) | dashed square | "Approximate area" | dashed brackets on the diagram |
+
+The `unsure` family is the single signal for "this is Instructor's reading, not the manual's own content". The opposite - the manual's exact words - has no colour: it is a neutral quote labelled "From your manual" (7.16).
 
 ### 2.3 Diagram-marking tokens
 
@@ -86,8 +89,8 @@ The manual page is **always rendered unaltered on white, in both themes**: no in
 | `--mark-fill-active` | `rgba(31,79,216,0.22)` | Region whose part chip or callout is selected |
 | `--mark-dim` | `rgba(246,243,236,0.62)` | Wash over everything outside all marked regions. Content stays legible through it |
 | `--mark-callout-bg` / `-fg` | `#1F4FD8` / `#FFFFFF` | Numbered callout disc (6.6:1) with 2px white ring |
-| `--mark-unsure-stroke` | `#6B3FA0` | Dashed (6 on, 5 off) brackets for low-confidence steps |
-| `--mark-cite-stroke` | `#1F4FD8` | Same brackets, pulsed once, for a region opened from a citation |
+| `--mark-unsure-stroke` | `#6B3FA0` | Dashed (6 on, 5 off) brackets for low-confidence steps and for any region with `regionFallback: true` |
+| `--mark-cite-stroke` | `#1F4FD8` | Same brackets at 4px for the first 2s, then 3px, for a region opened from a citation (no pulse animation) |
 
 Blue stroke on white is 6.6:1; the white halo guarantees at least that against any page content.
 
@@ -139,22 +142,25 @@ Rules: max line length 62ch for body, 34ch for `glance`. Emphasis is weight 700,
 | Token | Value | Use |
 |---|---|---|
 | `--dur-instant` | 80ms | Press feedback, checkbox tick |
-| `--dur-fast` | 140ms | Hover, chip select, toast exit |
-| `--dur-base` | 220ms | Step change, disclosure open, bracket draw-in |
-| `--dur-slow` | 360ms | Sheet open, zoom-to-region |
+| `--dur-fast` | 140ms | Hover, chip select, toast, step change, bracket fade-in |
+| `--dur-base` | 220ms | Disclosure open, sheet open and close, progress fill, stage resize |
+| `--dur-slow` | 360ms | Zoom-to-region only |
 | `--ease-out` | `cubic-bezier(0.2, 0.8, 0.2, 1)` | Entering, most transitions |
 | `--ease-in` | `cubic-bezier(0.4, 0, 1, 1)` | Exiting |
 | `--ease-in-out` | `cubic-bezier(0.4, 0, 0.2, 1)` | Zoom and pan animation, progress fill |
-| `--ease-snap` | `cubic-bezier(0.3, 1.4, 0.5, 1)` | Only: progress segment completing, checklist tick |
 
-Signature motions:
-- **Snap** (marking a region): brackets scale from 1.08 to 1 and fade 0 to 1, `dur-base` `ease-out`; dim wash fades in over the same time. Used whenever a marked region appears.
-- **Step change**: text panel fades out 80ms, new text fades in and moves 12px from the travel direction, `dur-base`. The visual cross-fades in place (no slide: two different crops sliding looks like one moving picture).
-- **Sheet**: translateY 100% to 0, `dur-slow` `ease-out`; exit `dur-base` `ease-in`; scrim fades with it.
+**Motion budget (D-010: usability over animation).** Motion is allowed only where it answers one of three questions: *did my tap register?* (state change), *where did this come from?* (sheet, zoom), *is it still working?* (processing). Nothing overshoots, bounces, scales on press, staggers, pulses or shimmers, and nothing animates to celebrate. There is no `ease-snap` token. The complete list of animated things:
+- **Snap** (marking a region - the name is kept, the motion is plain): brackets and dim wash fade 0 to 1, `dur-fast` `ease-out`. No scale.
+- **Step change**: old text is replaced by new text with one `dur-fast` opacity fade; no slide or offset. The visual cross-fades in place over the same time.
+- **Sheet**: translateY 100% to 0, `dur-base` `ease-out`; exit `dur-base` `ease-in`; scrim fades with it. Kept because it shows the sheet sits over the step and where it goes when dismissed.
+- **Zoom and pan**: animated (`dur-slow` `ease-in-out`) so the user keeps their place on the page.
+- **Progress fill**, **disclosure open**, **visual-stage resize**: `dur-base`.
+- **Processing arc** (7.14): the only looping motion in the product.
+- Hover, press, select, tick, toast: colour or opacity changes only (`dur-instant` / `dur-fast`).
 
 Interaction feedback must start within 100ms; never block input on an animation; a new step change interrupts a running one.
 
-**Reduced motion** (`prefers-reduced-motion: reduce`): all transforms and scale removed; every transition becomes an 80ms opacity change; `ease-snap` replaced by `ease-out`; no animated zoom (zoom jumps); skeleton shimmer becomes a static tone; processing indicator becomes a static icon plus text; citation pulse becomes a static thicker (4px) bracket for 2s.
+**Reduced motion** (`prefers-reduced-motion: reduce`): the sheet and zoom transforms are removed (sheet appears, zoom jumps); every remaining transition becomes an 80ms opacity change; the processing arc becomes a static icon plus text.
 
 ## 6. Breakpoints and grid
 
@@ -178,11 +184,13 @@ Anatomy: container, optional leading icon (24), label (`button`), optional trail
 
 | Variant | Default | Hover | Active | Disabled |
 |---|---|---|---|---|
-| Primary | `accent` fill, `on-accent` text | `accent-hover` | `accent-pressed`, scale 0.98 | `surface-sunken` fill, `ink-subtle` text, no border |
-| Secondary | `surface` fill, 1.5px `ink-subtle` border, `ink` text | `surface-sunken` fill | border `ink`, scale 0.98 | as primary disabled |
+| Primary | `accent` fill, `on-accent` text | `accent-hover` | `accent-pressed` | `surface-sunken` fill, `ink-subtle` text, no border |
+| Secondary | `surface` fill, 1.5px `ink-subtle` border, `ink` text | `surface-sunken` fill | border `ink`, `surface-sunken` fill | as primary disabled |
 | Quiet | no fill, `accent` text | `accent-soft` fill | `accent-soft` + `accent-pressed` text | `ink-subtle` text |
-| Danger | `danger-solid` fill, its on-colour | 8% black overlay | 16% overlay, scale 0.98 | as primary disabled |
-| Icon | 44x44 (56 in player), icon only, **requires `aria-label`** | `surface-sunken` | scale 0.96 | 40% opacity |
+| Danger | `danger-solid` fill, its on-colour | 8% black overlay | 16% overlay | as primary disabled |
+| Icon | 44x44 (56 in player), icon only, **requires `aria-label`** | `surface-sunken` | `line` fill | 40% opacity |
+
+Pressed states change colour only; nothing scales (section 5).
 
 Sizes: `md` height 48, `lg` height 56 (player, full-width mobile CTAs), `sm` height 44 with 14px label (dense desktop only). Loading: label stays, leading 20px spinner replaces the icon, `aria-busy="true"`, button not disabled visually but ignores input. Disabled buttons keep a readable label and, where the reason is not obvious, a helper line below explains it.
 
@@ -203,16 +211,16 @@ Anatomy: checkbox 28x28 (radius `xs`, 2px `ink-subtle` border) inside a full-row
 | State | Treatment |
 |---|---|
 | Unchecked | as above |
-| Checked ("got it") | checkbox `success-solid` with check (tick draws in 80ms `ease-snap`); name stays full contrast (no strikethrough - users re-read it) |
+| Checked ("got it") | checkbox `success-solid` with check (appears within `dur-instant`, no draw-in); name stays full contrast (no strikethrough - users re-read it) |
 | Missing | checkbox replaced by warn triangle; row `warn-soft`; third line "Needed in steps 4, 9" as links |
-| Hover / active | `surface-sunken` / pressed scale none (rows do not scale) |
+| Hover / active | `surface-sunken` for both |
 | Focus | ring on the row; overflow button separately focusable |
 | Loading | skeleton row |
 
 Semantics: `role="checkbox"` with `aria-checked`; missing is announced as "marked missing".
 
 ### 7.5 Progress
-- **Segmented bar** (player, overview): one segment per phase, width proportional to its step count, 2px gaps, height 6, radius `full`; track `line`, fill `accent`; a fully complete phase fills `success-fg`. Fill animates `dur-base` `ease-in-out`; a completing phase uses `ease-snap`.
+- **Segmented bar** (player, overview): one segment per phase, width proportional to its step count, 2px gaps, height 6, radius `full`; track `line`, fill `accent`; a fully complete phase fills `success-fg`. Fill animates `dur-base` `ease-in-out`; a completing phase just changes colour.
 - **Counter**: `label` "STEP 7 OF 24". Always paired with the bar - the bar alone is not the accessible value. `role="progressbar"` with `aria-valuenow/max` and `aria-valuetext="Step 7 of 24, Assemble the frame"`.
 - **Ring** (library card): 28px, 3px stroke, percent of completed steps.
 - **Stage list** (processing): see 7.14.
@@ -228,7 +236,7 @@ States: default; hover `surface-sunken`; current `accent-soft` with 3px `accent`
 Accessibility: `role="dialog"`, `aria-modal="true"`, labelled by its title, focus moves to the sheet title on open, focus is trapped, returns to the invoking control on close. Every sheet has a visible close button; drag is never the only way to dismiss.
 
 ### 7.8 Toast
-Bottom-centre on `sm` (above the action bar: bottom offset = bar height + 12), bottom-left on `lg`. `ink` fill with `bg` text in light; `surface-raised` with `ink` text and 1px `line` in dark. Radius `sm`, `elev-2`, padding 12 16, max-width 420, optional leading icon and one Quiet action ("Undo"). Duration 4s (8s with an action); pauses on hover/focus; max one visible, newest replaces. `role="status"` (`aria-live="polite"`); errors that need action are **not** toasts - they are inline banners. Enter: fade + 8px rise `dur-base`; exit `dur-fast`.
+Bottom-centre on `sm` (above the action bar: bottom offset = bar height + 12), bottom-left on `lg`. `ink` fill with `bg` text in light; `surface-raised` with `ink` text and 1px `line` in dark. Radius `sm`, `elev-2`, padding 12 16, max-width 420, optional leading icon and one Quiet action ("Undo"). Duration 4s (8s with an action); pauses on hover/focus; max one visible, newest replaces. `role="status"` (`aria-live="polite"`); errors that need action are **not** toasts - they are inline banners. Enter and exit: opacity fade, `dur-fast`.
 
 ### 7.9 Upload dropzone
 Anatomy: dashed 2px `ink-subtle` border, radius `md`, `surface`, min-height 220 (`sm`) / 280; icon (page with bracket corners), title `display-md` "Add your manual", helper `body-sm` "PDF or photos of the pages - up to 60 pages, 40 MB", two buttons: Primary "Take photos" (mobile only, camera capture) and Secondary "Choose files" (on desktop this is Primary and the helper adds "or drop them here").
@@ -250,9 +258,9 @@ The most important component. It shows a piece of the original page with Instruc
 
 Layers, bottom to top:
 1. **Stage**: `surface-sunken`, radius `md` (0 when edge-to-edge on `sm`).
-2. **Page image**: unaltered; `object-fit: contain`. Initial view = the step's `sources[i].region`, padded by 6% of the page on each side and clamped to the page; if the region is absent: the full page.
-3. **Dim wash** (`mark-dim`) over everything outside the union of highlight regions. Drawn only when there is at least one highlight.
-4. **Brackets**: one set of four L-shaped corners per `highlights[].region`; arm length = 18% of the region's shorter side, clamped 12-28px on screen; stroke per 2.3; corners rounded 2px; region tinted `mark-fill`.
+2. **Page image**: unaltered; `object-fit: contain`. Initial view = the step's `sources[i].region`, padded by 6% of the page on each side (12% when that source has `regionFallback: true`, so an imprecise box still shows its surroundings) and clamped to the page; if the region is absent: the full page.
+3. **Dim wash** (`mark-dim`) over everything outside the union of the highlight regions **on the page being shown**. Drawn only when that page has at least one highlight.
+4. **Brackets**: each highlight is `{ source, panelId?, label?, partId? }` and is drawn on the page given by its own `highlight.source.pageIndex`, at `highlight.source.region` - never assumed to be on `sources[0]`. A highlight whose page is not the one shown is not drawn; the pager reaches it (USER_FLOWS 6.6). One set of four L-shaped corners per highlight; arm length = 18% of the region's shorter side, clamped 12-28px on screen; stroke per 2.3; corners rounded 2px; region tinted `mark-fill`.
 5. **Callouts**: 28px disc at the region's top-left corner, centred on the corner, kept inside the stage. Content: the highlight's `label` if present, otherwise its 1-based index. Hit area 44. Linked to a part chip when `partId` is set.
 6. **Controls** (`elev-1`, `surface` at 92% opacity, radius `sm`), bottom-right: zoom out, zoom in, reset ("Fit"), and top-right: "Marks" toggle (eye icon; hides layers 3-5 so nothing we draw can ever obscure the source), "Original page" (opens the Original viewer at this page). Bottom-left: page tag "p. 12" and, with several sources, a pager "1 / 2" with previous/next (44px).
 
@@ -263,27 +271,35 @@ Behaviour:
 - Keyboard (stage is focusable, `role="group"`, `aria-roledescription="zoomable image"`): `+`/`-` zoom, `0` fit, arrows pan, `M` toggles marks.
 - Tapping a callout selects it and its part chip (and vice versa); selected region uses `mark-fill-active`.
 
-States: loading (skeleton stage with bracket corners in `line`, no spinner); loaded; marks hidden (toggle shows `aria-pressed="false"`, small "Marks off" tag); **low confidence** (dashed `mark-unsure-stroke` brackets, and the stage carries a persistent "Double-check with the original" tag bottom-centre); **no usable region** (full page, no brackets, tag "Whole page shown"); **image failed** (stage shows icon, "Couldn't load this page", Secondary "Try again"; the instruction text remains usable); zoomed (reset button becomes accent).
+States: loading (skeleton stage with bracket corners in `line`, no spinner); loaded; marks hidden (toggle shows `aria-pressed="false"`, small "Marks off" tag); **low confidence** (dashed `mark-unsure-stroke` brackets, and the stage carries a persistent "Double-check with the original" tag bottom-centre); **approximate region** (any drawn region whose source has `regionFallback: true`: that region's brackets are dashed `mark-unsure-stroke`, and the stage carries one "Approximate area" tag bottom-centre, `unsure` colours; when the step is also low confidence, only the low-confidence tag is shown); **no usable region** (full page, no brackets, tag "Whole page shown"); **image failed** (stage shows icon, "Couldn't load this page", Secondary "Try again"; the instruction text remains usable); zoomed (reset button becomes accent).
 
 Alt text: `"Manual page 12, area for step 7: <step title>"`. Highlights are exposed as a list: "Marked area 1: Cam lock (part B)". The picture is not described beyond what the Guide data contains.
 
 ### 7.11 Citation chip
-Inline or trailing chip that points to the source. Anatomy: page-with-brackets icon 16, text in `tag`: "Step 7 · p. 12" (step part omitted when the citation has no `stepId`; page is `pageIndex + 1`). Height 28 visual, 44 hit area (vertical padding via pseudo-element), radius `xs`, `accent-soft` fill, `accent` text. Hover: `accent` border. Active: `accent` fill, `on-accent` text. Focus ring. It is a button: opens the Original viewer at the page with the region bracketed (`mark-cite-stroke`, one pulse). `aria-label="Open manual page 12, step 7"`. A citation that fails validation is not rendered at all.
+Inline or trailing chip that points to the source. Anatomy: page-with-brackets icon 16, text in `tag`: "Step 7 · p. 12" (step part omitted when the citation has no `stepId`; page is `pageIndex + 1`). Height 28 visual, 44 hit area (vertical padding via pseudo-element), radius `xs`, `accent-soft` fill, `accent` text. Hover: `accent` border. Active: `accent` fill, `on-accent` text. Focus ring. It is a button: opens the Original viewer at the page with the region bracketed (`mark-cite-stroke`, 4px for 2s). `aria-label="Open manual page 12, step 7"`. A citation that fails validation is not rendered at all.
 
 ### 7.12 Banners: warning and irreversible
-Shared anatomy: icon 24, label (`label`), text (`body-lg`, never truncated, never collapsed), optional citation chip. Radius `md`, padding 12 16. Banners are static content (`role="note"`), not alerts, except when they appear in response to an action.
+Shared anatomy: icon 24, label (`label`), text (`body-lg`, never truncated, never collapsed), optional source line (warnings; see below), optional citation chip. Radius `md`, padding 12 16. Banners are static content (`role="note"`), not alerts, except when they appear in response to an action.
 
 | Banner | Treatment |
 |---|---|
-| **Caution** (lower severity) | `warn-soft` fill, 4px `warn-fg` left bar, triangle, label "CAUTION" |
-| **Warning** (higher severity) | same plus 1.5px `warn-fg` full border, label "WARNING", text weight 600 |
+| **Caution** (`severity: "caution"`) | `warn-soft` fill, 4px `warn-fg` left bar, triangle, label "CAUTION" |
+| **Warning** (`severity: "warning"`; also any unrecognised value) | same plus 1.5px `warn-fg` full border, label "WARNING", text weight 600 |
 | **Irreversible** | `danger-soft` fill, 2px `danger-fg` border, 8px hatched top strip (45-degree stripes `danger-fg` / `danger-soft`), padlock, label "CAN'T BE UNDONE", fixed text "Check the picture and the parts before you do this step." followed by nothing invented |
 | **Low confidence** | `unsure-soft`, 1.5px dashed `unsure-fg` border, label "DOUBLE-CHECK", text "We're less sure we read this step correctly. Compare it with the original page.", Quiet button "Show original page" |
 | **Read from the picture** (`interpretedFromDiagram`) | compact one-line `unsure-soft` tag: eye icon + "Read from the picture - the manual has no words here" |
 | **Error** (system) | `danger-soft`, 4px left bar, label names the problem, one action button |
 | **Info / authority** | `surface-sunken`, 1px `line`, text "The original manual is the authority. If this guide and the manual differ, follow the manual." |
 
-Warning text is the manual's warning as extracted. The UI never rewrites, shortens or softens it.
+**Warnings keep the manual's wording (D-010).** The UI never rewrites, shortens, softens, collapses or "simplifies" a warning, and the manual's exact words are always on screen, not behind a tap. The banner's source line, under the text, has exactly three cases:
+
+| Data | Banner text | Source line |
+|---|---|---|
+| `sourceQuote` equals `text` (compare after trimming and collapsing whitespace) | `text` | `body-sm` `ink-muted`: "From your manual" + page tag "p. 12" (button -> Original viewer at the warning's source) |
+| `sourceQuote` differs from `text` (normalised or translated) | `text` | The full Source quote (7.16) inside the banner, always expanded, with `lang` set to the manual's language |
+| no `sourceQuote` (e.g. a warning pictogram with no words) | `text` | "Read from the picture" tag (eye icon, `unsure` colours) + page tag - the user is told this wording is Instructor's reading of a symbol |
+
+Read-aloud speaks the banner text, then the quote when it differs.
 
 ### 7.13 Chat message
 - **User**: right-aligned bubble, `accent-soft` fill, `ink` text, radius `md` with 4px bottom-right, max-width 85%.
@@ -293,17 +309,42 @@ Warning text is the manual's warning as extracted. The UI never rewrites, shorte
 - Composer: multiline input (min-height 48, max 4 lines, 16px text to avoid iOS zoom), Send icon button 48 (disabled when empty), suggested-question chips above when the thread for this step is empty.
 
 ### 7.14 Skeleton and processing
-- **Skeleton**: `surface-sunken` blocks, radius matching the real element, shimmer = 1.2s linear sweep of a 12%-lighter band; reduced motion: static. Skeletons mirror the final layout (same heights) so nothing shifts. Text skeletons are 60-90% width lines. `aria-hidden="true"` with one visually hidden "Loading" status per region.
+- **Skeleton**: `surface-sunken` blocks, radius matching the real element, static tone, no shimmer or pulse (the processing arc and button spinner are the only "working" indicators). Skeletons mirror the final layout (same heights) so nothing shifts. Text skeletons are 60-90% width lines. `aria-hidden="true"` with one visually hidden "Loading" status per region.
 - **Processing stage list**: four rows - "Reading pages", "Finding parts", "Building steps", "Double-checking". Row: marker 24 + `body-lg` label + optional `body-sm` detail. Marker states: pending (empty ring `ink-subtle`), active (ring with a rotating 90-degree `accent` arc, 1s linear; reduced motion: solid `accent` ring), done (`success` check disc), failed (`danger` cross disc). The active row label is weight 600. The list is `aria-live="polite"`; each stage change is announced once.
 - **Spinner**: only inside buttons (20px). Never a full-screen spinner.
 
 ### 7.15 Smaller parts
-- **Disclosure** ("Why", "Common mistake", "Explain simpler"): full-width row 48, chevron right rotates 90 degrees, `body` 600; content `body-lg` on `surface-sunken` inset; `aria-expanded`.
+- **Disclosure** ("Why", "Common mistake", "Explain simpler"): full-width row 48, chevron points right (closed) or down (open), `body` 600; content `body-lg` on `surface-sunken` inset; `aria-expanded`.
 - **Checkpoint block**: `success-soft` fill, check-in-circle icon, label "YOU'LL KNOW IT'S RIGHT WHEN", text `body-lg`. Not interactive.
 - **Menu**: `surface-raised`, `elev-2`, radius `sm`, rows 48, destructive row in `danger-fg`.
 - **Dialog** (destructive confirm only): centred, max 400, title, one sentence, Secondary "Cancel" + Danger action; focus starts on Cancel.
 - **Text input**: height 48, 1.5px `ink-subtle` border, radius `sm`; focus border `accent` + ring; error border `danger-fg` + message below with icon.
 - **Toggle**: 52x32 track, used for "Keep screen on" and "Read aloud automatically"; `role="switch"`.
+
+### 7.16 Provenance: the manual's words vs Instructor's reading (D-010)
+The user must be able to tell, at a glance, what comes straight from the manual and what Instructor worked out. Three levels, two visible treatments, no new colours and no badges on ordinary content:
+
+| Level | What it covers | Treatment |
+|---|---|---|
+| **The manual's own words** | `sourceQuote` on warnings and on steps (steps that contain numbers carry one) | **Source quote**, below |
+| **Instructor's wording of the manual** (the default) | Step title, instruction, checkpoint, part names, summary | Unmarked. Always one tap from its page ("Show original page", the page tag). Explained once on the Overview |
+| **Instructor's interpretation** | `interpretedFromDiagram`, `regionFallback`, `confidence: low`, "Why this matters", "Common mistake", "Simpler wording", assistant answers | `unsure` family or an explicit caption, per the table below |
+
+**Source quote** (the only "verified" marker): a `<blockquote>` with a 3px `ink` left rule, 12px inset, no fill, no border. First line: `label` "FROM YOUR MANUAL" followed by the page tag (`tag`, "p. 12"; a 44px-target button that opens the Original viewer at that source). Then the quote in `body`, `ink`, rendered **verbatim**: no trimming, no case change, no translation, no added quotation marks, never truncated or collapsed; `lang` = the manual's language. Not interactive apart from the page tag. It is rendered only when the data has a `sourceQuote`; the UI never builds one from other fields. Neutral ink, not green: green means "done", and a "verified" tick would claim more than a matched quote proves.
+
+| Signal | Where | Treatment |
+|---|---|---|
+| `step.sourceQuote` | Under the instruction | Source quote |
+| `warning.sourceQuote` | In the warning banner | 7.12 |
+| `interpretedFromDiagram` | Under the instruction (after the quote, if both) | One-line tag, 7.12: eye + "Read from the picture - the manual has no words here" |
+| `regionFallback` | On the visual | Dashed brackets + "Approximate area" tag, 7.10. Nothing in the text panel |
+| `confidence: low` | Banner, visual, rail | 7.12, 7.10, 7.6 (unchanged) |
+| `why`, `commonMistake` | Inside the opened disclosure, first line | `body-sm` `ink-muted`: "Instructor's explanation - not the manual's wording." |
+| Simpler wording | Inside the opened disclosure | Existing note (USER_FLOWS 6.4) |
+
+Overview key (second sentence of the authority note, shown once per guide, not per step): "Steps are Instructor's wording of your manual. Text marked FROM YOUR MANUAL is the manual's exact words."
+
+Noise rules: at most one Source quote and one tag per step outside banners; `confidence: medium` and ordinary reworded text get no marker; no per-sentence markers, percentages or confidence meters.
 
 ## 8. Accessibility rules
 
@@ -321,5 +362,5 @@ Warning text is the manual's warning as extracted. The UI never rewrites, shorte
 12. Language: plain words, sentences under 20 words in UI copy, no jargon the manual did not use. Errors say what happened and what to do next.
 
 ## 9. Open points
-- `warnings[].severity` values are not enumerated in the Guide contract. This spec maps the lower level to "Caution" and the higher level to "Warning"; an unknown value renders as "Warning".
-- `highlights[]` have no page reference. This spec draws them on `sources[0]`'s page only; other source pages show brackets around their own `region` only.
+- Resolved (D-009): severity is `caution | warning` (7.12); highlights carry their own page (7.10).
+- Open: whether `warning.text` can differ from `sourceQuote`, and whether `checkpoint` is extracted or generated (USER_FLOWS section 11). 7.12 and 7.16 are safe either way.

@@ -37,3 +37,9 @@ Status: proposed (needs user approval), accepted, superseded by D-nnn.
 - Accuracy is a core requirement: never invent; every step keeps its page/diagram reference; **verified information is visibly distinguished from AI interpretation**; uncertainty is communicated; warnings and safety text are preserved and never simplified in a way that changes meaning.
 - Usability over animation or visual complexity. Maintainable and testable, not over-engineered.
 - Report to the user at each milestone: what was built, what was tested, what needs approval.
+
+## D-011 | 2026-11-11 | orchestrator | accepted
+**Provenance rules for the Guide contract (implements D-010 accuracy requirements).**
+- `warning.text` may be a plain-language restatement, but `warning.sourceQuote` (verbatim) is required whenever the manual states the warning in words; the UI always shows the verbatim quote. A warning read from a pictogram has no quote and is marked `interpretedFromDiagram: true`.
+- `why`, `commonMistake` and `checkpoint` are each `{ text, origin: "manual" | "inferred", sourceQuote? }`. `origin: "manual"` requires a `sourceQuote`. Inferred guidance is labelled in the UI as coming from Instructor, never presented as the manual's words, and may never contain measurements, quantities or specifications.
+- "Start again with a new file" (PDF) alongside "Start again with new photos" is accepted.

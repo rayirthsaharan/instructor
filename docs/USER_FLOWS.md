@@ -1,6 +1,6 @@
 # Instructor - User Flows and Screen Specs
 
-Status: **v1.** Owner: `ui-ux-designer`. Tokens and components are defined in `docs/DESIGN_SYSTEM.md` (referred to as DS). Data names (`step.checkpoint`, `unreadablePages`) refer to the Guide contract in `docs/ARCHITECTURE.md` section 4.
+Status: **v1.** Owner: `ui-ux-designer`. Tokens and components are defined in `docs/DESIGN_SYSTEM.md` (referred to as DS). Data names (`step.checkpoint`, `unreadablePages`) refer to the Guide contract in `docs/ARCHITECTURE.md` section 4 as amended by its section 10. Aligned with D-007, D-009 and D-010.
 
 Layout references: **375** (`sm`), **768** (`md`), **1280** (`lg`). Page numbers shown to users are `pageIndex + 1`.
 
@@ -19,13 +19,13 @@ Library --(Add a manual)--> Capture --(Analyse)--> Processing --(done)--> Guide 
 
 1. **Library**: first visit shows the empty state with one action, "Add a manual".
 2. **Capture**: PDF or page photos; reorder/remove photos; "Analyse".
-3. **Processing**: honest stages; the user may leave and come back.
+3. **Processing**: honest stages at its own URL; the user may leave, refresh or come back later.
 4. **Overview + prep**: what you are making, time, people, phases; tick off tools and parts; "Start".
 5. **Step player**: one step per screen until the last step.
 6. **Assistant** and **Original viewer**: overlays over the player; closing either returns to the same step, same zoom.
 7. **Completion**: finished; anything skipped is listed.
 
-Routes: `/` Library, `/new` Capture and Processing, `/g/[id]` Overview, `/g/[id]/play` Player. Player state lives in the URL so back/refresh/share-to-self work: `?step=<stepId>`, overlays as `&panel=ask | steps | original` and `&page=<n>`. The browser Back button closes the top overlay first, then leaves the player.
+Routes: `/` Library, `/new` Capture, `/d/[documentId]` Processing (resumable, D-009), `/g/[id]` Overview, `/g/[id]/play` Player. Player state lives in the URL so back/refresh/share-to-self work: `?step=<stepId>`, overlays as `&panel=ask | steps | original` and `&page=<n>`. The browser Back button closes the top overlay first, then leaves the player.
 
 Global chrome: there is no persistent navigation bar. Library is home; every other screen has a single back affordance in its header. The player has its own chrome (section 6).
 
@@ -52,7 +52,7 @@ Purpose: resume fast, or start a new manual.
 **Interactions**
 - Card tap: unfinished guide -> player at the saved step; not started -> Overview; finished -> Overview. "Continue" -> player.
 - Delete: confirm dialog "Delete this guide? The guide and the uploaded manual will be removed from this device's library." Cancel / Delete. After delete: toast "Guide deleted" (no undo - files are removed).
-- Processing card: tap -> Processing screen. Failed card: tap -> Processing screen in its error state.
+- Processing card: tap -> `/d/[documentId]`. Failed card: tap -> the same URL, which shows its error state.
 
 **States**
 - Empty (first run): centred block: bracket-corner page icon, `display-lg` "Turn any manual into clear steps", `body-lg` "Add the PDF, or take photos of the paper booklet. We'll mark up the manual's own pictures, one step at a time.", Primary "Add a manual". Three one-line points below ("Check your parts first", "One step per screen", "Ask when you're stuck"). No sample data.
@@ -86,7 +86,7 @@ Purpose: get the pages in, in the right order, with specific errors.
 - One PDF **or** photos, not both. Adding a PDF when photos exist (or the reverse) asks: "Replace the photos with this PDF?" Cancel / Replace.
 - Reorder by drag, or tile menu "Move earlier / Move later"; remove with the tile's remove button (toast "Page removed" + Undo).
 - "Analyse manual" is disabled until at least one valid file is present; helper explains: "Add a PDF or at least one page photo."
-- On Analyse: upload begins; rows show determinate progress; on success the screen becomes Processing in place.
+- On Analyse: upload begins; rows show determinate progress; when the upload is accepted, navigate to `/d/[documentId]` (replace the history entry, so Back goes to the Library, not to a spent form).
 
 **States and exact error copy** (Error banner above the dropzone, the rest of the screen stays usable; rejected files are not added)
 
@@ -104,9 +104,11 @@ Loading: thumbnails show skeleton tiles while the browser decodes/converts (HEIC
 
 ---
 
-## 4. Processing
+## 4. Processing `/d/[documentId]`
 
 Purpose: honest progress for about a minute; safe to leave.
+
+The URL is the job's identity. Opening it at any time (refresh, Back, Library card, another tab) renders the job's **current** state from the server: running -> the stage list at the real stage; finished -> redirect (replace) to `/g/[id]`; failed or rejected -> the matching state in section 10. No state is held only in the page.
 
 **Content hierarchy**
 1. First-page thumbnail (120 wide, 3:4) with bracket corners.
@@ -123,6 +125,7 @@ No percentage bar and no invented time countdown: the stage list is the progress
 
 **States**
 - Known manual (content-hash match): no stage list is shown; go straight to Overview with toast "We already know this manual - your guide is ready."
+- Loading the job state: stage-list skeleton (4 rows). Document not found / not owned by this session: "This manual isn't on this device." + "Back to library".
 - Rejected, failed, partially unreadable: see section 10.
 - Connection lost while polling: info banner "Reconnecting... your manual is still being read." Polling resumes silently.
 - Slow (stage unchanged > 60s): detail line under the active stage "Still working - long manuals take longer." Nothing else changes.
@@ -137,7 +140,7 @@ Purpose: "Can I start, and what am I in for?"
 1. Header: back to Library; overflow (Original manual, Delete guide).
 2. Eyebrow (`label`): "HERE'S THE PLAN". Title (`display-xl`): `guide.title`. Summary (`body-lg`): `guide.summary`.
 3. Facts row - three tiles with icon, value (`display-md`), caption (`body-sm`): time ("About 90 min" from `estimatedMinutes`), people ("2 people" from `peopleNeeded`), difficulty (3 dots filled 1-3 plus the word: "Easy" / "Moderate" / "Demanding").
-4. Notices, in this order when present: **safety-critical** notice (`guide.safetyCritical`: Warning banner "This job involves safety-critical work. Follow the original manual's warnings exactly. If you're unsure, stop and get a qualified person." with a required checkbox "I understand" before Start is enabled); **unreadable pages** banner (section 10.2); authority note (DS 7.12 Info).
+4. Notices, in this order when present: **safety-critical** notice (`guide.safetyCritical`: Warning banner "This job involves safety-critical work. Follow the original manual's warnings exactly. If you're unsure, stop and get a qualified person." with a required checkbox "I understand" before Start is enabled); **unreadable pages** banner (section 10.2); authority note (DS 7.12 Info), which here carries the one-time provenance key as a second sentence (DS 7.16).
 5. **Before you start** - readiness line ("7 of 12 checked" / "Everything checked" / "1 part marked missing"), then two groups:
    - "Tools" - Checklist rows (DS 7.4) from `tools[]`; `included: false` shows "Not in the box - you need your own".
    - "Parts" - Checklist rows from `parts[]`: thumbnail = crop of `part.source`, name, `manualLabel`, "x`quantity`". Tapping the thumbnail opens the Part sheet with a larger crop and "Show in manual".
@@ -211,15 +214,16 @@ The phone is propped against a box, 50-70 cm away, portrait or landscape. One ha
 
 **Text panel** (scrolls; bottom padding = action bar height + 24). Fixed order - the order is safety-driven and must not be rearranged:
 1. Irreversible banner (if `step.irreversible`).
-2. Warning banners, higher severity first (all of `step.warnings`, full text).
+2. Warning banners: severity `warning` before `caution`, manual order within each (all of `step.warnings`, never collapsed; the manual's wording is shown verbatim per DS 7.12).
 3. Missing-part banner (if the step uses a part marked missing; section 10.4).
-4. Low-confidence banner (if `confidence: low`). "Read from the picture" tag (if `interpretedFromDiagram`).
+4. Low-confidence banner (if `confidence: low`).
 5. Step title (`display-md`, `h1`).
-6. Instruction (`glance`).
-7. Parts and tools for this step (Part chips; label `label` "FOR THIS STEP"). Quantity = `partsUsed[].quantity`; omitted if absent.
-8. Checkpoint block (if `checkpoint`).
-9. Disclosures: "Why this matters" (`why`), "Common mistake" (`commonMistake`), "Explain it more simply". Each is shown only if it has data, except "Explain it more simply", which is always present.
-10. Quiet link "Show original page".
+6. Instruction (`glance`). This is Instructor's wording of the step.
+7. Provenance slot, directly under the instruction (DS 7.16); omitted when empty: the **Source quote** "FROM YOUR MANUAL" (if `step.sourceQuote`), then the "Read from the picture" tag (if `interpretedFromDiagram`).
+8. Parts and tools for this step (Part chips; label `label` "FOR THIS STEP"). Quantity = `partsUsed[].quantity`; omitted if absent.
+9. Checkpoint block (if `checkpoint`).
+10. Disclosures: "Why this matters" (`why`), "Common mistake" (`commonMistake`), "Explain it more simply". Each is shown only if it has data, except "Explain it more simply", which is always present. The first two carry the caption from DS 7.16 inside their content.
+11. Quiet link "Show original page".
 
 `confidence: medium` shows no marker (noise would train users to ignore the low marker). Low only.
 
@@ -260,7 +264,7 @@ At 320 width the Steps button moves into the top bar counter (the counter itself
 - **Haptics** (where supported): 10ms on Primary; double pulse when arriving on an irreversible step.
 - **Read-aloud** (speech synthesis): speaks, in order, "Careful: this step can't be undone" (if irreversible), each warning, the title, the instruction, then "You'll know it's right when" + checkpoint. Speaker icon shows a playing state; tap to stop; changing step stops speech (and restarts on the new step only if automatic mode is on). If speech synthesis is unavailable the control is hidden.
 - **Keep screen on**: requested on entering the player and again when the tab becomes visible. If unsupported or refused, the switch is shown off with the helper "Your browser can't keep the screen on. Set your phone's auto-lock to a longer time."
-- **Explain it more simply**: opening the disclosure requests a simpler wording (cached per step). Loading: 3 skeleton lines. Result appears under the label "SIMPLER WORDING" with the note "Same step, simpler words. Numbers and part names are unchanged." Error: "Couldn't get a simpler version." + "Try again". The original instruction always stays visible above.
+- **Explain it more simply**: opening the disclosure requests a simpler wording (cached per step). Loading: 3 skeleton lines. Result appears under the label "SIMPLER WORDING" with the note "Same step, simpler words. Numbers and part names are unchanged." Error: "Couldn't get a simpler version." + "Try again". The original instruction always stays visible above. Only the instruction is reworded: warning banners, the irreversible banner and the Source quote are never simplified and stay exactly as shown.
 - **Progress is saved** on every step change and completion (optimistic). If a save fails: silent retry; after 3 failures a toast "Progress isn't saving - check your connection". Local state is kept and re-sent.
 - **First run** (first player open on this device): one dismissible coach line above the action bar for step 1 only: "Swipe or use the arrows to look around. Tap Done when you've finished a step." No multi-screen tutorial.
 
@@ -279,7 +283,8 @@ The irreversible thing is the physical act, so the treatment arrives **before** 
 | Step image loading | Visual skeleton only; text and action bar are live immediately (step data loads once per guide) |
 | Step image failed | Visual error state (DS 7.10) with "Try again"; a note under the instruction: "The picture didn't load. You can still open the original manual." |
 | No region / invalid region | Full page shown, tag "Whole page shown" |
-| Step with several sources | Pager on the visual "1 / 2"; highlights drawn on the first source page |
+| Step with several sources | Pager on the visual "1 / 2", opening on `sources[0]`. Pages = the step's `sources` in order, then any page referenced only by a highlight. Each highlight is drawn on the page of its own `highlight.source` (never assumed to be `sources[0]`). Selecting a part chip whose highlight is on another page switches the pager to that page |
+| Approximate region (`regionFallback: true` on the step source or a highlight's source) | Dashed brackets and the "Approximate area" tag (DS 7.10, 7.16); the crop gets extra padding. No banner |
 | Step has no parts / tools | The "FOR THIS STEP" group is omitted |
 | Low confidence | DS low-confidence visual state + banner; rail flag |
 | Offline | Info banner under the top bar: "You're offline. Steps you've opened still work; asking questions needs a connection." Ask button shows a small offline dot |
@@ -331,7 +336,7 @@ Purpose: the unaltered manual, always reachable, returning to the same place.
 
 **Content hierarchy**
 1. Header: close ("Back to step 7" as text on `md`+, icon on `sm`), "Page 12 of 20" (`tag`), "Marks" toggle (shown only when opened with a region).
-2. Page stage: the full page, zoom and pan as DS 7.10 (same component, full-page mode). When opened from a step or a citation, the region is bracketed and the view starts fitted to the whole page (context first), with one Snap pulse on the brackets.
+2. Page stage: the full page, zoom and pan as DS 7.10 (same component, full-page mode). When opened from a step or a citation, the region is bracketed and the view starts fitted to the whole page (context first), with the brackets emphasised (4px) for 2s - no pulse animation.
 3. Page navigation: previous / next buttons (56 on `sm`), and a thumbnail strip.
 4. Unreadable pages (`unreadablePages`) carry a warn tag "We couldn't read this page" on the page and on its thumbnail.
 
@@ -354,7 +359,7 @@ Purpose: the unaltered manual, always reachable, returning to the same place.
 Shown after "Done - finish" on the last step (a view within the player route; refreshing a finished guide's player URL without `?step` shows it again).
 
 **Content hierarchy**
-1. Segmented progress, fully `success`, phases complete with the snap easing one after another (total under 600ms; reduced motion: static full bar).
+1. Segmented progress, fully `success`. Static: no completion animation.
 2. Success check disc (56) and `display-xl` "Finished." then `body-lg`: "You completed all 24 steps of <guide title>."
 3. **Skipped steps** (only if any step is not marked done): Warning-styled card "2 steps aren't marked done" with a list of those steps (rail rows, tappable -> player at that step). In this case the title is "Almost there." and the check disc is replaced by the progress ring.
 4. **Missing parts reminder** (only if any part is still marked missing): list of the parts and "Needed in steps ...".
@@ -373,12 +378,12 @@ No confetti, no ratings prompt, no invented claims ("your wardrobe is ready to u
 
 ### 10.1 Rejected: not a manual
 Trigger: the pipeline reports the document is not instructions.
-Processing screen is replaced in place: page icon with a "?" bracket, `display-lg` "This doesn't look like instructions", `body-lg` "We look for manuals and step-by-step guides - for example assembly or setup instructions. This file seems to be something else.", Primary "Try a different file" (-> Capture, empty), Quiet "Back to library". No guide is created; no Library card remains. No override ("analyse anyway") in v1.
+The Processing URL (`/d/[documentId]`) shows this state instead of the stage list, also on a later visit: page icon with a "?" bracket, `display-lg` "This doesn't look like instructions", `body-lg` "We look for manuals and step-by-step guides - for example assembly or setup instructions. This file seems to be something else.", Primary "Try a different file" (-> Capture, empty), Quiet "Back to library". No guide is created; no Library card remains. No override ("analyse anyway") in v1.
 
 ### 10.2 Unreadable page(s)
 Trigger: `guide.unreadablePages` is not empty; the guide is still produced.
-- Overview: Warning banner (Caution style) "We couldn't read page 7. Steps from that page may be missing. Check it in the original." For several: "pages 7, 8 and 12". Actions: Quiet "View page 7" (Original viewer) and Secondary "Replace and re-analyse".
-- "Replace and re-analyse": for photo uploads -> Capture pre-filled with the existing pages, the unreadable tiles flagged "Retake this page" (warn tag); replacing a tile and tapping Analyse creates a new analysis. For PDFs -> Capture empty with the note "Upload a clearer copy of the PDF." The old guide is kept until the user deletes it; progress is not migrated in v1 (stated in the confirm: "This creates a new guide. Your progress on the current one stays with it.").
+- Overview: Warning banner (Caution style) "We couldn't read page 7. Steps from that page may be missing. Check it in the original." For several: "pages 7, 8 and 12". Actions: Quiet "View page 7" (Original viewer) and Secondary "Start again with new photos" (PDF uploads: "Start again with a new file").
+- "Start again with new photos" (D-009; replacing single pages is out of MVP): opens Capture (`/new`) **empty**, with an Info banner "Add every page again, including page 7. Your current guide stays in your library." It is an ordinary new upload: a new document and a new guide. Nothing is pre-filled, the current guide and its progress are untouched, so no confirm dialog is needed.
 - Player: no per-step marker (the data cannot say which steps are affected). The Original viewer tags the page (section 8).
 - If **every** page is unreadable the job fails instead (10.3) with the message "We couldn't read these pages. Try photos in brighter light, with each page flat and filling the frame."
 
@@ -414,7 +419,9 @@ Stored in `progress.checklist_json` as a per-item state: `unchecked | have | mis
 - Session lost (cookies cleared, other device): the Library is empty; no recovery in MVP. The Library footer note sets this expectation.
 
 ## 11. Open questions
-1. `highlights[]` carry no `pageIndex`; spec assumes they belong to `sources[0]`. Confirm or add the field.
-2. `warnings[].severity` enum values - needed for the Caution/Warning mapping.
-3. Citation `region` validity and a stable processing route (`/new` in place vs a job URL) - engineer's choice, the spec works with either.
-4. "Replace and re-analyse" needs the pipeline to accept an edited page set as a new document; if out of MVP scope, drop the button and keep "View page".
+Resolved by D-009 and now reflected above: highlights carry their own page; severity is `caution | warning`; Processing lives at `/d/[documentId]`; "Replace and re-analyse" is replaced by "Start again with new photos".
+
+Still open (for the engineer / orchestrator):
+1. Is `warning.text` always the manual's wording, or can it be a normalised or translated version of `sourceQuote`? DS 7.12 handles both cases; confirm which occurs.
+2. Is `checkpoint` extracted from the manual or written by the pipeline? It is currently unmarked (treated as Instructor's wording). If it can be either, it needs a `sourceQuote` or a flag.
+3. "Start again with a new file" is this spec's label for PDF uploads; D-009 names only the photo wording.
