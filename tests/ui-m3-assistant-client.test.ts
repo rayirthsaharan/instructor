@@ -224,6 +224,13 @@ describe('messages and citations from the server', () => {
     expect(parseMessage({ id: 'a', role: 'user', text: 5, stepId: 's' })).toBeNull();
     expect(parseMessage({ id: 'a', role: 'user', text: 't', stepId: 's' })).toMatchObject({ citations: [], notInManual: false, note: undefined });
   });
+  it('accepts the server shape: null stepId and note "no_citation" / null', () => {
+    expect(parseMessage({ id: 'u', role: 'user', text: 't', stepId: null, createdAt: 1, citations: [], notInManual: false, note: null })).toMatchObject({ stepId: '', note: undefined });
+    expect(parseMessage({ id: 'a', role: 'assistant', text: 't', stepId: 's1', note: 'no_citation' })?.note).toBe('no_citation');
+  });
+  it('items without a step get no divider', () => {
+    expect(conversationItems({ messages: [msg({ stepId: '' })], turn: null }).map((i) => i.kind)).toEqual(['message']);
+  });
   it('drops citations that cannot be shown and duplicates', () => {
     const out = cleanCitations([
       { pageIndex: 2, stepId: 's4', region: { x: 0.1, y: 0.1, w: 0.5, h: 0.5 } },
@@ -325,5 +332,6 @@ describe('keyboard inset and error copy', () => {
     expect(errorView('message_limit').kind).toBe('limit');
     expect(errorView('provider_error')).toEqual({ kind: 'inline', text: "That didn't go through." });
     expect(errorView('stopped').kind).toBe('inline');
+    expect(errorView('ai_unavailable').text).toContain('isn\'t available');
   });
 });

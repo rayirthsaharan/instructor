@@ -218,13 +218,13 @@ test.describe('overlays and Back', () => {
     await context.close();
   });
 
-  test('Ask is a stub sheet; Back closes it', async ({ browser }) => {
+  test('Ask opens the assistant sheet; Back closes it', async ({ browser }) => {
     const { context, page } = await start(browser);
     await openPlayer(page, guideId, '?step=s2');
     await page.getByTestId('ask-button').click();
     const sheet = page.getByRole('dialog', { name: 'Ask about this step' });
     await expect(sheet).toBeVisible();
-    await expect(page.getByTestId('ask-stub')).toContainText('The assistant arrives in the next update');
+    await expect(page.getByTestId('assistant-panel')).toBeVisible();
     expect(query(page).get('panel')).toBe('ask');
     await page.goBack();
     await expect(sheet).toBeHidden();

@@ -89,7 +89,7 @@ for (const vp of ['375', '1280'] as const) {
       await expect(panelOf(page)).toBeHidden();
       await expect(askButton(page)).toBeFocused();
       await openAssistant(page);
-      await (vp === '375' ? page.getByRole('dialog', { name: 'Ask about this step' }).getByRole('button', { name: 'Close' }) : page.getByTestId('dock-close')).click();
+      await (vp === '375' ? page.getByRole('dialog', { name: 'Ask about this step' }).getByRole('button', { name: 'Close', exact: true }) : page.getByTestId('dock-close')).click();
       await expect(panelOf(page)).toBeHidden();
       await expect(askButton(page)).toBeFocused();
       await context.close();
@@ -290,7 +290,7 @@ for (const vp of ['375', '1280'] as const) {
       // the step chip
       await chips.getByTestId('cite-step').click();
       await expect(page).toHaveURL(/step=s4/);
-      await expect(page.getByTestId('step-title')).toContainText('Press in the cam locks');
+      await expect(page.getByTestId('step-counter')).toContainText('Step 4 of 10');
       if (vp === '1280') {
         await expect(page.getByTestId('context-label')).toHaveText('ABOUT STEP 4'); // the dock stays open
         expect(query(page).get('panel')).toBe('ask');
@@ -320,7 +320,7 @@ for (const vp of ['375', '1280'] as const) {
       await shot(page, `${vp}-clear-confirm`);
       await dlg.getByRole('button', { name: 'Cancel' }).click();
       expect(api.deletes).toBe(0);
-      await expect(page.getByText('A', { exact: true })).toBeVisible();
+      await expect(page.getByTestId('assistant-message')).toHaveText(/A$/);
       await page.getByTestId('clear-conversation').click();
       await dlg.getByRole('button', { name: 'Clear' }).click();
       await expect(page.getByText('Stuck on this step? Ask in your own words.')).toBeVisible();

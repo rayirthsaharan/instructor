@@ -237,3 +237,9 @@ Done: messages (SSE), history, clear, suggestions and simplify routes; `src/lib/
 How to verify: `npx vitest run tests/assistant-*.test.ts`. Mock triggers: `[[mock:fail]]`, `[[mock:badcite]]`, `[[mock:invent]]`, `[[mock:html]]`, `[[mock:nocite]]`.
 Open issues / risks: quantity guard may produce false positives on number words ("one", "both"); client disconnect mid-stream; stream state lives in one process; no real provider.
 Next: frontend integration; QA; senior-engineer security review (M2 + M3).
+
+## H-033 | 2026-11-12 | from: senior-engineer -> to: software-engineer
+Task: Security review of M2 + M3 server surface (read-only).
+Done: Authorisation, same-origin checks, error text, plain-text rendering, prompt role separation, hold-back on abort/error and PATCH progress are clean. Seven findings (quantity-check bypasses; numbers not tied to unit or step; unchecked free text reaching the UI; no timeout or per-session stream limit; uncleaned deltas; raw text passed to the provider and no simplify prompt; unbounded history). Probe cases: scratchpad `probe.ts` (reported in the review).
+Open issues / risks: nothing blocks M3 on the mock provider; all accepted and scheduled now (D-020) because they must exist before a real model is connected.
+Next: engineer implements D-020 with regression tests from the probe cases; QA re-checks guards and stream timeout/abort.

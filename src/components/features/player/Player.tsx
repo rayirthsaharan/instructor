@@ -172,6 +172,8 @@ function Player({ guideId, guide, documentId, pageCount, progress, actions, save
     openPanel('original', c.pageIndex + 1);
   };
   const goToStep = (id: string) => {
+    // The docked assistant (desktop) stays open while the step changes; every other overlay closes.
+    if (layout === 'desktop' && parsePlayerSearch(window.location.search).panel === 'ask') return commitUrl({ step: id }, 'replace');
     overlays.current = [];
     commitUrl({ step: id, panel: null, page: null }, 'replace');
   };
@@ -482,8 +484,7 @@ function Player({ guideId, guide, documentId, pageCount, progress, actions, save
     stepId,
     assistant,
     online,
-    // On the desktop dock the step changes in place; a sheet closes first (USER_FLOWS 7).
-    onGoToStep: (id: string) => (layout === 'desktop' && panel === 'ask' ? commitUrl({ step: id }, 'replace') : goToStep(id)),
+    onGoToStep: goToStep,
     onOpenCitation: openCitation,
     onOpenManual: () => openOriginal(stepOriginalPage(step), true),
   };
