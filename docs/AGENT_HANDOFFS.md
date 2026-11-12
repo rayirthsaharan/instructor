@@ -250,3 +250,10 @@ Done: `src/lib/client/assistant.ts` (typed client, SSE reader, hook), `src/compo
 How to verify: `npx playwright test e2e/m3-*.spec.ts --trace off`.
 Open issues / risks (for the designer to rule on): desktop uses a non-modal dock in the right column that replaces the step text panel (spec said side panel via `BottomSheet`); tablet and landscape use the bottom sheet; Enter sends only on desktop pointers; sheet opens at full height; separate "Step n" and "p. n" citation chips instead of a combined chip. Gaps: no Helpful / Not helpful buttons (no endpoint), no offline dot, no message-limit banner, keyboard-safe input untested on a real device. Earlier un-mocked failures of the badcite/invent cases at 375 were not traced.
 Next: QA (viewer opened over the dock, Back stack, stream error after `done`); designer review.
+
+## H-035 | 2026-11-12 | from: software-engineer -> to: qa-engineer
+Task: M3-c assistant hardening (D-020).
+Done: all eight items; new `src/lib/guide/quantity.ts`, `src/lib/assistant/text.ts`, `tests/assistant-hardening.test.ts` (probe cases and confirmed bypasses); `docs/API.md` updated. Evidence = first 3 distinct cited steps, each field on its own, plus their parts; simplifications over 1000 characters rejected; link-like words held back while streaming.
+How to verify: `npm run check` (742 tests).
+Open issues / risks: contract changes for the frontend - `note` removed; `busy` is one stream per session across guides; non-English guides stream a single delta before `done`; timeout ends in `error` `ai_unavailable`. Number words in non-English guides are not recognised (whole answer is held instead). Possible false positives on unit words ("minute", "pound", "meter").
+Next: frontend drops `note`; QA re-checks guards, timeout and abort.
