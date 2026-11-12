@@ -269,7 +269,7 @@ At 320 width the Steps button moves into the top bar counter (the counter itself
 | "Done - finish" | "Finish" | `landscape-compact` |
 | "I checked - done" | padlock + "I checked" | all of `sm`, and `landscape-compact` |
 
-The Ask button is `accent` icon on an `accent-soft` fill at every width (no border); it is the only tinted control in the bar.
+The Ask button is `accent` icon on an `accent-soft` fill at every width (no border); it is the only tinted control in the bar. On `lg`, while the dock is open, it is a toggle in its selected state: `accent` fill, `on-accent` icon and label, `aria-expanded="true"`; pressing it again closes the dock. Below `lg` the sheet covers it, so it has no selected state there.
 
 ### 6.3 Layout by width
 
@@ -278,7 +278,7 @@ The Ask button is `accent` icon on an `accent-soft` fill at every width (no bord
 | **375 portrait** | As 6.2. Visual edge to edge (radius 0). |
 | **Phone landscape** (`landscape-compact`, e.g. 667x375) | Common when propped. Top bar collapses to a 6px progress bar across the full width plus a 44 "x" overlaid top-left of the visual. Two columns: visual left 56% full height; right 44% holds a 44 compact header (the counter, which is the Steps button as at 320; read-aloud; overflow - right-aligned), then the text panel (scrolls) with the action bar pinned at its bottom (Back 56, Primary flex with short labels per 6.2, Ask 56; no Steps button). Instruction stays `glance`. |
 | **768** | Top bar 56. Visual stage 48% of viewport height, inset 24 with radius `md`. Text panel max-width 640 centred. Action bar: content max-width 640 centred; Back and Steps get text labels ("Back", "Steps"), Ask labelled "Ask". Step rail and Assistant open as sheets (max-width 560). |
-| **1280** | Three regions under a 56 top bar (Close and counter left; read-aloud and overflow right-aligned at the 32 margin, as at 768 - never floating after the counter). **Left**: Step rail permanently visible, 280 wide, own scroll, 12 top padding before the first phase header. **Centre**: visual stage, fills remaining width and full height minus bars, radius `md`, 24 padding. The stage here is taller than most step regions, so the view shows the bracketed region with the rest of the page around it - this is intended (DS 7.10 layer 2: fit is always "contain", never a hard crop); the dim wash does the focusing. **Right**: text panel 420 wide, own scroll, with the action bar pinned at its bottom (Back / Primary / Ask - no Steps button). When the Assistant is open it **replaces the text panel's lower area**: the panel shows step title + instruction pinned at top (collapsible) and the chat below; the visual and rail stay. Between 1024 and 1199 the rail collapses to a 64 icon strip (status markers and numbers; expands on hover/focus). |
+| **1280** | Three regions under a 56 top bar (Close and counter left; read-aloud and overflow right-aligned at the 32 margin, as at 768 - never floating after the counter). **Left**: Step rail permanently visible, 280 wide, own scroll, 12 top padding before the first phase header. **Centre**: visual stage, fills remaining width and full height minus bars, radius `md`, 24 padding. The stage here is taller than most step regions, so the view shows the bracketed region with the rest of the page around it - this is intended (DS 7.10 layer 2: fit is always "contain", never a hard crop); the dim wash does the focusing. **Right**: text panel 420 wide, own scroll, with the action bar pinned at its bottom (Back / Primary / Ask - no Steps button). When the Assistant is open the right column is split: a pinned **step summary** (banners never hidden) above the chat, per section 7 "Desktop dock"; the visual, the rail and the action bar stay live. Between 1024 and 1199 the rail collapses to a 64 icon strip (status markers and numbers; expands on hover/focus). |
 
 ### 6.4 Interactions
 
@@ -300,7 +300,7 @@ The Ask button is `accent` icon on an `accent-soft` fill at every width (no bord
 - **Haptics** (where supported): 10ms on Primary; double pulse when arriving on an irreversible step.
 - **Read-aloud** (speech synthesis): speaks, in order, "Careful: this step can't be undone" (if irreversible), each warning, the title, the instruction, then "You'll know it's right when" + checkpoint. Speaker icon shows a playing state; tap to stop; changing step stops speech (and restarts on the new step only if automatic mode is on). If speech synthesis is unavailable the control is hidden.
 - **Keep screen on**: requested on entering the player and again when the tab becomes visible. If unsupported or refused, the switch is shown off with the helper "Your browser can't keep the screen on. Set your phone's auto-lock to a longer time."
-- **Explain it more simply**: opening the disclosure requests a simpler wording (cached per step). Loading: 3 skeleton lines. Result appears under the label "SIMPLER WORDING" with the note "Same step, simpler words. Numbers and part names are unchanged." Error: "Couldn't get a simpler version." + "Try again". The original instruction always stays visible above. Only the instruction is reworded: warning banners, the irreversible banner and the Source quote are never simplified and stay exactly as shown.
+- **Explain it more simply**: opening the disclosure requests a simpler wording (cached per step). Loading: 3 skeleton text lines (90%, 80%, 60% wide) - not one solid block, which reads as a missing picture. If no safe simpler wording exists: "This step is already as simple as we can safely make it." (no label, no note). Result appears under the label "SIMPLER WORDING" with the note "Same step, simpler words. Numbers and part names are unchanged." Error: "Couldn't get a simpler version." + "Try again". The original instruction always stays visible above. Only the instruction is reworded: warning banners, the irreversible banner and the Source quote are never simplified and stay exactly as shown.
 - **Progress is saved** on every step change and completion (optimistic). If a save fails: silent retry; after 3 failures a toast "Progress isn't saving - check your connection". Local state is kept and re-sent.
 - **First run** (first player open on this device): one dismissible coach line above the action bar for step 1 only: "Swipe or use the arrows to look around. Tap Done when you've finished a step." No multi-screen tutorial.
 
@@ -323,7 +323,7 @@ The irreversible thing is the physical act, so the treatment arrives **before** 
 | Approximate region (`regionFallback: true` on the step source or a highlight's source) | Dashed brackets and the "Approximate area" tag (DS 7.10, 7.16); the crop gets extra padding. No banner |
 | Step has no parts / tools | The "FOR THIS STEP" group is omitted |
 | Low confidence | DS low-confidence visual state + banner; rail flag |
-| Offline | Info banner under the top bar: "You're offline. Steps you've opened still work; asking questions needs a connection." Ask button shows a small offline dot |
+| Offline | Info banner under the top bar: "You're offline. Steps you've opened still work; asking questions needs a connection." The Ask button is unchanged (no offline dot - cut in the M3 review: the banner and the disabled composer already say it) |
 | Guide load error | Full-screen: "We couldn't open this guide." + "Try again" + "Back to library" |
 | Unknown `?step` | Open at the saved step and toast "That step isn't in this guide - showing where you left off." |
 | All steps done, user re-enters | Opens at step 1 in review mode: Primary reads "Next step"; top bar tag "Finished" |
@@ -334,10 +334,12 @@ The irreversible thing is the physical act, so the treatment arrives **before** 
 
 Purpose: answer from the manual, about this step, without losing the step.
 
+Revised after the M3 review of the built UI (2026-11-12); aligned with D-019 and D-020.
+
 **Content hierarchy**
 1. Header: title "Ask about this step", close button.
-2. Context strip (non-scrolling, 64 high): 48x48 thumbnail of the current step's visual + "STEP 7" (`label`) + step title (1 line). Tapping it closes the sheet (back to the step).
-3. Conversation (per guide, scrolls, newest at bottom). A divider with the Context tag "ABOUT STEP 7" is inserted whenever the user asks from a different step than the previous message.
+2. Context strip (sheet only; non-scrolling, 64 high): 48x48 thumbnail of the current step's visual + "STEP 7" (`label`; not "ABOUT STEP 7" - that wording belongs to the conversation divider directly below, and the two must not read as a repeat) + step title (1 line, truncates). Trailing **safety tag** when the step has one (`tag`, radius `xs`, padding 2 8, icon 16): irreversible -> padlock + "Can't be undone" (`danger-fg` on `danger-soft`); otherwise, with warnings -> triangle + "1 warning" / "2 warnings" (`warn-fg` on `warn-soft`). Irreversible wins when both apply. The sheet is modal and covers the step's banners, so the strip says they exist. Tapping the strip closes the sheet (back to the step); `aria-label="Step 7: <title>. 1 warning. Close and go back to the step"`.
+3. Conversation (per guide, scrolls, newest at bottom). Quiet "Clear conversation", right-aligned, is the first item of the scroll area when there is history (confirm dialog: "Clear this conversation?" / "Your questions and the answers for this guide will be removed." / Danger "Clear" + "Cancel"). A divider with the Context tag "ABOUT STEP 7" is inserted whenever the user asks from a different step than the previous message.
 4. Suggested-question chips (shown when no question has been asked on this step yet): "What does this mean?", "Which piece is this?", "Why am I doing this?".
 5. Composer (DS 7.13), pinned to the bottom above the keyboard.
 6. Footnote under the composer (`body-sm`, `ink-muted`): "Answers come only from your manual."
@@ -346,23 +348,59 @@ Purpose: answer from the manual, about this step, without losing the step.
 
 | Width | Layout |
 |---|---|
-| 375 | Bottom sheet, opens at `full` detent (the keyboard needs the room); the context strip keeps the step in view. Portrait and landscape. In landscape-compact it is a right-side panel covering the text column (44%), leaving the visual visible. |
-| 768 | Right-side sheet, 420 wide, full height, scrim over the rest; the visual stays partly visible. |
-| 1280 | Docked in the right text column (no scrim, not modal): step title + instruction pinned and collapsible at the top, chat below. Visual and rail stay interactive, so the user can zoom while asking. |
+| `sm`, `md`, `landscape-compact` (everything below 1024) | Modal bottom sheet (DS 7.7), opens at the `full` detent (the keyboard needs the room; a `half` detent would leave about two lines of conversation above the keyboard). Full width on `sm`; centred, max-width 560 on `md`. The context strip keeps the step and its safety tag in view. One presentation below `lg` (M3 ruling): the earlier right-hand panel for 768 and for landscape is dropped - 6.3 already specified sheets at 768, and in landscape a 44% column plus the keyboard leaves no usable conversation area. |
+| `lg` (>= 1024) | **Desktop dock**, below. Not modal, no scrim. |
+
+**Desktop dock (`lg`)** - the right column (420) is split; the action bar stays pinned under it and stays live, so nothing the user needs before pressing the Primary may be hidden:
+
+```
++------------------------------------------+
+| Ask about this step                  [x] |  Header 56, bottom hairline
++------------------------------------------+
+| (irreversible banner)                    |  STEP SUMMARY - pinned, own scroll,
+| (warning banners, all, verbatim)         |  max-height 44% of the column
+| (missing-part / low-confidence banners)  |  (top bar to action bar), padding 16,
+| v  STEP 4                                |  8 between banners, bottom hairline
+|    Press in the cam locks                |  Toggle row, min-height 56
+|    Press a cam lock (F) into each ...    |  Instruction  body
+|    [ YOU'LL KNOW IT'S RIGHT WHEN ... ]   |  Checkpoint block (DS 7.15)
++------------------------------------------+
+| conversation (scrolls)                   |  Fills the rest, min-height 240
+| [chips]  [ composer ] [send]  footnote   |
++------------------------------------------+
+| [ Back ] [  Done - next step  ] [ Ask ]  |  Action bar (unchanged); Ask selected
++------------------------------------------+
+```
+
+- **Step summary content, in the text panel's safety order (6.2 items 1-4, then 5, 6, 9):** irreversible banner; every warning banner; missing-part banner; low-confidence banner; step label + title; instruction; checkpoint block. The banners are the DS 7.12 components unchanged - same wording, source line and page tag, never shortened, never collapsed, never replaced by a count.
+- **Toggle row** (chevron 20 + `label` "STEP 4" + title `body` 600, one line; `aria-expanded`): collapses the instruction and the checkpoint only. **Banners are outside the toggle and cannot be collapsed.** The summary re-expands and scrolls to its top on every step change.
+- Not in the summary (close the dock to see them): Source quote, part chips, disclosures, "Show original page". The picture, its callouts and "Original page" stay available in the centre.
+- If the banners alone exceed the 44% cap the summary scrolls, banners first - the same behaviour as the text panel, where they are also first in a scrolling column.
+- The Primary keeps its label rules while the dock is open ("I checked - done" on irreversible steps, 6.5), and the irreversible border colours on the bars stay.
+- Step change with the dock open (rail, Back, Primary, arrows): the summary updates; the conversation and any draft in the composer stay; the next question is about the new step. Focus stays in the composer if it was there, otherwise moves to the summary's step title. The step is announced as in 6.4.
+- Focus on open: the dock heading. Close (button, `Esc` inside the dock, or the Ask toggle): the text panel returns at its previous scroll position; focus returns to Ask.
+
+Rejected: a modal side panel (blocks changing step and zooming while asking); the dock replacing the whole text panel with only title + instruction pinned (built in M3-b: the user could press "Done - next step" with a warning off screen).
 
 **Interactions**
-- Tapping a chip sends it. Send: `Enter` (desktop; `Shift+Enter` newline), Send button (touch).
-- Response streams; Stop replaces Send while streaming.
-- Citation chip tap: opens the Original viewer at the cited page/region **over** the sheet; closing the viewer returns to the sheet with scroll position kept. A citation with a `stepId` also offers "Go to step 9" in the viewer's footer (closes both overlays and navigates).
-- Per-message actions (assistant messages): "Helpful" / "Not helpful" icon buttons (44), `aria-pressed`.
-- Changing step while the dock is open (desktop) updates the context strip; the conversation stays.
+- Tapping a suggestion chip sends it.
+- **Send**: on a keyboard-and-pointer device (`not (pointer: coarse)`) `Enter` sends and `Shift+Enter` is a new line. On touch (`pointer: coarse`) `Enter` is a new line and only the Send button sends - a propped phone must not send a half-typed question. The on-screen keyboard's key must match: `enterkeyhint="enter"` on touch, `"send"` otherwise.
+- After Send on touch the composer is disabled and the keyboard closes, so the answer has the whole sheet.
+- **Stop** replaces Send while an answer is being prepared. Stop discards the partial answer (unverified text is never kept, D-019) and keeps the question: under the user's bubble, `body-lg` `ink-muted` "You stopped this answer." + Quiet "Ask again". Nothing is saved for a stopped turn.
+- **Citations are two chips** (DS 7.11): "Step 4" goes to that step (below `lg`: closes the sheet first; `lg`: the dock stays open); "p. 4" opens the Original viewer at the cited page and region **over** the sheet or dock. Closing the viewer returns to the conversation with its scroll position kept. The viewer has no "Go to step" footer (removed: the Step chip does it).
+- No per-message rating in the MVP ("Helpful" / "Not helpful" is cut: no endpoint and nobody to read the data).
+- Composer limit: 1000 characters. A counter ("1000 / 1000", `tag`, `ink-muted`, right-aligned under the input) appears within the last 100; input stops at the limit.
 
 **States**
-- Empty: context strip, one line "Stuck on this step? Ask in your own words.", chips.
-- Loading history: 2 message skeletons.
-- Streaming, complete, **not in manual**, error, rate-limited: per DS 7.13. Not-in-manual copy frame: label "NOT IN YOUR MANUAL" then the answer, then Quiet "Open the original manual".
-- Offline: composer disabled with helper "You're offline. Questions need a connection."; history is readable.
-- Message limit (configuration): info banner "You've reached the question limit for this guide." composer disabled.
+- Empty: context strip (or step summary), one line "Stuck on this step? Ask in your own words.", chips.
+- Loading history: 2 message skeletons. History failed: `body` `ink-muted` "Couldn't load your earlier questions." + Quiet "Try again"; the composer still works.
+- **Preparing an answer** (DS 7.13 "Answer in progress"): provisional text plus a visible status line - "Looking in your manual..." until the first words arrive, then "Checking this against your manual..." until the answer is verified (text after the first number is held back until then, D-019), and "Still checking. This can take up to a minute." after 20 s. The screen must never show a half sentence with no sign of work.
+- Complete: per DS 7.13.
+- **Not in manual** (D-020): whenever an answer is not grounded or has no valid citation it is replaced by the fixed message - there is no separate "couldn't point to the manual" caution line and no uncited answer state. Block per DS 7.13: label "NOT IN YOUR MANUAL", fixed text "I couldn't find this in your manual, so I won't guess. Check the original manual or ask the manufacturer.", Quiet "Open the original manual" (Original viewer at the first source page of the step the question was asked about, no brackets). No citations.
+- Error: inline `danger-fg` "That didn't go through." + Quiet "Try again". Assistant unavailable: "The assistant isn't available right now. Try again in a little while." + "Try again".
+- Rate-limited: info banner "You're asking quickly. Wait a little, then try again." + Quiet "Try again". Another answer still running in this session (D-020 item 5): info banner "Still answering your last question. Wait for it to finish, then try again." + "Try again".
+- Offline: composer and chips disabled with helper "You're offline. Questions need a connection."; history is readable.
+- No message-limit state (cut: the server keeps the last 200 messages per guide, D-020 item 8, and never refuses a question for count).
 
 ---
 

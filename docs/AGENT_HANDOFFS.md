@@ -257,3 +257,9 @@ Done: all eight items; new `src/lib/guide/quantity.ts`, `src/lib/assistant/text.
 How to verify: `npm run check` (742 tests).
 Open issues / risks: contract changes for the frontend - `note` removed; `busy` is one stream per session across guides; non-English guides stream a single delta before `done`; timeout ends in `error` `ai_unavailable`. Number words in non-English guides are not recognised (whole answer is held instead). Possible false positives on unit words ("minute", "pound", "meter").
 Next: frontend drops `note`; QA re-checks guards, timeout and abort.
+
+## H-036 | 2026-11-12 | from: ui-ux-designer -> to: software-engineer, qa-engineer
+Task: Visual review of the M3 assistant (37 screenshots).
+Done: Verdict "not shippable until two P1s are fixed": (P1) on desktop the dock hides warnings, checkpoint and the irreversible banner while "Done - next step" stays pressable; (P1) held-back streaming looks frozen. Plus 5 P2 and 3 P3 items. Rulings in D-021. Specs updated: USER_FLOWS 6.2, 6.3, 6.4, 6.6, section 7 rewritten; DESIGN_SYSTEM 7.11, 7.13, 7.16, 9.
+Open issues / risks: landscape sheet and keyboard-safe composer untested on a real phone.
+Next: engineer applies all (task M3-d); QA re-checks the dock with warning and irreversible steps.

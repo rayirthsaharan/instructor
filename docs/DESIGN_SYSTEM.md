@@ -281,7 +281,14 @@ Full-page mode (Original viewer): no dim wash, no page tag (the viewer's header 
 Alt text: `"Manual page 12, area for step 7: <step title>"`. Highlights are exposed as a list: "Marked area 1: Cam lock (part B)". The picture is not described beyond what the Guide data contains.
 
 ### 7.11 Citation chip
-Inline or trailing chip that points to the source. Anatomy: page-with-brackets icon 16, text in `tag`: "Step 7 · p. 12" (step part omitted when the citation has no `stepId`; page is `pageIndex + 1`). Height 28 visual, 44 hit area (vertical padding via pseudo-element), radius `xs`, `accent-soft` fill, `accent` text. Hover: `accent` border. Active: `accent` fill, `on-accent` text. Focus ring. It is a button: opens the Original viewer at the page with the region bracketed (`mark-cite-stroke`, 4px for 2s). `aria-label="Open manual page 12, step 7"`. A citation that fails validation is not rendered at all.
+Points an assistant answer to its source. One citation renders as a pair of chips, because it has two different destinations and one chip cannot say which it will take (M3 ruling; replaces the combined "Step 7 · p. 12" chip):
+
+| Chip | Anatomy | Action | `aria-label` |
+|---|---|---|---|
+| **Step** | text "Step 7" + trailing arrow-right icon 16 (the arrow marks it as navigation). Omitted when the citation has no valid `stepId`, **and when the cited step is the step now showing** (it would go nowhere) | Goes to that step; below `lg` it closes the sheet first | "Go to step 7" |
+| **Page** | leading page-with-brackets icon 16 + "p. 12" (`pageIndex + 1`) | Opens the Original viewer at the page with the region bracketed (`mark-cite-stroke`, 4px for 2s) | "Open manual page 12, step 7" |
+
+Both: text in `tag`, height 28 visual, 44 hit area (vertical padding via pseudo-element), min-width 44, radius `xs`, `accent-soft` fill, `accent` text. Hover: `accent` border. Active: `accent` fill, `on-accent` text. Focus ring. **Spacing: 8 between the two chips of a pair, 16 between pairs, 12 between wrapped rows** (targets stay >= 8 apart, section 8 rule 2). The chips sit in one row under the answer, in a group labelled "Where this is in your manual". A citation that fails validation is not rendered at all; an answer left with none never reaches the UI (D-020, 7.13 "Not in manual").
 
 ### 7.12 Banners: warning and irreversible
 Shared anatomy: icon 24, label (`label`), text (`body-lg`, never truncated, never collapsed), optional source line (warnings; see below), optional citation chip. Radius `md`, padding 12 16. Banners are static content (`role="note"`), not alerts, except when they appear in response to an action.
@@ -308,10 +315,20 @@ Read-aloud speaks the banner text, then the quote when it differs.
 
 ### 7.13 Chat message
 - **User**: right-aligned bubble, `accent-soft` fill, `ink` text, radius `md` with 4px bottom-right, max-width 85%.
-- **Assistant**: no bubble; full-width text on the sheet surface with a 3px `accent` left rule and 12px inset (reads as a margin note). `body-lg`. Citation chips follow the sentence they support or sit in a row under the message.
-- **Context tag** above the first message of each step: `label` "ABOUT STEP 7".
-- States: streaming (text appears as received, a 2px `accent` caret at the end, `aria-live="polite"` announced once on completion, not per token; Stop button replaces Send); complete; **not in manual** (`unsure-soft` block with dashed-circle icon, label "NOT IN YOUR MANUAL", then the model's statement; no citations); error (inline `danger-fg` text "That didn't go through." + Quiet "Try again"); rate-limited (info banner with the limit reason).
-- Composer: multiline input (min-height 48, max 4 lines, 16px text to avoid iOS zoom), Send icon button 48 (disabled when empty), suggested-question chips above when the thread for this step is empty.
+- **Assistant**: no bubble; full-width text on the sheet surface with a 3px `accent` left rule and 12px inset (reads as a margin note). First line, always: the caption `body-sm` `ink-muted` "Instructor's explanation - not the manual's wording." (7.16). Then the answer in `body-lg` `ink`, plain text only (no markup is interpreted; line breaks kept). Then the citation chips (7.11) in one row, 8 below the text. An assistant answer never uses the Source quote treatment (7.16), even when it repeats the manual: the `ink` rule and "FROM YOUR MANUAL" are reserved for stored `sourceQuote` data. The manual's words are reached through the Page chip.
+- **Context tag** above the first message of each step: `label` "ABOUT STEP 7" between two hairlines.
+- **Answer in progress** (replaces the earlier "streaming" state; M3 ruling). Text after the first number is held back until the whole answer is verified (D-019), so the stream stops mid-sentence for most answers. It must look checked-for, not frozen:
+  - Same left rule and caption as a complete answer.
+  - **Provisional text**: whatever has arrived is shown in `ink-muted`, not `ink` - it is not verified yet and may be withdrawn. No caret (a still caret after half a sentence is what reads as frozen).
+  - **Status line**, 8 below the text (or directly under the caption when no text has arrived): a 16px ring with a rotating 90-degree `accent` arc (the 7.14 active marker at 16px; 1s linear; reduced motion: a solid `accent` ring, no rotation) + `body-sm` `ink-muted` text. Copy by phase: before the first words "Looking in your manual..."; from the first words until done "Checking this against your manual..."; after 20 s without a result "Still checking. This can take up to a minute." (the server gives up at 60 s and the error state follows).
+  - On done, in one update with no animation: the provisional text is replaced by the verified answer in `ink`, the status line is removed, the chips appear. If the answer did not pass, the provisional text is removed and the Not-in-manual block takes its place.
+  - Stop button replaces Send. `aria-busy="true"` on the block; the status text is announced once when it first appears; the finished answer is announced once (`aria-live="polite"`), never per token.
+- **Not in manual** (D-020: shown whenever an answer is not grounded or has no valid citation; there is no uncited-answer state and no "couldn't point to the manual" caution): `unsure-soft` block, radius `md`, padding 12, dashed-circle icon 20 + `label` "NOT IN YOUR MANUAL" in `unsure-fg`, then the **fixed** text in `body-lg` `ink` - "I couldn't find this in your manual, so I won't guess. Check the original manual or ask the manufacturer." - never model-written text, then Quiet "Open the original manual". No left rule, no caption, no citations: the shape itself differs from an answer.
+- **Stopped**: `body-lg` `ink-muted` "You stopped this answer." + Quiet "Ask again". The partial text is discarded.
+- **Error**: inline `danger-fg` text "That didn't go through." (assistant unavailable: "The assistant isn't available right now. Try again in a little while.") + Quiet "Try again".
+- **Rate-limited / busy**: Info banner (7.12 style, info icon) with the reason + Quiet "Try again". Copy in USER_FLOWS 7.
+- No rating buttons and no message-limit banner (cut from the MVP in the M3 review).
+- Composer: multiline input (min-height 48, max 4 lines, 16px text to avoid iOS zoom, 1000 characters), Send icon button 48 (disabled when empty), suggested-question chips above when the thread for this step is empty. Disabled (answer in progress, offline): `surface-sunken` fill; offline adds the helper line. `enterkeyhint` follows the Send rule in USER_FLOWS 7 ("enter" on touch, "send" on keyboard devices).
 
 ### 7.14 Skeleton and processing
 - **Skeleton**: `surface-sunken` blocks, radius matching the real element, static tone, no shimmer or pulse (the processing arc and button spinner are the only "working" indicators). Skeletons mirror the final layout (same heights) so nothing shifts. Text skeletons are 60-90% width lines. `aria-hidden="true"` with one visually hidden "Loading" status per region.
@@ -353,6 +370,10 @@ The user must be able to tell, at a glance, what comes straight from the manual 
 | `confidence: low` | Banner, visual, rail | 7.12, 7.10, 7.6 (unchanged) |
 | `why`, `commonMistake` | Inside the opened disclosure, first line | `body-sm` `ink-muted`: "Instructor's explanation - not the manual's wording." |
 | Simpler wording | Inside the opened disclosure | Existing note (USER_FLOWS 6.4) |
+| Assistant answer | First line of every answer, also while it is in progress | `body-sm` `ink-muted`: "Instructor's explanation - not the manual's wording." + 3px `accent` left rule (7.13). Never the `ink` rule or "FROM YOUR MANUAL" |
+| Assistant could not ground an answer | In place of the answer | Not-in-manual block, `unsure` family, fixed text (7.13) |
+
+**Two rules, two meanings.** A 3px `ink` left rule with "FROM YOUR MANUAL" is the manual speaking. A 3px `accent` left rule with the caption is Instructor speaking. No other component may use a 3px left rule on text.
 
 Overview key (second sentence of the authority note, shown once per guide, not per step): "Steps are Instructor's wording of your manual. Text marked FROM YOUR MANUAL is the manual's exact words."
 
@@ -376,4 +397,6 @@ Noise rules: at most one Source quote and one tag per step outside banners; `con
 ## 9. Open points
 - Resolved (D-009): severity is `caution | warning` (7.12); highlights carry their own page (7.10).
 - Open: whether `warning.text` can differ from `sourceQuote` (USER_FLOWS section 11). 7.12 and 7.16 are safe either way.
+- Resolved (M3 review, 2026-11-12): citations are a Step chip and a Page chip (7.11); answers in progress show provisional text and a status line, no caret (7.13); the not-in-manual text is fixed (7.13, D-020); rating buttons, the offline dot and the message-limit banner are cut; the assistant is a bottom sheet below `lg` and a dock with a pinned step summary on `lg` (USER_FLOWS 7).
+- Open (M3 review): the not-in-manual sentence is a server constant; the copy in 7.13 needs the orchestrator's acceptance before the engineer changes it. The landscape-compact sheet and the keyboard-safe composer are untested on a real phone.
 - Resolved (M2 review, 2026-11-12): checkpoint provenance and de-duplication (7.15, 7.16); part chips carry the callout number instead of a thumbnail (7.3); callout discs always show the index (7.10); the dim wash spares the step's own region and is off in the Original viewer (7.10); "contain" fit on the desktop stage is intended (7.10).
