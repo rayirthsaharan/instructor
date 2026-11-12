@@ -1,3 +1,4 @@
+import { containsQuantity } from './quantity';
 import { guideSchema, migrateGuide, type Guide, type Guidance, type Region } from './schema';
 
 export type IssueSeverity = 'info' | 'warning';
@@ -56,17 +57,7 @@ const isBlank = (q: string | undefined) => q !== undefined && q.trim() === '';
 /** Smallest region side (fraction of the page) that is still treated as a real area. */
 export const MIN_REGION_SIDE = 0.01;
 
-const NUMBER_WORDS = [
-  'zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen',
-  'seventeen', 'eighteen', 'nineteen', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety', 'hundred', 'hundreds', 'thousand',
-  'half', 'halves', 'quarter', 'quarters', 'third', 'thirds', 'dozen', 'dozens', 'twice', 'double', 'triple', 'pair', 'pairs', 'couple', 'several', 'few', 'single', 'both', 'once', 'thrice',
-].join('|');
-const QUANTITY_RE = new RegExp(`\\p{N}|\\b(?:${NUMBER_WORDS})\\b`, 'iu');
-
-/** True when the text contains any Unicode numeric character or a spelled-out quantity ("two screws", "half"). */
-export function containsQuantity(text: string): boolean {
-  return QUANTITY_RE.test(text);
-}
+export { containsQuantity, findIntroducedQuantities } from './quantity';
 
 const clamp01 = (n: number) => Math.min(1, Math.max(0, n));
 const round6 = (n: number) => Math.round(n * 1e6) / 1e6;
@@ -332,29 +323,4 @@ export function validateCitations<C extends CitationLike>(
     out.push({ ...c, region: res.region });
   });
   return { citations: out, issues };
-}
-
-// --- simplified text ---------------------------------------------------------------------------------
-
-const NUMBER_WORD_VALUES: Record<string, string> = {
-  one: '1', two: '2', three: '3', four: '4', five: '5', six: '6', seven: '7', eight: '8', nine: '9', ten: '10', eleven: '11', twelve: '12',
-};
-const QUANTITY_TOKEN_RE = new RegExp(`\\p{N}+(?:[.,]\\p{N}+)*|\\b(?:${NUMBER_WORDS})\\b`, 'giu');
-
-function quantityTokens(text: string): Set<string> {
-  const out = new Set<string>();
-  for (const m of text.match(QUANTITY_TOKEN_RE) ?? []) {
-    const t = m.toLowerCase().replace(/,(?=\p{N}{3}\b)/gu, '');
-    out.add(NUMBER_WORD_VALUES[t] ?? t);
-  }
-  return out;
-}
-
-/**
- * Quantities (digits or spelled-out numbers) that appear in `simplified` but not in `original`.
- * Empty means the rewrite introduced nothing new. Dropping a number is not flagged here.
- */
-export function findIntroducedQuantities(original: string, simplified: string): string[] {
-  const known = quantityTokens(original);
-  return [...quantityTokens(simplified)].filter((t) => !known.has(t));
 }

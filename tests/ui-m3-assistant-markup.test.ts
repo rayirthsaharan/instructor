@@ -47,10 +47,6 @@ describe('assistant answer provenance', () => {
     expect(a).toContain('Open the original manual');
     expect(a).not.toContain('data-testid="citations"');
   });
-  it('a note shows the caution line', () => {
-    const a = html(h(AssistantAnswer, { message: m({ note: 'x' }), env, onOpenManual: noop }));
-    expect(a).toContain('answer-caution');
-  });
 });
 
 describe('citation chips', () => {

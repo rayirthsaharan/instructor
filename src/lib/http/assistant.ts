@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { getAIProvider, simplifyStepChecked, AIProviderError, type AIProvider, type AnswerEvent } from '../ai';
 import { getConfig } from '../config';
 import { clearMessages, getSimplification, insertMessages, listMessages, saveSimplification, type MessageRecord, type NewMessage } from '../db';
-import { finalizeAnswer, cleanAnswerText, MAX_ANSWER_CHARS } from '../assistant/guard';
+import { finalizeAnswer, cleanAnswerText, cleanChunk, isEnglish, MAX_ANSWER_CHARS } from '../assistant/guard';
 import { QuantityHoldback } from '../assistant/holdback';
 import { buildAssistantPrompt, MAX_CONTEXT_MESSAGES } from '../assistant/prompt';
 import { acquireStream } from '../assistant/streams';
@@ -18,6 +18,7 @@ export const MAX_HISTORY = 100;
 const MAX_QUESTION_CHARS = 1000;
 const SIMPLIFY_LIMIT = { limit: 60, windowMs: 10 * 60 * 1000 };
 const SIMPLER_LEVEL = 1;
+export const ANSWER_TIMEOUT_MS = 60_000;
 
 const providerFor = (ctx: AppContext): AIProvider => ctx.provider ?? getAIProvider(process.env, { delayMs: getConfig().mockAiDelayMs });
 
@@ -42,12 +43,10 @@ export interface MessageView {
   createdAt: number;
   citations: MessageRecord['citations'];
   notInManual: boolean;
-  /** `no_citation` when the answer could not be pointed at the manual; null otherwise. */
-  note: string | null;
 }
 
 const messageView = (m: NewMessage | MessageRecord): MessageView => ({
-  id: m.id, role: m.role, text: m.text, stepId: m.stepId, createdAt: m.createdAt, citations: m.citations, notInManual: m.notInManual, note: m.note,
+  id: m.id, role: m.role, text: m.text, stepId: m.stepId, createdAt: m.createdAt, citations: m.citations, notInManual: m.notInManual,
 });
 
 // --- history ----------------------------------------------------------------------------------------
@@ -94,9 +93,9 @@ export async function postMessage(req: Request, ctx: AppContext, session: Sessio
   if (!getOwn(guide.steps, stepId)) throw new ApiError('invalid_request', 'That step is not part of this guide.', 400);
 
   const limits = limitsFor(ctx);
-  const gate = acquireStream(owned.guide.id, limits.maxStreams);
+  const gate = acquireStream(session.sessionId, limits.maxStreams);
   if (!gate.ok) {
-    if (gate.reason === 'busy') throw new ApiError('busy', 'Another answer for this guide is still being written. Please wait for it to finish.', 409);
+    if (gate.reason === 'busy') throw new ApiError('busy', 'Another answer is still being written. Please wait for it to finish.', 409);
     throw new ApiError('rate_limited', 'The assistant is busy right now. Please try again in a moment.', 503, 5);
   }
   try {
@@ -116,10 +115,17 @@ export async function postMessage(req: Request, ctx: AppContext, session: Sessio
 
   const provider = providerFor(ctx);
   const completedStepIds = owned.progress.completedStepIds;
-  const abort = new AbortController();
-  req.signal?.addEventListener('abort', () => abort.abort(), { once: true });
+  const abort = new AbortController(); // the client went away
+  const providerCtl = new AbortController(); // stop the provider: client gone, timeout, or overrun
+  const stopAll = () => {
+    abort.abort();
+    providerCtl.abort();
+  };
+  req.signal?.addEventListener('abort', stopAll, { once: true });
   const askedAt = ctx.now();
   const encoder = new TextEncoder();
+  const timeoutMs = limits.answerTimeoutMs ?? ANSWER_TIMEOUT_MS;
+  const holdAll = !isEnglish(guide.language);
 
   const stream = new ReadableStream<Uint8Array>({
     start(controller) {
@@ -132,19 +138,51 @@ export async function postMessage(req: Request, ctx: AppContext, session: Sessio
           open = false;
         }
       };
+      let timedOut = false;
+      const timer = setTimeout(() => {
+        timedOut = true;
+        providerCtl.abort();
+      }, timeoutMs);
       void (async () => {
         try {
           const prompt = buildAssistantPrompt({ guide, currentStepId: stepId, completedStepIds, history, userText: text });
-          const hold = new QuantityHoldback();
+          const hold = new QuantityHoldback(holdAll);
           let full = '';
           let end: Extract<AnswerEvent, { type: 'done' }> | undefined;
-          for await (const ev of provider.answerQuestion({ guide, currentStepId: stepId, completedStepIds, message: text, history, prompt, signal: abort.signal })) {
-            if (ev.type === 'text') {
-              if (full.length >= MAX_ANSWER_CHARS * 2) continue;
-              full += ev.delta;
-              const safe = hold.push(ev.delta);
+          const it = provider.answerQuestion({ guide, currentStepId: stepId, completedStepIds, message: text, history, prompt, signal: providerCtl.signal })[Symbol.asyncIterator]();
+          const stopped = new Promise<'stopped'>((resolve) => {
+            if (providerCtl.signal.aborted) resolve('stopped');
+            else providerCtl.signal.addEventListener('abort', () => resolve('stopped'), { once: true });
+          });
+          const halt = () => {
+            providerCtl.abort();
+            try {
+              void Promise.resolve(it.return?.()).catch(() => {});
+            } catch {
+              /* a stuck provider is abandoned, not awaited */
+            }
+          };
+          for (;;) {
+            const pending = it.next();
+            pending.catch(() => {}); // a late failure after we stopped waiting must not become an unhandled rejection
+            const r = await Promise.race([pending, stopped]);
+            if (r === 'stopped') {
+              halt();
+              if (abort.signal.aborted) return;
+              throw new AIProviderError(timedOut ? 'The answer took too long.' : 'The provider was stopped.', 'provider_unavailable', true);
+            }
+            if (r.done) break;
+            const ev = r.value;
+            if (ev.type === 'text' && typeof ev.delta === 'string') {
+              const piece = cleanChunk(ev.delta);
+              full += piece;
+              if (full.length > MAX_ANSWER_CHARS * 2) {
+                halt();
+                throw new AIProviderError('The answer was far longer than allowed.', 'bad_response', false);
+              }
+              const safe = hold.push(piece);
               if (safe) send('delta', { text: safe });
-            } else {
+            } else if (ev.type === 'done') {
               end = ev;
             }
           }
@@ -156,9 +194,9 @@ export async function postMessage(req: Request, ctx: AppContext, session: Sessio
           const shown = hold.emitted;
           if (final.text.startsWith(shown) && final.text.length > shown.length && cleanAnswerText(full) === final.text) send('delta', { text: final.text.slice(shown.length) });
           const now = ctx.now();
-          const base = { stepId, citations: [] as NewMessage['citations'], notInManual: false, note: null };
+          const base = { stepId, citations: [] as NewMessage['citations'], notInManual: false };
           const userMsg: NewMessage = { ...base, id: randomUUID(), role: 'user', text, createdAt: askedAt };
-          const botMsg: NewMessage = { ...base, id: randomUUID(), role: 'assistant', text: final.text, createdAt: Math.max(now, askedAt), citations: final.citations, notInManual: final.notInManual, note: final.note };
+          const botMsg: NewMessage = { ...base, id: randomUUID(), role: 'assistant', text: final.text, createdAt: Math.max(now, askedAt), citations: final.citations, notInManual: final.notInManual };
           await insertMessages(ctx.db, owned.guide.id, owned.analysis.id, [userMsg, botMsg]);
           send('done', { message: messageView(botMsg) });
         } catch (e) {
@@ -171,6 +209,7 @@ export async function postMessage(req: Request, ctx: AppContext, session: Sessio
             send('error', { error: { code: 'internal', message: 'Something went wrong on our side. Please try again.' } });
           }
         } finally {
+          clearTimeout(timer);
           gate.release();
           if (open) {
             open = false;
@@ -184,7 +223,7 @@ export async function postMessage(req: Request, ctx: AppContext, session: Sessio
       })();
     },
     cancel() {
-      abort.abort();
+      stopAll();
     },
   });
 
@@ -213,7 +252,7 @@ export async function simplifyStep(ctx: AppContext, session: SessionInfo, rawId:
   await hitOrThrow(ctx, `assistant:simplify:${session.sessionId}`, SIMPLIFY_LIMIT);
   let result;
   try {
-    result = await simplifyStepChecked(providerFor(ctx), { guide, stepId: step.id, level: 'simpler' });
+    result = await simplifyStepChecked(providerFor(ctx), { guide, stepId: step.id, level: 'simpler' }); // builds the simplify prompt itself
   } catch (e) {
     if (e instanceof AIProviderError) throw new ApiError('ai_unavailable', 'The simpler explanation is not available right now. Please try again.', 503);
     throw e;

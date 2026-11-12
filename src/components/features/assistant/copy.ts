@@ -7,8 +7,6 @@ export const COPY = {
   instructorNote: "Instructor's explanation - not the manual's wording.",
   notInManualLabel: 'NOT IN YOUR MANUAL',
   openManual: 'Open the original manual',
-  /** `note` on an answer = Instructor could not point to a place in the manual. */
-  caution: "Instructor couldn't point to where the manual says this. Check it against the original manual.",
   failed: "That didn't go through.",
   stopped: 'You stopped this answer.',
   tryAgain: 'Try again',

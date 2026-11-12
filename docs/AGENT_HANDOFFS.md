@@ -243,3 +243,10 @@ Task: Security review of M2 + M3 server surface (read-only).
 Done: Authorisation, same-origin checks, error text, plain-text rendering, prompt role separation, hold-back on abort/error and PATCH progress are clean. Seven findings (quantity-check bypasses; numbers not tied to unit or step; unchecked free text reaching the UI; no timeout or per-session stream limit; uncleaned deltas; raw text passed to the provider and no simplify prompt; unbounded history). Probe cases: scratchpad `probe.ts` (reported in the review).
 Open issues / risks: nothing blocks M3 on the mock provider; all accepted and scheduled now (D-020) because they must exist before a real model is connected.
 Next: engineer implements D-020 with regression tests from the probe cases; QA re-checks guards and stream timeout/abort.
+
+## H-034 | 2026-11-12 | from: software-engineer -> to: qa-engineer, ui-ux-designer
+Task: M3-b assistant UI and "Explain it more simply".
+Done: `src/lib/client/assistant.ts` (typed client, SSE reader, hook), `src/components/features/assistant/*`, wired into the player; mocked and un-mocked e2e specs; screenshots in `artifacts/screenshots/m3/`.
+How to verify: `npx playwright test e2e/m3-*.spec.ts --trace off`.
+Open issues / risks (for the designer to rule on): desktop uses a non-modal dock in the right column that replaces the step text panel (spec said side panel via `BottomSheet`); tablet and landscape use the bottom sheet; Enter sends only on desktop pointers; sheet opens at full height; separate "Step n" and "p. n" citation chips instead of a combined chip. Gaps: no Helpful / Not helpful buttons (no endpoint), no offline dot, no message-limit banner, keyboard-safe input untested on a real device. Earlier un-mocked failures of the badcite/invent cases at 375 were not traced.
+Next: QA (viewer opened over the dock, Back stack, stream error after `done`); designer review.

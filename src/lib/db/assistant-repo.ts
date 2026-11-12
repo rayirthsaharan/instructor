@@ -19,34 +19,34 @@ export interface MessageRecord {
   createdAt: number;
   citations: StoredCitation[];
   notInManual: boolean;
-  /** Server-side note, e.g. `no_citation` (an answer that could not be pointed at the manual). */
-  note: string | null;
 }
 
 export type NewMessage = Omit<MessageRecord, 'guideId'>;
 
-/** `citations_json` holds `{ citations, notInManual, note }`, so no migration is needed for the extra flags. */
+/** The newest messages kept per guide; older ones are deleted when new ones are stored. */
+export const MAX_STORED_MESSAGES = 200;
+
+/** `citations_json` holds `{ citations, notInManual }`, so no migration is needed for the extra flag. Old rows may carry a retired `note`, which is ignored. */
 function encodeMeta(m: NewMessage): string {
-  return JSON.stringify({ citations: m.citations, notInManual: m.notInManual, note: m.note });
+  return JSON.stringify({ citations: m.citations, notInManual: m.notInManual });
 }
 
-function decodeMeta(raw: string | null): Pick<MessageRecord, 'citations' | 'notInManual' | 'note'> {
-  const empty = { citations: [], notInManual: false, note: null };
+function decodeMeta(raw: string | null): Pick<MessageRecord, 'citations' | 'notInManual'> {
+  const empty = { citations: [], notInManual: false };
   if (!raw) return empty;
   try {
-    const v = JSON.parse(raw) as Partial<Pick<MessageRecord, 'citations' | 'notInManual' | 'note'>> | null;
+    const v = JSON.parse(raw) as Partial<Pick<MessageRecord, 'citations' | 'notInManual'>> | null;
     if (!v || typeof v !== 'object') return empty;
     return {
       citations: Array.isArray(v.citations) ? v.citations : [],
       notInManual: v.notInManual === true,
-      note: typeof v.note === 'string' ? v.note : null,
     };
   } catch {
     return empty;
   }
 }
 
-/** Stores a question and its answer together, in order, or neither. */
+/** Stores a question and its answer together, in order, or neither. Keeps only the newest `MAX_STORED_MESSAGES` of the guide. */
 export async function insertMessages(db: Db, guideId: string, analysisId: string, rows: NewMessage[]): Promise<void> {
   unwrap(db).transaction((tx) => {
     for (const m of rows) {
@@ -54,6 +54,8 @@ export async function insertMessages(db: Db, guideId: string, analysisId: string
         id: m.id, guideId, analysisId, stepId: m.stepId, role: m.role, content: m.text, citationsJson: encodeMeta(m), createdAt: m.createdAt,
       }).run();
     }
+    tx.run(sql`DELETE FROM messages WHERE guide_id = ${guideId} AND rowid NOT IN (
+      SELECT rowid FROM messages WHERE guide_id = ${guideId} ORDER BY created_at DESC, rowid DESC LIMIT ${MAX_STORED_MESSAGES})`);
   }, { behavior: 'immediate' });
 }
 

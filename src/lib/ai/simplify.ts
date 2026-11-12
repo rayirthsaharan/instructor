@@ -1,6 +1,11 @@
+import { buildSimplifyPrompt } from '../assistant/prompt';
+import { cleanAnswerText, findIntroducedLinks } from '../assistant/text';
 import { getOwn } from '../guide/selectors';
 import { findIntroducedQuantities } from '../guide/validate';
 import type { AIProvider, SimplifyStepInput } from './provider';
+
+/** A simplified instruction longer than this is rejected rather than cut. */
+export const MAX_SIMPLIFIED_CHARS = 1000;
 
 export interface CheckedSimplification {
   /** Text safe to show: the simplification, or the original instruction if the check rejected it. */
@@ -12,14 +17,17 @@ export interface CheckedSimplification {
 }
 
 /**
- * Asks the provider to simplify a step, but never lets a number or quantity that is not in the original
- * instruction through (measurements must come from the manual). On rejection the original text is returned.
+ * Asks the provider to simplify a step, but never lets a number, quantity or web address that is not in the original
+ * instruction through (measurements must come from the manual). The output is cleaned of control and text-direction
+ * characters and must fit the length cap. On rejection the original text is returned.
  */
 export async function simplifyStepChecked(provider: AIProvider, input: SimplifyStepInput): Promise<CheckedSimplification> {
   const step = getOwn(input.guide.steps, input.stepId);
   const original = step?.instruction ?? '';
-  const { text } = await provider.simplifyStep(input);
-  const introduced = findIntroducedQuantities(original, text);
-  if (introduced.length > 0 || !text.trim()) return { text: original, fellBack: true, introduced };
+  const prompt = input.prompt ?? (step ? buildSimplifyPrompt({ step, level: input.level }) : undefined);
+  const { text: raw } = await provider.simplifyStep(prompt ? { ...input, prompt } : input);
+  const text = cleanAnswerText(typeof raw === 'string' ? raw : '', MAX_SIMPLIFIED_CHARS + 1);
+  const introduced = [...findIntroducedQuantities(original, text), ...findIntroducedLinks([original], text)];
+  if (introduced.length > 0 || !text || text.length > MAX_SIMPLIFIED_CHARS) return { text: original, fellBack: true, introduced };
   return { text, fellBack: false, introduced: [] };
 }

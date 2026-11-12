@@ -91,7 +91,7 @@ describe('findIntroducedQuantities', () => {
   });
   it('handles decimals and thousands separators', () => {
     expect(findIntroducedQuantities('Tighten to 1,500 mm.', 'Tighten to 1500 mm.')).toEqual([]);
-    expect(findIntroducedQuantities('Tighten to 1.5 mm.', 'Tighten to 1.6 mm.')).toEqual(['1.6']);
+    expect(findIntroducedQuantities('Tighten to 1.5 mm.', 'Tighten to 1.6 mm.')).toEqual(['1.6 mm']);
   });
 });
 

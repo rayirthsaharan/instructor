@@ -89,12 +89,6 @@ export function AssistantAnswer({ message, env, onOpenManual }: { message: ChatM
     <div className="border-l-[3px] border-accent pl-3" data-testid="assistant-message" data-kind="answer">
       <p className="type-body-sm text-ink-muted">{COPY.instructorNote}</p>
       <p className="type-body-lg mt-1 whitespace-pre-wrap wrap-anywhere text-ink">{message.text}</p>
-      {message.note !== undefined && (
-        <p className="type-body-sm mt-2 flex items-start gap-2 font-semibold text-warn-fg" data-testid="answer-caution">
-          <Icon name="warn" size={20} />
-          <span>{COPY.caution}</span>
-        </p>
-      )}
       <CitationChips citations={message.citations} env={env} />
     </div>
   );

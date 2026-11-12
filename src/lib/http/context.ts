@@ -30,6 +30,8 @@ export interface AssistantLimits {
   messages: { limit: number; windowMs: number };
   /** Answers streaming at once in this process. */
   maxStreams: number;
+  /** An answer that has not finished after this long is stopped. Default 60 000; tests inject a small value. */
+  answerTimeoutMs?: number;
 }
 
 let shared: AppContext | undefined;

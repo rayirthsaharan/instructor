@@ -49,7 +49,8 @@ describe('finalizeAnswer', () => {
   const base = { guide, pageCount: 6 };
   it('keeps a cited, verified answer', () => {
     const r = finalizeAnswer({ ...base, text: 'Press 4 dowels into each side panel.', grounded: true, citations: [{ stepId: 's2', pageIndex: 2 }] });
-    expect(r).toMatchObject({ notInManual: false, note: null });
+    expect(r).toMatchObject({ notInManual: false });
+    expect(r).not.toHaveProperty('note');
     expect(r.citations).toHaveLength(1);
   });
   it('rejects a number that is only in an uncited step', () => {

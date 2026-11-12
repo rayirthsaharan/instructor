@@ -23,7 +23,6 @@ export interface ChatMessage {
   createdAt: number | string;
   citations: Citation[];
   notInManual: boolean;
-  note?: string;
 }
 
 export interface AssistantError {
@@ -73,7 +72,6 @@ export function parseMessage(raw: unknown): ChatMessage | null {
     createdAt: typeof createdAt === 'number' || typeof createdAt === 'string' ? createdAt : 0,
     citations: cleanCitations(raw.citations),
     notInManual: raw.notInManual === true,
-    note: typeof raw.note === 'string' && raw.note ? raw.note : undefined,
   };
 }
 

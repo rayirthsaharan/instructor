@@ -130,23 +130,23 @@ export async function installStreamControl(page: Page) {
 }
 
 export const frame = (event: string, data: unknown) => `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
-export const sendDelta = (page: Page, text: string) => page.evaluate((s) => (window as any).__ctl.send(s), frame('delta', { text })); // eslint-disable-line @typescript-eslint/no-explicit-any
+export const sendDelta = (page: Page, text: string) => page.evaluate((s) => (window as any).__ctl.send(s), frame('delta', { text }));  
 export const sendDone = (page: Page, message: Msg) =>
   page.evaluate((s) => {
-    const c = (window as any).__ctl; // eslint-disable-line @typescript-eslint/no-explicit-any
+    const c = (window as any).__ctl;  
     c.send(s);
     c.close();
   }, frame('done', { message }));
 export const sendError = (page: Page, code = 'provider_error', message = 'boom') =>
   page.evaluate((s) => {
-    const c = (window as any).__ctl; // eslint-disable-line @typescript-eslint/no-explicit-any
+    const c = (window as any).__ctl;  
     c.send(s);
     c.close();
   }, frame('error', { error: { code, message } }));
 export const failNext = (page: Page, status: number, code: string) =>
-  page.evaluate((v) => ((window as any).__next = v), { status, body: { error: { code, message: 'server words' } } }); // eslint-disable-line @typescript-eslint/no-explicit-any
-export const posts = (page: Page) => page.evaluate(() => (window as any).__posts as Array<{ stepId: string; text: string }>); // eslint-disable-line @typescript-eslint/no-explicit-any
-export const wasAborted = (page: Page) => page.evaluate(() => (window as any).__aborted as boolean); // eslint-disable-line @typescript-eslint/no-explicit-any
+  page.evaluate((v) => ((window as any).__next = v), { status, body: { error: { code, message: 'server words' } } });  
+export const posts = (page: Page) => page.evaluate(() => (window as any).__posts as Array<{ stepId: string; text: string }>);  
+export const wasAborted = (page: Page) => page.evaluate(() => (window as any).__aborted as boolean);  
 
 export const askButton = (page: Page) => page.getByTestId('ask-button');
 export const panelOf = (page: Page) => page.getByTestId('assistant-panel');

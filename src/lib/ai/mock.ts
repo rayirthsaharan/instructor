@@ -183,7 +183,7 @@ export class MockProvider implements AIProvider {
       }
       if (/\bwhy\b/.test(q) && !/warn/.test(q)) {
         if (cur.why) return grounded(guidance(cur.why), [cite(cur)]);
-        return { text: `The manual does not say why this step is needed. ${MOCK_NOT_IN_MANUAL}`, grounded: false, citations: [] };
+        return { text: MOCK_NOT_IN_MANUAL, grounded: false, citations: [] };
       }
       if (/warn|danger|careful|safe/.test(q)) {
         if (cur.warnings.length === 0) return { text: MOCK_NOT_IN_MANUAL, grounded: false, citations: [] };

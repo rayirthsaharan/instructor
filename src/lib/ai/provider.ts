@@ -69,7 +69,10 @@ export interface AnswerQuestionInput {
   guide: ValidatedGuide;
   currentStepId?: string;
   completedStepIds?: string[];
-  /** Assembled by `buildAssistantPrompt`; real providers send it, the mock ignores it. */
+  /**
+   * Assembled by `buildAssistantPrompt`. A real provider adapter must send this and nothing else: no other field of this
+   * input (guide, message, history) may be put into a request. Only the deterministic mock reads the structured fields.
+   */
   prompt?: AssistantPrompt;
   message: string;
   history?: ChatTurn[];
@@ -93,6 +96,8 @@ export interface SimplifyStepInput {
   guide: ValidatedGuide;
   stepId: string;
   level: SimplifyLevel;
+  /** Assembled by `buildSimplifyPrompt`. A real provider adapter sends this and nothing else; the mock reads the step itself. */
+  prompt?: AssistantPrompt;
   signal?: AbortSignal;
 }
 

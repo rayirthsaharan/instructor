@@ -16,7 +16,6 @@ import {
   shot,
   user,
   wasAborted,
-  type ApiMock,
   type Msg,
 } from './m3-helpers';
 
@@ -116,7 +115,7 @@ for (const vp of ['375', '1280'] as const) {
         user('What size is the screw?', 's4'),
         answer("The manual doesn't give a screw size for this step.", 's4', { notInManual: true }),
         user('Anything else to know?', 's4'),
-        answer('Check each lock sits flush.', 's4', { note: 'no_citation', citations: [] }),
+        answer('Check each lock sits flush.', 's4'),
       ];
       const { context, page } = await start(browser, vp, { history, step: 's4' });
       await expect(page.getByTestId('user-message')).toHaveCount(3);
@@ -129,7 +128,7 @@ for (const vp of ['375', '1280'] as const) {
       await expect(nim).toContainText('NOT IN YOUR MANUAL');
       await expect(nim.getByRole('button', { name: 'Open the original manual' })).toBeVisible();
       await expect(nim.getByTestId('citations')).toHaveCount(0);
-      await expect(page.getByTestId('answer-caution')).toBeVisible();
+      await expect(page.getByTestId('answer-caution')).toHaveCount(0); // D-020: no note, no caution line
       await expect(page.getByTestId('suggestions')).toHaveCount(0); // a question was asked on step 4
       await page.getByTestId('conversation').evaluate((e) => (e.scrollTop = 0));
       await shot(page, `${vp}-history`);

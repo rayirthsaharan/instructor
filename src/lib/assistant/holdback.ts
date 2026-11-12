@@ -1,17 +1,24 @@
 import { containsQuantity } from '../guide/validate';
 
+/** A word that looks like a web or email address is held back too: addresses are verified only at the end. */
+const LOOKS_LIKE_LINK = /@|:\/\/|^www\.|[\p{L}\p{N}]\.\p{L}{2,}/u;
+
 /**
  * Releases streamed text only up to the first word that carries a number or quantity, and only whole words.
  * Quantities can be checked against the manual only once the answer is complete (citations arrive last), so
- * an unverified measurement is never shown, even for a moment. `rest()` returns what was held back.
+ * an unverified measurement is never shown, even for a moment. With `holdAll` (manuals that are not in English, where
+ * spelled-out numbers cannot be recognised) nothing is released while streaming.
  */
 export class QuantityHoldback {
   private buf = '';
   private sent = 0;
 
+  constructor(private readonly holdAll = false) {}
+
   /** Appends text and returns the part that is safe to show now. */
   push(delta: string): string {
     this.buf += delta;
+    if (this.holdAll) return '';
     const lastSpace = Math.max(this.buf.lastIndexOf(' '), this.buf.lastIndexOf('\n'), this.buf.lastIndexOf('\t'));
     const limit = lastSpace + 1;
     if (limit <= this.sent) return '';
@@ -19,7 +26,7 @@ export class QuantityHoldback {
     const word = /\S+\s+/g;
     word.lastIndex = this.sent;
     for (let m = word.exec(this.buf); m !== null && m.index < limit; m = word.exec(this.buf)) {
-      if (containsQuantity(m[0])) {
+      if (containsQuantity(m[0]) || LOOKS_LIKE_LINK.test(m[0])) {
         end = m.index;
         break;
       }

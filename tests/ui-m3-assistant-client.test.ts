@@ -222,11 +222,11 @@ describe('messages and citations from the server', () => {
     expect(parseMessage(null)).toBeNull();
     expect(parseMessage({ id: 'a', role: 'system', text: 't', stepId: 's' })).toBeNull();
     expect(parseMessage({ id: 'a', role: 'user', text: 5, stepId: 's' })).toBeNull();
-    expect(parseMessage({ id: 'a', role: 'user', text: 't', stepId: 's' })).toMatchObject({ citations: [], notInManual: false, note: undefined });
+    expect(parseMessage({ id: 'a', role: 'user', text: 't', stepId: 's' })).toMatchObject({ citations: [], notInManual: false });
   });
-  it('accepts the server shape: null stepId and note "no_citation" / null', () => {
-    expect(parseMessage({ id: 'u', role: 'user', text: 't', stepId: null, createdAt: 1, citations: [], notInManual: false, note: null })).toMatchObject({ stepId: '', note: undefined });
-    expect(parseMessage({ id: 'a', role: 'assistant', text: 't', stepId: 's1', note: 'no_citation' })?.note).toBe('no_citation');
+  it('accepts the server shape: null stepId; an unexpected note field is ignored', () => {
+    expect(parseMessage({ id: 'u', role: 'user', text: 't', stepId: null, createdAt: 1, citations: [], notInManual: false })).toMatchObject({ stepId: '' });
+    expect(parseMessage({ id: 'a', role: 'assistant', text: 't', stepId: 's1', note: 'no_citation' })).not.toHaveProperty('note');
   });
   it('items without a step get no divider', () => {
     expect(conversationItems({ messages: [msg({ stepId: '' })], turn: null }).map((i) => i.kind)).toEqual(['message']);

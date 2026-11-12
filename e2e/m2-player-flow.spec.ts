@@ -814,11 +814,11 @@ test.describe('keyboard only', () => {
     await expect.poll(savedProgress(context)).toMatchObject({ completedStepIds: ['s1'] });
     // A and / open Ask; Esc closes; O opens the original; Esc closes
     await page.keyboard.press('a');
-    await expect(page.getByRole('dialog', { name: 'Ask about this step' })).toBeVisible();
+    await expect(page.getByTestId('assistant-panel')).toBeVisible();
     await page.keyboard.press('Escape');
-    await expect(page.getByRole('dialog', { name: 'Ask about this step' })).toBeHidden();
+    await expect(page.getByTestId('assistant-panel')).toBeHidden();
     await page.keyboard.press('/');
-    await expect(page.getByRole('dialog', { name: 'Ask about this step' })).toBeVisible();
+    await expect(page.getByTestId('assistant-panel')).toBeVisible();
     await page.keyboard.press('Escape');
     await page.keyboard.press('o');
     await expect(page.getByTestId('original-viewer')).toBeVisible();

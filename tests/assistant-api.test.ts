@@ -67,7 +67,8 @@ describe('POST /messages: streaming', () => {
     const done = evs.at(-1)!;
     expect(done.event).toBe('done');
     const msg = done.data.message;
-    expect(msg).toMatchObject({ role: 'assistant', stepId: 's2', notInManual: false, note: null });
+    expect(msg).toMatchObject({ role: 'assistant', stepId: 's2', notInManual: false });
+    expect(msg).not.toHaveProperty('note');
     expect(msg.text).toContain('Press 4 dowels');
     expect(textOf(evs)).toBe(msg.text);
     expect(msg.citations[0]).toMatchObject({ stepId: 's2', pageIndex: 2 });
@@ -258,16 +259,15 @@ describe('POST /messages: guards', () => {
     expect(JSON.stringify(evs)).not.toContain('secret');
   });
 
-  it('invalid citations are dropped; an answer left with none is flagged no_citation', async () => {
+  it('an answer left with no valid citation becomes the fixed not-in-manual message', async () => {
     const { c, guideId } = await newGuide();
-    const evs = await answer(c, guideId, 's2', 'What does this step mean? [[mock:badcite]]');
-    const msg = evs.at(-1)!.data.message;
-    expect(msg.citations).toEqual([]);
-    expect(msg.note).toBe('no_citation');
-    expect(msg.notInManual).toBe(false);
-    expect((await history(c, guideId))[1].note).toBe('no_citation');
-    const none = (await answer(c, guideId, 's2', 'hello [[mock:nocite]]')).at(-1)!.data.message;
-    expect(none.note).toBe('no_citation');
+    for (const trigger of ['[[mock:badcite]]', '[[mock:nocite]]']) {
+      const msg = (await answer(c, guideId, 's2', `What does this step mean? ${trigger}`)).at(-1)!.data.message;
+      expect(msg).toMatchObject({ text: NOT_IN_MANUAL_TEXT, citations: [], notInManual: true });
+      expect(msg).not.toHaveProperty('note');
+    }
+    const stored = (await history(c, guideId)).filter((m) => m.role === 'assistant');
+    expect(stored.every((m) => m.text === NOT_IN_MANUAL_TEXT && m.notInManual && !('note' in m))).toBe(true);
   });
 
   it('an invented measurement is replaced by the not-in-manual answer and never streamed', async () => {

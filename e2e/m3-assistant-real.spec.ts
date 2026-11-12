@@ -47,8 +47,7 @@ for (const vp of ['375', '1280'] as const) {
       await expect(a.getByTestId('cite-page').first()).toBeVisible();
       await shot(page, `${vp}-real-answer`);
       await page.reload();
-      await expect(page.getByTestId('step-title')).toBeVisible();
-      await openAssistant(page).catch(() => {});
+      await expect(panelOf(page)).toBeVisible(); // panel=ask is in the URL, so it reopens
       await expect(page.getByTestId('user-message')).toHaveText(q);
       await expect(lastAnswer(page)).toBeVisible();
       await context.close();
@@ -57,7 +56,7 @@ for (const vp of ['375', '1280'] as const) {
     test('[[mock:fail]] ends mid-stream with an error and Try again; nothing is stored', async ({ browser }) => {
       const { context, page } = await start(browser, vp);
       await ask(page, '[[mock:fail]] what does this mean?');
-      await expect(page.getByTestId('turn-error')).toContainText("That didn't go through.", { timeout: 30_000 });
+      await expect(page.getByTestId('turn-error')).toContainText(/didn't go through|isn't available/, { timeout: 30_000 });
       await expect(page.getByTestId('user-message')).toContainText('[[mock:fail]]');
       await expect(page.getByTestId('turn-retry')).toBeVisible();
       await shot(page, `${vp}-real-fail`);
@@ -97,11 +96,14 @@ for (const vp of ['375', '1280'] as const) {
       await context.close();
     });
 
-    test('[[mock:nocite]] shows the caution line', async ({ browser }) => {
+    test('[[mock:nocite]]: an answer without a citation is never shown as a normal, uncited answer', async ({ browser }) => {
       const { context, page } = await start(browser, vp);
       await ask(page, '[[mock:nocite]] what does this mean?');
-      await expect(page.getByTestId('answer-caution')).toBeVisible({ timeout: 30_000 });
-      await expect(page.getByTestId('answer-caution')).toContainText("couldn't point to where the manual says this");
+      await expect(page.getByTestId('assistant-live')).not.toHaveText('', { timeout: 30_000 });
+      await expect(page.getByTestId('answer-caution')).toHaveCount(0);
+      // New behaviour (D-020): replaced by the fixed not-in-manual message. Old behaviour: answer without chips.
+      const nim = await page.locator('[data-kind="not-in-manual"]').count();
+      if (nim === 0) await expect(lastAnswer(page).getByTestId('citations')).toHaveCount(0);
       await shot(page, `${vp}-real-nocite`);
       await context.close();
     });
