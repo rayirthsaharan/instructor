@@ -3,3 +3,4 @@ export { openDb, getDb, closeDb, type Db } from './client';
 export { runMigrations } from './migrate';
 export * from './jobs-repo';
 export * from './library-repo';
+export * from './assistant-repo';

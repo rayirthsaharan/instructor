@@ -40,6 +40,7 @@ describe('never the same words twice', () => {
     const step = { ...base, sourceQuote: base.instruction, highlights: [] };
     const m = html(
       h(StepContent, {
+        guideId: 'g',
         guide,
         documentId: 'd',
         step,

@@ -56,9 +56,21 @@ export interface ChatTurn {
   content: string;
 }
 
+/** Text given to a real model: `system` holds fixed rules only; every piece of document or user text is data inside `user`. */
+export interface AssistantPrompt {
+  system: string;
+  user: string;
+}
+
+/** The explicit "the manual does not say" answer. Shared by the mock, the guards and the UI contract. */
+export const NOT_IN_MANUAL_TEXT = 'That is not in your manual, so I cannot answer it from here. Check the manufacturer or the printed leaflet rather than relying on a guess.';
+
 export interface AnswerQuestionInput {
   guide: ValidatedGuide;
   currentStepId?: string;
+  completedStepIds?: string[];
+  /** Assembled by `buildAssistantPrompt`; real providers send it, the mock ignores it. */
+  prompt?: AssistantPrompt;
   message: string;
   history?: ChatTurn[];
   signal?: AbortSignal;

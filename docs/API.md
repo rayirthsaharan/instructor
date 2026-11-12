@@ -18,6 +18,11 @@ An anonymous device session lives in a signed cookie (`<uuid>.<HMAC>`, httpOnly,
 | `GET /api/guides/:id` | `{ id, documentId, guide, progress, pageCount }` (`guide` is a `ValidatedGuide`, schema in `src/lib/guide/schema.ts`) |
 | `PATCH /api/guides/:id/progress` | merged `Progress` (the app's write path) |
 | `PUT /api/guides/:id/progress` | saved `Progress` (whole-record replace; tooling and test seeding only) |
+| `GET /api/guides/:id/messages` | `{ messages: Message[] }`, oldest first, newest 100 (see "Assistant") |
+| `POST /api/guides/:id/messages` | `200 text/event-stream` (see "Assistant") |
+| `DELETE /api/guides/:id/messages` | `200 { cleared: true }` |
+| `GET /api/guides/:id/suggestions?stepId=` | `{ suggestions: string[] }` (3 questions) |
+| `POST /api/guides/:id/steps/:stepId/simplify` | `{ text, cached, fellBack }` |
 | `DELETE /api/guides/:id` | `200 { deleted: true }`; removes the guide, its document and files. Analyses and page images shared with another document are kept until the last user is deleted |
 
 ### Upload (`POST /api/documents`)
@@ -69,6 +74,27 @@ Other codes: `not_found` (404), `invalid_request` (400, bad progress JSON or ids
 - Client rule: never send the whole copy. The store also re-reads `GET /api/guides/:id` when the tab regains focus or becomes visible.
 
 **`PUT`** replaces the whole record and is kept for tooling and test seeding; a stale client using it would erase another tab's work. Body `{ currentStepId: string|null, completedStepIds: string[], checklist: Record<string, "unchecked"|"have"|"missing"> }`. `currentStepId` and every completed id must be a step of the guide; checklist keys must be part ids or tool ids of the guide. Duplicates in `completedStepIds` are dropped. Response and `GET /api/guides/:id` `progress`: the same three fields plus `updatedAt`. Unknown ids give `400 invalid_request` and nothing is saved.
+
+## Assistant (M3-a, mock provider only)
+Implemented in `src/lib/http/assistant.ts` and `src/lib/assistant/*`. All routes are session scoped like the rest (another session or a malformed id gets `404 not_found`); non-GET requests pass the origin check; bodies are capped (16 KB for questions, `413 too_large`).
+
+**Message** = `{ id, role: "user"|"assistant", text, stepId: string|null, createdAt, citations: [{ stepId?, pageIndex, region?: {x,y,w,h} }], notInManual: boolean, note: "no_citation"|null }`. `text` is plain text, never HTML: render it as text. `note` is an addition to the agreed contract: `no_citation` means the answer could not be pointed at the manual (the UI says so); user messages have `citations: []`, `notInManual: false`, `note: null`.
+
+**`POST /messages`** body `{ stepId, text }` (`stepId` must be a step of the guide, `text` 1..1000 characters after trimming; otherwise `400 invalid_request`). Before the stream opens the usual JSON errors apply: `400`, `404`, `409 busy` (another answer for this guide is still streaming), `429 rate_limited` (per session, default 30 questions per 10 minutes, `ASSISTANT_MESSAGES_PER_10_MIN`; `Retry-After`), `503 rate_limited` (more than `ASSISTANT_MAX_STREAMS`, default 8, answers streaming in this process; `Retry-After`). The response is `200 text/event-stream` with events `delta` `{"text"}` (zero or more) and then exactly one of `done` `{"message": Message}` or `error` `{"error": {code, message}}` (`ai_unavailable` or `internal`). **The client must replace the streamed text with `message.text` on `done`.** The question and the answer are stored together, only after the answer passed the guards; if the stream fails, is cancelled, or ends in `error`, nothing is stored, so the client can simply ask again.
+
+Guards applied to every answer before `done` (issues are logged server-side, never shown): citations are checked with `validateCitations` (unknown step or page dropped, regions clamped, at most 6, duplicates removed); every number or spelled-out quantity in the answer must appear in the cited steps (title, instruction, quotes, warnings, why/mistake/checkpoint, part quantities), otherwise the answer is replaced by the not-in-manual text with `notInManual: true`; an answer with no valid citation that is not `notInManual` gets `note: "no_citation"`; control characters are removed and the length is bounded (4000). Streaming never shows a word with a number or quantity until the answer has been verified (text is held back from the first such word, and released at the end if it passes), so an unverified measurement is never displayed. Answers must not state page numbers in prose (they are not in the cited text); pages are shown through citations.
+
+Context given to the provider (`buildAssistantPrompt`, `src/lib/assistant/prompt.ts`): the system role holds fixed rules only; the guide JSON, current step, completed step ids, up to 10 recent messages (1000 characters each) and the question travel in the user role as delimited data blocks, JSON-escaped so they cannot close a block or forge another.
+
+**`GET /messages`** newest 100 messages, oldest first. **`DELETE /messages`** clears the guide's conversation (also removed when the guide is deleted).
+
+**`GET /suggestions?stepId=`** three short questions derived only from the step's own content (meaning, parts, why, warnings, checkpoint, mistake, next step, a parts-difference question), deterministic; `400` for a missing or unknown `stepId`.
+
+**`POST /steps/:stepId/simplify`** (no body) returns `{ text, cached, fellBack }`. The simplification is cached per analysis and step in `simplifications` (level 1); it passes through `simplifyStepChecked`, so it can never add a quantity: when the check rejects it, `fellBack: true` and `text` is the original instruction (not cached). Unknown step: `404`. Provider failure: `503 ai_unavailable`. Cache misses are limited to 60 per 10 minutes per session (`429 rate_limited`).
+
+New error codes: `busy` (409), `ai_unavailable` (503).
+
+**Mock answers** (`AI_PROVIDER=mock`): for the Lumen fixture the mock answers "What does this step mean?", "Which piece is this?", "Why am I doing this?", "Why does the manual warn about this?", "What mistake should I avoid?", "How do I know it is done right?", "What is next?", "Where is this shown in the manual?" and part-difference questions from the guide, and falls back to keyword matching across the guide; everything else gets the not-in-manual answer. Chunk delay: `MOCK_AI_DELAY_MS` spread over the chunks of an answer. Test triggers (only the mock reads them; put in the question text): `[[mock:fail]]` fails after 3 chunks, `[[mock:badcite]]` cites an unknown step and a bad page, `[[mock:invent]]` adds an invented measurement, `[[mock:html]]` answers with HTML-looking text, `[[mock:nocite]]` answers with no citation.
 
 ## Mock analysis (AI_PROVIDER=mock, the default)
 - The Lumen bookcase fixture (`fixtures/lumen-bookcase.pdf`, or the six `fixtures/lumen-bookcase/page-N.png` as a photo set, in order) returns the full fixture guide.

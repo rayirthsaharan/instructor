@@ -230,3 +230,10 @@ Done: "Almost there." -> "Not finished yet." in `e2e/qa-m2-experience.spec.ts`. 
 Results: all four H-027 defects fixed (two-tab loss, 320px overflow, speech guards). Image-error block: not reproduced as removed or re-created on focus, visibility, URL sync, save or time (3 runs; code read of `SourceVisual.tsx` 118-126, 328-365: error state is keyed by URL+retry and only changes on the Try again click). No app defect found; the `toPass` retry looks unnecessary but is harmless.
 Counts: `npm run check` clean, 31 files / 598 tests pass. Full e2e all pass (230 before the new P1 file, plus 5 new passing).
 Open defects: none.
+
+## H-032 | 2026-11-12 | from: software-engineer -> to: qa-engineer, senior-engineer
+Task: M3-a assistant backend (mock provider).
+Done: messages (SSE), history, clear, suggestions and simplify routes; `src/lib/assistant/*` (prompt assembly with role separation, guards), `src/lib/db/assistant-repo.ts`, extended mock intents. Contract in `docs/API.md`.
+How to verify: `npx vitest run tests/assistant-*.test.ts`. Mock triggers: `[[mock:fail]]`, `[[mock:badcite]]`, `[[mock:invent]]`, `[[mock:html]]`, `[[mock:nocite]]`.
+Open issues / risks: quantity guard may produce false positives on number words ("one", "both"); client disconnect mid-stream; stream state lives in one process; no real provider.
+Next: frontend integration; QA; senior-engineer security review (M2 + M3).

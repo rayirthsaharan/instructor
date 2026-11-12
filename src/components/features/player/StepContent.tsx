@@ -19,6 +19,7 @@ import { partsForStep, toolsForStep } from '@/lib/guide/selectors';
 import type { ValidatedGuide } from '@/lib/guide/validate';
 import { PartThumb } from '../overview/part-thumb';
 import { visualPages } from '../source-visual/pages';
+import { SimplerWording } from '../assistant/SimplerWording';
 import { missingPartSentence, sortedWarnings, type MissingPartUse, type StepPosition } from './model';
 
 const sectionLabel = 'type-label text-ink-muted';
@@ -35,6 +36,7 @@ function GuidanceBody({ g, page, lang, onOpenPage }: { g: Guidance; page: number
 }
 
 export interface StepContentProps {
+  guideId: string;
   guide: ValidatedGuide;
   documentId: string;
   step: Step;
@@ -61,6 +63,7 @@ export function StepContent(p: StepContentProps) {
   const calloutNumbers = new Map<string, number>();
   for (const pg of visualPages(step, guide.parts)) for (const m of pg.marks) if (m.partId && m.number !== null && !calloutNumbers.has(m.partId)) calloutNumbers.set(m.partId, m.number);
   const [partSheet, setPartSheet] = useState<string | null>(null);
+  const [simplerOpen, setSimplerOpen] = useState(false);
   const sheetPart = partSheet ? parts.find((x) => x.part.id === partSheet) : undefined;
 
   return (
@@ -194,8 +197,8 @@ export function StepContent(p: StepContentProps) {
             <GuidanceBody g={step.commonMistake} page={page} lang={guide.language} onOpenPage={openFirstPage} />
           </Disclosure>
         )}
-        <Disclosure label="Explain it more simply" className="border-b">
-          <p>Simpler wording arrives with the assistant in the next update. The original instruction above stays as it is.</p>
+        <Disclosure label="Explain it more simply" className="border-b" onToggle={setSimplerOpen}>
+          <SimplerWording guideId={p.guideId} stepId={step.id} open={simplerOpen} />
         </Disclosure>
       </div>
 

@@ -3,7 +3,7 @@ import { getAppContext, resolveSession, type AppContext, type SessionInfo } from
 export type ApiErrorCode =
   | 'unsupported_type' | 'too_large' | 'too_many_pages' | 'encrypted_pdf' | 'corrupt_file' | 'empty' | 'rate_limited'
   | 'quota_exceeded' | 'render_failed' | 'forbidden'
-  | 'not_found' | 'invalid_request' | 'conflict' | 'internal';
+  | 'not_found' | 'invalid_request' | 'conflict' | 'busy' | 'ai_unavailable' | 'internal';
 
 export class ApiError extends Error {
   constructor(public readonly code: ApiErrorCode, message: string, public readonly status: number, public readonly retryAfterSeconds?: number) {

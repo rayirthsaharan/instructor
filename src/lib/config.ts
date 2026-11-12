@@ -21,6 +21,8 @@ const envSchema = z.object({
   TRUST_PROXY_HOPS: z.preprocess(emptyToUndefined, z.coerce.number().int().min(0).max(10).default(0)),
   FREE_GUIDES_PER_MONTH: z.preprocess(emptyToUndefined, z.coerce.number().int().min(0).max(100000).optional()),
   MOCK_AI_DELAY_MS: z.preprocess(emptyToUndefined, z.coerce.number().int().min(0).max(120_000).default(0)),
+  ASSISTANT_MESSAGES_PER_10_MIN: z.preprocess(emptyToUndefined, z.coerce.number().int().min(1).max(10_000).default(30)),
+  ASSISTANT_MAX_STREAMS: z.preprocess(emptyToUndefined, z.coerce.number().int().min(1).max(1000).default(8)),
 });
 
 export interface AppConfig {
@@ -35,6 +37,10 @@ export interface AppConfig {
   workerPollMs: number;
   /** Artificial delay of the mock analysis so progress states are visible in local use. 0 in tests. */
   mockAiDelayMs: number;
+  /** Assistant questions a session may ask per 10 minutes. */
+  assistantMessagesPer10Min: number;
+  /** Assistant answers streaming at once in one web process. */
+  assistantMaxStreams: number;
   /** Absolute path of the PDF render child script; undefined = resolved from the package root. */
   renderChildPath?: string;
   /** Number of trusted reverse proxies in front of the app. 0 = X-Forwarded-For and X-Real-IP are ignored entirely. */
@@ -87,6 +93,8 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     aiModelChat: e.AI_MODEL_CHAT,
     workerPollMs: e.WORKER_POLL_MS,
     mockAiDelayMs: e.MOCK_AI_DELAY_MS,
+    assistantMessagesPer10Min: e.ASSISTANT_MESSAGES_PER_10_MIN,
+    assistantMaxStreams: e.ASSISTANT_MAX_STREAMS,
     renderChildPath: e.RENDER_CHILD_PATH,
     trustProxyHops: e.TRUST_PROXY_HOPS,
     freeGuidesPerMonth: e.FREE_GUIDES_PER_MONTH,

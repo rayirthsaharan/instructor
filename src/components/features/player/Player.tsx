@@ -5,9 +5,11 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useEffectEvent, useMemo, useRef, useState, type TouchEvent } from 'react';
 import { BottomSheet, Button, buttonClass, cn, Skeleton, SkeletonRegion, SkeletonText, useToast, type MenuItem } from '@/components/ui';
 import { pageImageUrl } from '@/lib/client/api';
+import { useAssistant, type Citation } from '@/lib/client/assistant';
 import { useGuide } from '@/lib/client/guide-store';
 import { getOwn } from '@/lib/guide/selectors';
 import type { ValidatedGuide } from '@/lib/guide/validate';
+import { AssistantDock, AssistantSheet } from '../assistant/AssistantHost';
 import { OriginalViewer } from '../original-viewer/OriginalViewer';
 import { swipeDirection } from '../source-visual/geometry';
 import { marksForPage, pageForPart, visualPages, type MarkView } from '../source-visual/pages';
@@ -138,6 +140,10 @@ function Player({ guideId, guide, documentId, pageCount, progress, actions, save
     else window.history.replaceState(null, '', href);
   };
   const [markPage, setMarkPage] = useState<number | null>(null);
+  // The assistant stays open underneath the Original viewer when a citation (or "Open the original manual") opened it.
+  const [askBelow, setAskBelow] = useState(false);
+  // A cited region replaces the step's own marks in the viewer.
+  const [cite, setCite] = useState<{ mark: MarkView | null } | null>(null);
   const openPanel = (panel: PanelName, page?: number) => {
     overlays.current.push(panel);
     commitUrl({ panel, page: page ?? null }, 'push');
@@ -150,9 +156,20 @@ function Player({ guideId, guide, documentId, pageCount, progress, actions, save
       commitUrl({ panel: null, page: null }, 'replace');
     }
   };
-  const openOriginal = (pageIndex: number) => {
+  const openOriginal = (pageIndex: number, fromAsk = false) => {
     setMarkPage(pageIndex);
+    setCite(null);
+    setAskBelow(fromAsk);
     openPanel('original', pageIndex + 1);
+  };
+  const openCitation = (c: Citation) => {
+    const mark: MarkView | null = c.region
+      ? { key: 'cite', number: null, callout: null, region: c.region, approximate: false, description: 'Area the answer refers to' }
+      : null;
+    setMarkPage(c.pageIndex);
+    setCite({ mark });
+    setAskBelow(true);
+    openPanel('original', c.pageIndex + 1);
   };
   const goToStep = (id: string) => {
     overlays.current = [];
@@ -161,6 +178,8 @@ function Player({ guideId, guide, documentId, pageCount, progress, actions, save
 
   // Keep the history stack in sync when the browser's Back / Forward changes the panel.
   const panel = url.panel;
+  const assistantOpen = panel === 'ask' || (panel === 'original' && askBelow);
+  const assistant = useAssistant(guideId, stepId, assistantOpen);
   useEffect(() => {
     const st = overlays.current;
     if (!panel) overlays.current = [];
@@ -302,14 +321,16 @@ function Player({ guideId, guide, documentId, pageCount, progress, actions, save
     if (e.defaultPrevented || e.altKey) return;
     const target = e.target as HTMLElement | null;
     if (target?.closest('input, textarea, select, [contenteditable="true"], [role="menu"], dialog[open]')) return;
-    if (url.panel) return;
+    if (url.panel && !(url.panel === 'ask' && layout === 'desktop')) return;
     const plain = !e.ctrlKey && !e.metaKey;
     let handled = true;
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') onPrimary();
     else if (plain && (e.key === 'ArrowRight' || e.key === 'PageDown')) goNext();
     else if (plain && (e.key === 'ArrowLeft' || e.key === 'PageUp')) goPrev();
     else if (plain && (e.key === 'r' || e.key === 'R') && speech.supported) toggleRead();
-    else if (plain && (e.key === '/' || e.key === 'a' || e.key === 'A')) openPanel('ask');
+    else if (plain && (e.key === '/' || e.key === 'a' || e.key === 'A')) {
+      if (url.panel !== 'ask') openPanel('ask');
+    } else if (plain && e.key === 'Escape' && url.panel === 'ask') closePanel();
     else if (plain && (e.key === 'o' || e.key === 'O')) openOriginal(stepOriginalPage(step));
     else if (plain && e.key === 'Escape') document.querySelector<HTMLElement>('[data-testid="leave-guide"]')?.focus();
     else handled = false;
@@ -382,6 +403,7 @@ function Player({ guideId, guide, documentId, pageCount, progress, actions, save
 
   const content = (
     <StepContent
+      guideId={guideId}
       guide={guide}
       documentId={documentId}
       step={step}
@@ -421,7 +443,7 @@ function Player({ guideId, guide, documentId, pageCount, progress, actions, save
       onBack={goPrev}
       onPrimary={onPrimary}
       onSteps={() => openPanel('steps')}
-      onAsk={() => openPanel('ask')}
+      onAsk={() => (url.panel === 'ask' && layout === 'desktop' ? closePanel() : url.panel !== 'ask' && openPanel('ask'))}
       coach={coach}
     />
   );
@@ -453,6 +475,19 @@ function Player({ guideId, guide, documentId, pageCount, progress, actions, save
     <StepRail groups={groups} currentStepId={stepId} onSelect={goToStep} compact={compactRail} className="pt-3" />
   );
 
+  const assistantProps = {
+    guide,
+    documentId,
+    pageCount,
+    stepId,
+    assistant,
+    online,
+    // On the desktop dock the step changes in place; a sheet closes first (USER_FLOWS 7).
+    onGoToStep: (id: string) => (layout === 'desktop' && panel === 'ask' ? commitUrl({ step: id }, 'replace') : goToStep(id)),
+    onOpenCitation: openCitation,
+    onOpenManual: () => openOriginal(stepOriginalPage(step), true),
+  };
+
   let body: React.ReactNode;
   if (layout === 'desktop') {
     body = (
@@ -476,7 +511,7 @@ function Player({ guideId, guide, documentId, pageCount, progress, actions, save
           </div>
           <div className="min-w-0 flex-1 p-6">{visual}</div>
           <div className="flex w-[420px] shrink-0 flex-col bg-surface shadow-[inset_1px_0_0_var(--color-line)]">
-            {textPanel}
+            {assistantOpen ? <AssistantDock {...assistantProps} onClose={closePanel} /> : textPanel}
             {bar}
           </div>
         </div>
@@ -537,24 +572,7 @@ function Player({ guideId, guide, documentId, pageCount, progress, actions, save
         </BottomSheet>
       )}
 
-      <BottomSheet open={url.panel === 'ask'} onClose={closePanel} title="Ask about this step" initialDetent="half" lgPresentation="panel">
-        <div className="flex flex-col items-start gap-3 pb-4">
-          <p className="type-body-lg" data-testid="ask-stub">
-            The assistant arrives in the next update. Until then, the original manual is the best place to check a step.
-          </p>
-          <Button
-            variant="secondary"
-            onClick={() => {
-              // Replace the Ask sheet with the viewer so Back returns to the step.
-              overlays.current = [];
-              setMarkPage(stepOriginalPage(step));
-              commitUrl({ panel: 'original', page: stepOriginalPage(step) + 1 }, 'replace');
-            }}
-          >
-            Open the original manual
-          </Button>
-        </div>
-      </BottomSheet>
+      {layout !== 'desktop' && <AssistantSheet {...assistantProps} open={assistantOpen} onClose={closePanel} />}
 
       <OriginalViewer
         open={url.panel === 'original'}
@@ -565,7 +583,7 @@ function Player({ guideId, guide, documentId, pageCount, progress, actions, save
         onPageDelta={changeViewerPage}
         onClose={closePanel}
         closeLabel={`Back to step ${position.number}`}
-        marks={markPage === null ? [] : marksForPage(pages, markPage)}
+        marks={markPage === null ? [] : cite ? (cite.mark ? [cite.mark] : []) : marksForPage(pages, markPage)}
         markPage={markPage}
         unreadable={guide.unreadablePages.map((u) => u.pageIndex)}
       />

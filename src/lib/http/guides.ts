@@ -7,7 +7,7 @@ import type { AppContext, SessionInfo } from './context';
 import { deleteOwnedDocument, documentView } from './documents';
 import { ApiError, json, notFound, parseId, readJson } from './respond';
 
-function readStoredGuide(owned: OwnedGuide): ValidatedGuide {
+export function readStoredGuide(owned: OwnedGuide): ValidatedGuide {
   const r = validateGuide(JSON.parse(owned.analysis.guideJson), { pageCount: owned.document.pageCount ?? 0 });
   if (!r.ok) throw new Error(`Stored guide ${owned.guide.id} no longer validates`);
   return r.guide;
@@ -20,7 +20,7 @@ const progressView = (p: ProgressRecord) => ({
   updatedAt: p.updatedAt,
 });
 
-async function ownedGuide(ctx: AppContext, session: SessionInfo, rawId: string): Promise<OwnedGuide> {
+export async function ownedGuide(ctx: AppContext, session: SessionInfo, rawId: string): Promise<OwnedGuide> {
   const g = await getOwnedGuide(ctx.db, parseId(rawId), session.sessionId);
   if (!g) throw notFound('That guide');
   return g;

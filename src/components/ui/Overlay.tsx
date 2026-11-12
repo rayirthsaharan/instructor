@@ -60,6 +60,8 @@ export function BottomSheet({
   footer,
   initialDetent = 'half',
   lgPresentation = 'dialog',
+  bare = false,
+  keyboardInset = 0,
 }: {
   open: boolean;
   onClose: () => void;
@@ -69,6 +71,10 @@ export function BottomSheet({
   initialDetent?: DetentName;
   /** At >= 1024px: 400px right-side panel or centred dialog (max 560). */
   lgPresentation?: 'panel' | 'dialog';
+  /** The body manages its own padding and scrolling (e.g. a chat with a pinned composer). */
+  bare?: boolean;
+  /** Pixels the on-screen keyboard covers: the sheet lifts and shrinks so its footer stays visible. */
+  keyboardInset?: number;
 }) {
   const titleId = useId();
   const [detent, setDetent] = useState<DetentName>(initialDetent);
@@ -113,12 +119,13 @@ export function BottomSheet({
         if (e.target === e.currentTarget) onClose();
       }}
       onKeyDown={trapTab}
+      style={keyboardInset > 0 ? { bottom: keyboardInset } : undefined}
     >
       <div
         className="sheet-inner flex flex-col rounded-t-lg bg-surface-raised text-ink shadow-elev-2"
         style={{
-          height: detent === 'half' ? '56dvh' : 'calc(100dvh - 48px)',
-          maxHeight: 'calc(100dvh - 48px)',
+          height: detent === 'half' ? '56dvh' : `calc(100dvh - 48px - ${keyboardInset}px)`,
+          maxHeight: `calc(100dvh - 48px - ${keyboardInset}px)`,
           paddingBottom: 'env(safe-area-inset-bottom)',
           transform: drag && drag > 0 ? `translateY(${drag}px)` : undefined,
         }}
@@ -139,7 +146,7 @@ export function BottomSheet({
           </h2>
           <IconButton icon="close" aria-label="Close" onClick={onClose} />
         </header>
-        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-2">{children}</div>
+        <div className={bare ? 'flex min-h-0 flex-1 flex-col' : 'min-h-0 flex-1 overflow-y-auto px-4 py-2'}>{children}</div>
         {footer && <footer className="shrink-0 border-t border-line px-4 py-3">{footer}</footer>}
       </div>
     </dialog>

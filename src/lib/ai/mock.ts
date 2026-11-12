@@ -3,9 +3,10 @@ import manifest from '../../../fixtures/manifest.json';
 import { buildDemoDraft } from './demo-guide';
 import { getOwn, orderedSteps } from '../guide/selectors';
 import { containsQuantity, validateGuide, type ValidatedGuide } from '../guide/validate';
-import type { Step } from '../guide/schema';
+import type { Part, Step } from '../guide/schema';
 import {
   AIProviderError,
+  NOT_IN_MANUAL_TEXT,
   type AIProvider,
   type AnalysisStage,
   type AnalyseDocumentInput,
@@ -23,7 +24,7 @@ export type MockOutcome = 'guide' | 'not_a_manual' | 'failure';
 export interface MockProviderOptions {
   /** Total artificial delay for `analyseDocument`, spread over the stages. Default 0. */
   delayMs?: number;
-  /** Delay before each streamed answer chunk. Default 0. */
+  /** Delay before each streamed answer chunk. Default: `delayMs` spread over the chunks of the answer. */
   chunkDelayMs?: number;
   outcome?: MockOutcome;
   /** Draft returned for outcome `guide`. Defaults to the Lumen bookcase fixture. */
@@ -47,7 +48,7 @@ const STAGES: { stage: AnalysisStage; fraction: number; message: string }[] = [
   { stage: 'publish', fraction: 1, message: 'Building your guide' },
 ];
 
-export const MOCK_NOT_IN_MANUAL = 'That is not in your manual, so I cannot answer it from here. Check the manufacturer or the printed leaflet rather than relying on a guess.';
+export const MOCK_NOT_IN_MANUAL = NOT_IN_MANUAL_TEXT;
 
 function abortError(): AIProviderError {
   return new AIProviderError('The request was cancelled.', 'aborted', false);
@@ -109,11 +110,15 @@ export class MockProvider implements AIProvider {
   }
 
   async *answerQuestion(input: AnswerQuestionInput): AsyncIterable<AnswerEvent> {
-    const { text, citations, grounded } = this.compose(input);
+    const { text, citations, grounded, failAfter } = this.compose(input);
     const parts = text.match(/\S+\s*/g) ?? [];
+    const perChunk = this.opts.chunkDelayMs ?? (this.opts.delayMs ?? 0) / Math.max(parts.length, 1);
+    let n = 0;
     for (const delta of parts) {
-      await sleep(this.opts.chunkDelayMs ?? 0, input.signal);
+      if (failAfter !== undefined && n >= failAfter) throw new AIProviderError('The mock provider was told to fail mid-answer.', 'provider_unavailable', true);
+      await sleep(perChunk, input.signal);
       yield { type: 'text', delta };
+      n++;
     }
     yield { type: 'done', grounded, citations };
   }
@@ -130,28 +135,101 @@ export class MockProvider implements AIProvider {
     return { text: keepAll ? (input.level === 'simplest' ? step.instruction : `In short: ${step.instruction}`) : first };
   }
 
-  private compose(input: AnswerQuestionInput): { text: string; grounded: boolean; citations: { stepId: string; pageIndex: number; region?: Step['sources'][number]['region'] }[] } {
-    const q = new Set(words(input.message));
+  private compose(input: AnswerQuestionInput): Composed {
+    const raw = input.message;
+    const trigger = /\[\[mock:(fail|badcite|invent|html|nocite)\]\]/.exec(raw)?.[1];
+    const message = raw.replace(/\[\[mock:[a-z]+\]\]/g, ' ').trim();
     const guide = input.guide;
+    const cur = (input.currentStepId ? getOwn(guide.steps, input.currentStepId) : undefined) ?? undefined;
+    const cite = (step: Step, i = 0): MockCitation => {
+      const src = step.sources[i] ?? step.sources[0]!;
+      return { stepId: step.id, pageIndex: src.pageIndex, ...(src.region ? { region: src.region } : {}) };
+    };
+    const citeAll = (step: Step): MockCitation[] => step.sources.slice(0, 3).map((_, i) => cite(step, i));
+    const grounded = (text: string, citations: MockCitation[]): Composed => ({ text, grounded: true, citations });
+
+    if (trigger && cur) {
+      const base = `${cur.title}: ${cur.instruction}`;
+      const plain = `${cur.title} is described in the manual.`;
+      if (trigger === 'fail') return { ...grounded(base, [cite(cur)]), failAfter: 3 };
+      if (trigger === 'badcite') return grounded(plain, [{ stepId: 'no-such-step', pageIndex: 0 }, { stepId: cur.id, pageIndex: 999 }]);
+      if (trigger === 'invent') return grounded(`${base} Tighten each screw to 47 Nm and leave the glue to dry for 3 hours.`, [cite(cur)]);
+      if (trigger === 'html') return grounded('<b>Press</b> the parts in <script>alert("x")</script> <img src=x onerror=alert> & check.', [cite(cur)]);
+      if (trigger === 'nocite') return grounded('This is a general comment that points at no page of the manual.', []);
+    }
+
+    const q = message.toLowerCase();
+    const steps = orderedSteps(guide);
+    const partsOf = (step: Step) => step.partsUsed.map((p) => guide.parts.find((x) => x.id === p.partId)).filter((p): p is Part => !!p);
+    const partLabel = (p: Part) => (p.manualLabel ? `${p.name} (${p.manualLabel})` : p.name);
+    const partCite = (step: Step, p: Part): MockCitation => ({ stepId: step.id, pageIndex: p.source.pageIndex, ...(p.source.region ? { region: p.source.region } : {}) });
+    const mentioned = guide.parts.filter((p) => q.includes(p.name.toLowerCase()));
+    const guidance = (g: NonNullable<Step['why']>) => (g.origin === 'manual' ? `${g.text} The manual says: "${g.sourceQuote}"` : `${g.text} (This is Instructor's explanation, not the manual's wording.)`);
+
+    if (cur) {
+      if (/difference|differ\b|\bvs\.?\b|compare/.test(q)) {
+        const [a, b] = mentioned.length >= 2 ? mentioned : partsOf(cur);
+        if (a && b) {
+          const text = `${partLabel(a)} and ${partLabel(b)} are different parts in the parts list. ${[a, b].map((p) => (p.description ? `${p.name}: ${p.description}` : '')).filter(Boolean).join(' ')} The manual does not describe how they differ beyond that.`.replace(/\s+/g, ' ');
+          return grounded(text, [partCite(cur, a), partCite(cur, b)]);
+        }
+        return { text: MOCK_NOT_IN_MANUAL, grounded: false, citations: [] };
+      }
+      if (/which (piece|part)|what (piece|part)|which one|what is this (piece|part)/.test(q)) {
+        const parts = mentioned.length > 0 ? mentioned : partsOf(cur);
+        if (parts.length === 0) return { text: MOCK_NOT_IN_MANUAL, grounded: false, citations: [] };
+        const list = parts.map(partLabel).join(', ');
+        return grounded(`This step uses: ${list}. The parts list in the manual shows what each part looks like; tap the page reference to see it.`, [...parts.slice(0, 3).map((p) => partCite(cur, p))]);
+      }
+      if (/\bwhy\b/.test(q) && !/warn/.test(q)) {
+        if (cur.why) return grounded(guidance(cur.why), [cite(cur)]);
+        return { text: `The manual does not say why this step is needed. ${MOCK_NOT_IN_MANUAL}`, grounded: false, citations: [] };
+      }
+      if (/warn|danger|careful|safe/.test(q)) {
+        if (cur.warnings.length === 0) return { text: MOCK_NOT_IN_MANUAL, grounded: false, citations: [] };
+        const text = cur.warnings.map((w) => (w.sourceQuote ? `The manual says: "${w.sourceQuote}"` : w.text)).join(' ');
+        return grounded(text, [cite(cur)]);
+      }
+      if (/mistake|go wrong|avoid/.test(q) && cur.commonMistake) return grounded(guidance(cur.commonMistake), [cite(cur)]);
+      if (/done right|know it|check(ed)? (it|this)|finished|correct/.test(q) && cur.checkpoint) return grounded(guidance(cur.checkpoint), [cite(cur)]);
+      if (/what('| i)?s next|what is next|what comes next|after this|next step/.test(q)) {
+        const next = steps[steps.findIndex((s) => s.id === cur.id) + 1];
+        if (!next) return grounded('This is the last step of the guide, so there is nothing after it.', [cite(cur)]);
+        return grounded(`Next is "${next.title}": ${next.instruction}`, [cite(cur), cite(next)]);
+      }
+      if (/where.*(shown|manual|page|find)|which page/.test(q)) {
+        return grounded('This step is shown in the manual on the page given in the reference below. Tap it to open the page.', citeAll(cur));
+      }
+      if (/what does (this|the) step mean|what (do|should) i do|explain (this|the) step|what is this step|what am i doing/.test(q)) {
+        return grounded(`${cur.title}: ${cur.instruction}`, citeAll(cur));
+      }
+    }
+
+    // Free-form questions: the best keyword match across the guide, quoting the manual's own wording.
+    const qw = new Set(words(message));
     let best: { step: Step; score: number } | undefined;
-    for (const step of orderedSteps(guide)) {
-      const hay = new Set(words([step.title, step.instruction, ...step.warnings.map((w) => w.text), ...step.partsUsed.map((p) => guide.parts.find((x) => x.id === p.partId)?.name ?? '')].join(' ')));
+    for (const step of steps) {
+      const hay = new Set(words([step.title, step.instruction, ...step.warnings.map((w) => w.text), ...partsOf(step).map((p) => p.name)].join(' ')));
       let score = 0;
-      for (const w of q) if (hay.has(w)) score += 1;
+      for (const w of qw) if (hay.has(w)) score += 1;
       if (score === 0) continue;
       if (step.id === input.currentStepId) score += 0.5;
       if (!best || score > best.score) best = { step, score };
     }
     if (!best) return { text: MOCK_NOT_IN_MANUAL, grounded: false, citations: [] };
     const { step } = best;
-    const src = step.sources[0]!;
     const warn = step.warnings[0]?.sourceQuote ? ` The manual says: "${step.warnings[0].sourceQuote}"` : '';
-    return {
-      text: `${step.title}: ${step.instruction}${warn}`,
-      grounded: true,
-      citations: [{ stepId: step.id, pageIndex: src.pageIndex, ...(src.region ? { region: src.region } : {}) }],
-    };
+    return grounded(`${step.title}: ${step.instruction}${warn}`, [cite(step)]);
   }
+}
+
+type MockCitation = { stepId: string; pageIndex: number; region?: Step['sources'][number]['region'] };
+interface Composed {
+  text: string;
+  grounded: boolean;
+  citations: MockCitation[];
+  /** Throw after this many chunks (test trigger). */
+  failAfter?: number;
 }
 
 /** Page count of the bundled fixture manual. */

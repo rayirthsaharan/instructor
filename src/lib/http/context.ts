@@ -4,6 +4,7 @@ import { createStorage } from '../storage';
 import type { StorageAdapter } from '../storage';
 import { DbJobQueue, type JobQueue } from '../jobs';
 import { newSessionId, sessionCookieName, readCookie, sessionSecret, sessionSetCookie, verifySessionValue } from '../session/cookie';
+import type { AIProvider } from '../ai';
 import { DbRateLimiter, type RateLimiter } from '../ratelimit';
 
 /** Everything a route handler needs. Tests build their own with an isolated database and storage. */
@@ -19,6 +20,16 @@ export interface AppContext {
   /** Guides a session may create per 30 days; undefined = unlimited. */
   freeGuidesPerMonth?: number;
   now: () => number;
+  /** AI provider for the assistant; undefined = chosen from AI_PROVIDER at request time. Tests set it. */
+  provider?: AIProvider;
+  assistantLimits?: AssistantLimits;
+}
+
+export interface AssistantLimits {
+  /** Questions per session per window. */
+  messages: { limit: number; windowMs: number };
+  /** Answers streaming at once in this process. */
+  maxStreams: number;
 }
 
 let shared: AppContext | undefined;
