@@ -158,9 +158,9 @@ function Content() {
           <Chip disabled>Disabled</Chip>
         </Row>
         <Row label="part chip: default / selected / missing / no quantity / tool / tool not in box">
-          <PartChip name="Cam lock" quantity="x4" manualLabel="B" thumbnailSrc={THUMB} />
-          <PartChip name="Wooden dowel" quantity="x8" manualLabel="104321" thumbnailSrc={THUMB} selected={part} onSelect={() => setPart((v) => !v)} />
-          <PartChip name="Side panel" quantity="x2" manualLabel="A" thumbnailSrc={THUMB} missing />
+          <PartChip name="Cam lock" quantity="x4" manualLabel="B" calloutNumber={1} />
+          <PartChip name="Wooden dowel" quantity="x8" manualLabel="104321" calloutNumber={2} selected={part} onSelect={() => setPart((v) => !v)} />
+          <PartChip name="Side panel" quantity="x2" manualLabel="A" missing />
           <PartChip name="Back panel" />
           <PartChip name="Phillips screwdriver" tool />
           <PartChip name="Rubber mallet" tool included={false} />

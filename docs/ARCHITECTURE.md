@@ -38,7 +38,7 @@ Deployment target (later decision): a single long-running Node container with a 
 - `pages(id, document_id, index, image_path, width, height)`
 - `analyses(id, content_hash UNIQUE, guide_json, schema_version, model, created_at)` - the expensive result, shared by every document with the same hash.
 - `guides(id, document_id, analysis_id, session_id, title, created_at)`
-- `progress(guide_id, current_step, completed_steps_json, checklist_json, updated_at)`
+- `progress(guide_id, current_step, completed_steps_json, checklist_json, updated_at)` - written by operations (`PATCH /progress`: complete/uncomplete sets, last-writer-wins current step and per checklist item) applied in one transaction, so tabs and devices commute; see `docs/API.md` "Progress".
 - `step_notes(guide_id, step_id, note, bookmarked)` (P1)
 - `messages(id, guide_id, role, content, citations_json, step_id, created_at)`
 - `simplifications(analysis_id, step_id, level, text)` - cache for "explain simpler".

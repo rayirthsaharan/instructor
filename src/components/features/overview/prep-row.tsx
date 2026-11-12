@@ -82,14 +82,11 @@ export function PrepRow({
             </span>
           )}
           <span className="min-w-0 py-1">
-            <span className="block font-semibold">{item.name}</span>
-            {(manualLabel || quantity || tool) && (
-              <span className="type-tag block text-ink-muted">
-                {[manualLabel, quantity ? `x${quantity}` : null, tool && !tool.included ? 'Not in the box - you need your own' : null]
-                  .filter(Boolean)
-                  .join('  ')}
-              </span>
+            <span className="block wrap-anywhere font-semibold">{item.name}</span>
+            {(manualLabel || quantity) && (
+              <span className="type-tag block wrap-anywhere text-ink-muted">{[manualLabel, quantity ? `x${quantity}` : null].filter(Boolean).join('  ')}</span>
             )}
+            {tool && !tool.included && <span className="type-body-sm block text-ink-muted">Not in the box - you need your own</span>}
           </span>
           {missing && <span className="sr-only">Marked missing</span>}
         </button>

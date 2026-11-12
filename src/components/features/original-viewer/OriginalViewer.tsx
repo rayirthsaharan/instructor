@@ -26,9 +26,11 @@ export interface OriginalViewerProps {
   unreadable: number[];
 }
 
-const stripTile = 'relative shrink-0 overflow-hidden rounded-sm border bg-white';
+const stripTile = 'relative shrink-0 overflow-hidden rounded-sm border bg-surface-sunken';
 
 function Thumb({ documentId, index, current, unreadable, onSelect, size }: { documentId: string; index: number; current: boolean; unreadable: boolean; onSelect: () => void; size: 'strip' | 'column' | 'grid' }) {
+  // Until the image has loaded the tile is a sunken skeleton, never a blank white page (USER_FLOWS 8).
+  const [loaded, setLoaded] = useState(false);
   return (
     <button
       type="button"
@@ -46,7 +48,16 @@ function Thumb({ documentId, index, current, unreadable, onSelect, size }: { doc
       )}
     >
       {/* eslint-disable-next-line @next/next/no-img-element -- thumbnail of a user page from our API */}
-      <img src={pageImageUrl(documentId, index)} alt="" loading="lazy" className="size-full object-cover object-top" />
+      <img
+        src={pageImageUrl(documentId, index)}
+        alt=""
+        loading="lazy"
+        onLoad={() => setLoaded(true)}
+        ref={(el) => {
+          if (el?.complete && el.naturalWidth > 0) setLoaded(true);
+        }}
+        className={cn('size-full bg-white object-cover object-top', !loaded && 'invisible')}
+      />
       <span className="type-tag absolute bottom-0 left-0 bg-surface/92 px-1 text-ink">{index + 1}</span>
       {unreadable && (
         <span className="absolute right-0 top-0 rounded-bl-xs bg-warn-soft p-0.5 text-warn-fg">
@@ -106,7 +117,7 @@ export function OriginalViewer(p: OriginalViewerProps) {
         p.onClose();
       }}
       onKeyDown={onKeyDown}
-      className="fixed inset-0 m-0 h-dvh max-h-none w-dvw max-w-none bg-surface-sunken p-0 text-ink backdrop:bg-transparent"
+      className="fixed inset-0 m-0 h-full max-h-none w-full max-w-none bg-surface-sunken p-0 text-ink backdrop:bg-transparent"
     >
       {p.open && (
         <div className="flex size-full flex-col">
@@ -198,7 +209,7 @@ export function OriginalViewer(p: OriginalViewerProps) {
               </div>
             </>
           )}
-          <BottomSheet open={grid} onClose={() => setGrid(false)} title="All pages" initialDetent="full" lgPresentation="dialog">
+          <BottomSheet open={grid} onClose={() => setGrid(false)} title="All pages" initialDetent={p.pageCount <= 9 ? 'half' : 'full'} lgPresentation="dialog">
             <div className="grid grid-cols-3 gap-3 pb-4">
               {Array.from({ length: p.pageCount }, (_, i) => (
                 <Thumb

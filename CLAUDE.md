@@ -43,6 +43,7 @@ The user never picks a model. The orchestrator routes every task by these rules.
 ### Concurrency and cost
 - One writer per file at a time. Run agents in parallel only when their file sets do not overlap (e.g. designer on `docs/` while engineer is on `src/`). QA runs after engineering, never alongside it on the same feature.
 - When agents run in parallel, the brief tells them not to edit the shared logs (`AGENT_HANDOFFS.md`, `DECISIONS_LOG.md`); they return their entries in the summary and the orchestrator records them.
+- The browser suite (`npm run e2e`, any Playwright run) uses one port and one data directory: only one agent runs it at a time. When two agents work in parallel, tell one of them to run unit tests only, or to set a different `PORT` and data directory.
 - Cheapest suitable model: no Opus for ordinary coding, no Fable for routine fixes, no agent for trivial edits.
 - Briefs are specific and name the files to read; agents return summaries (<= 300 words), never file dumps.
 - Batch small related tasks into one agent call rather than many calls.

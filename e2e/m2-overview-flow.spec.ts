@@ -14,7 +14,7 @@ test('checklist states persist across reload; a missing part lists the steps it 
   const openRowMenu = async (name: string) => {
     await row(page, name).getByRole('button', { name: `More options for ${name}` }).click();
   };
-  const save = () => page.waitForResponse((r) => r.url().endsWith('/progress') && r.request().method() === 'PUT');
+  const save = () => page.waitForResponse((r) => r.url().endsWith('/progress') && r.request().method() === 'PATCH');
   let saved = save();
   await row(page, 'Shelf').getByRole('checkbox').click();
   await expect(row(page, 'Shelf')).toHaveAttribute('data-state', 'have');
@@ -65,6 +65,13 @@ test('Start needs the safety acknowledgement, confirms with unchecked items, and
   const start = page.getByRole('button', { name: 'Start', exact: true });
   await expect(page.getByText('This job involves safety-critical work.')).toBeVisible();
   await expect(start).toBeDisabled();
+  // The disabled Start says why, and a step in the outline cannot be used to get around the acknowledgement.
+  await expect(page.getByTestId('start-helper').first()).toBeVisible();
+  const outline = page.getByTestId('phases');
+  await outline.locator('summary').first().click();
+  await outline.getByRole('link').first().click();
+  await expect(page).toHaveURL(new RegExp(`/g/${guideId}$`));
+  await expect(page.getByLabel('I understand')).toBeFocused();
   await page.getByLabel('I understand').check();
   await expect(start).toBeEnabled();
 
@@ -101,6 +108,11 @@ test('the original-manual link, phase outline and unreadable-pages notice', asyn
   });
   await page.goto(`/g/${guideId}`);
   await expect(page.getByTestId('phases').locator('summary')).toHaveCount(3);
+  const firstPhase = page.getByTestId('phases').locator('summary').first();
+  await expect(firstPhase).toHaveAttribute('aria-expanded', 'false');
+  await firstPhase.click();
+  await expect(firstPhase).toHaveAttribute('aria-expanded', 'true');
+  await firstPhase.click();
   await expect(page.getByTestId('phases')).toContainText('Get ready');
   await expect(page.getByTestId('phases')).toContainText('3 steps');
   await expect(page.getByText("We couldn't read pages 7 and 8.")).toBeVisible();
@@ -117,7 +129,7 @@ test('completion lists skipped steps with links back and parts still missing', a
   const all = Array.from({ length: 10 }, (_, i) => `s${i + 1}`).filter((s) => s !== 's3' && s !== 's8');
   await putProgress(page, guideId, { currentStepId: 's10', completedStepIds: all, checklist: { 'cam-lock': 'missing', shelf: 'have' } });
   await page.goto(`/g/${guideId}/done`);
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Almost there.');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Not finished yet.');
   const skipped = page.getByTestId('skipped');
   await expect(skipped).toContainText("2 steps aren't marked done");
   await expect(skipped.getByRole('link')).toHaveCount(2);
@@ -161,7 +173,7 @@ for (const [name, width, height] of [
     await expect(page.getByRole('button', { name: 'Continue at step 2' })).toBeVisible();
 
     await page.goto(`/g/${guideId}/done`);
-    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Almost there.');
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Not finished yet.');
     expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0);
     await page.screenshot({ path: `${SHOT}/done-${name}.png`, animations: 'disabled', fullPage: true });
   });

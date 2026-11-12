@@ -625,7 +625,8 @@ test.describe('step content', () => {
     await expect(first).toContainText('Check the picture and the parts before you do this step.');
     // the manual's own warning follows, verbatim
     await expect(content.locator('[data-kind="warning"]')).toContainText('Once nailed, the back panel cannot be removed without damage.');
-    await expect(primary(page)).toHaveText('I checked - done');
+    await expect(primary(page)).toHaveAccessibleName('I checked - done');
+    await expect(primary(page)).toHaveText('I checked'); // short form on a phone; the full label is the accessible name
     const border = await page.getByTestId('action-bar').evaluate((e) => getComputedStyle(e).borderTopWidth);
     expect(border).toBe('2px');
     await expect(page.getByTestId('step-counter')).toBeVisible();

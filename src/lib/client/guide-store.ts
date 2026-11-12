@@ -14,13 +14,26 @@ export interface GuideProgress {
   checklist: Record<string, ChecklistState>;
 }
 
-/** Local progress plus what has changed since the last confirmed save (needed to merge a newer server copy). */
+/**
+ * What is sent to `PATCH /api/guides/:id/progress`: operations, never the whole copy, so writes from several
+ * tabs commute (H-027). Set operations for steps; last-writer-wins for the current step and per checklist item.
+ */
+export interface ProgressDelta {
+  complete?: string[];
+  uncomplete?: string[];
+  currentStepId?: string;
+  checklist?: Record<string, ChecklistState>;
+}
+
+/** Local progress plus what has changed since the last confirmed save (the pending operations). */
 export interface ProgressState {
   progress: GuideProgress;
   /** Increments on every local change. */
   rev: number;
   /** Local changes not yet confirmed by the server. */
   dirty: boolean;
+  /** Steps completed locally since the last confirmed save (pending `complete` operations). */
+  added: string[];
   /** Steps un-completed locally since the last confirmed save, so a stale server copy cannot bring them back. */
   removed: string[];
   /** Checklist ids / current step changed locally since the last confirmed save. */
@@ -35,10 +48,25 @@ export function initialProgressState(progress: GuideProgress = EMPTY_PROGRESS): 
     progress: normalise(progress),
     rev: 0,
     dirty: false,
+    added: [],
     removed: [],
     touchedChecklist: [],
     currentTouched: false,
   };
+}
+
+const clean = () => ({ dirty: false, added: [] as string[], removed: [] as string[], touchedChecklist: [] as string[], currentTouched: false });
+
+/** The pending operations of `state` (what the next save sends). */
+export function pendingDelta(state: ProgressState): ProgressDelta {
+  const p = state.progress;
+  const d: ProgressDelta = {};
+  if (state.added.length) d.complete = [...state.added];
+  if (state.removed.length) d.uncomplete = [...state.removed];
+  if (state.currentTouched && p.currentStepId !== null) d.currentStepId = p.currentStepId;
+  const items = state.touchedChecklist.filter((id) => Object.hasOwn(p.checklist, id)).map((id) => [id, p.checklist[id]!] as const);
+  if (items.length) d.checklist = Object.fromEntries(items);
+  return d;
 }
 
 function normalise(p: Partial<GuideProgress> | null | undefined): GuideProgress {
@@ -54,8 +82,11 @@ export type ProgressAction =
   | { type: 'complete'; stepId: string }
   | { type: 'uncomplete'; stepId: string }
   | { type: 'checklist'; id: string; state: ChecklistState }
-  /** The server confirmed a save made at `rev` and returned its copy. */
-  | { type: 'saved'; rev: number; server: GuideProgress }
+  /**
+   * The server applied a save made at `rev` and returned the merged progress. `sent` is the delta that was sent:
+   * pending operations it already carried (same value) are cleared even if other edits followed.
+   */
+  | { type: 'saved'; rev: number; server: GuideProgress; sent?: ProgressDelta }
   /** A server copy arrived without a matching save (initial load or refresh). */
   | { type: 'server'; server: GuideProgress };
 
@@ -66,7 +97,8 @@ const add = (list: string[], v: string) => (list.includes(v) ? list : [...list, 
  * - completing is idempotent, never drops other completed steps;
  * - a server copy never removes a locally completed step that is still unsaved (union),
  *   and never resurrects a step the user has un-completed since the last save;
- * - with no unsaved local changes the server copy wins outright.
+ * - with no unsaved local changes the server copy wins outright (it is the result of applying every client's
+ *   operations, so another tab's un-complete reaches this tab too).
  */
 export function progressReducer(state: ProgressState, action: ProgressAction): ProgressState {
   const p = state.progress;
@@ -80,6 +112,7 @@ export function progressReducer(state: ProgressState, action: ProgressAction): P
         ...state,
         rev: state.rev + 1,
         dirty: true,
+        added: add(state.added, action.stepId),
         removed: state.removed.filter((s) => s !== action.stepId),
         progress: { ...p, completedStepIds: [...p.completedStepIds, action.stepId] },
       };
@@ -90,6 +123,7 @@ export function progressReducer(state: ProgressState, action: ProgressAction): P
         ...state,
         rev: state.rev + 1,
         dirty: true,
+        added: state.added.filter((s) => s !== action.stepId),
         removed: add(state.removed, action.stepId),
         progress: { ...p, completedStepIds: p.completedStepIds.filter((s) => s !== action.stepId) },
       };
@@ -105,18 +139,39 @@ export function progressReducer(state: ProgressState, action: ProgressAction): P
       };
     }
     case 'saved': {
-      // Changes made while the request was in flight stay dirty and are merged over the server copy.
-      if (action.rev === state.rev) {
-        // Even a confirmed save is merged, never adopted blindly: a completed step is never lost.
-        return { ...mergeServer(state, action.server), dirty: false, removed: [], touchedChecklist: [], currentTouched: false };
-      }
-      return mergeServer(state, action.server);
+      // Everything pending was in that save: the server's merged copy is authoritative.
+      if (action.rev === state.rev) return { ...state, ...clean(), progress: normalise(action.server) };
+      // Edits followed the save. Operations it carried with the same value are done; the rest stay pending
+      // and are overlaid on the server copy.
+      const rest = action.sent ? withoutSent(state, action.sent) : state;
+      const dirty = rest.added.length + rest.removed.length + rest.touchedChecklist.length > 0 || rest.currentTouched;
+      return dirty ? mergeServer({ ...rest, dirty }, action.server) : { ...rest, ...clean(), progress: normalise(action.server) };
     }
     case 'server':
       return state.dirty ? mergeServer(state, action.server) : { ...state, progress: normalise(action.server) };
   }
 }
 
+function withoutSent(state: ProgressState, sent: ProgressDelta): ProgressState {
+  const p = state.progress;
+  const done = new Set(sent.complete ?? []);
+  const undone = new Set(sent.uncomplete ?? []);
+  const sentList = sent.checklist ?? {};
+  return {
+    ...state,
+    added: state.added.filter((s) => !done.has(s)),
+    removed: state.removed.filter((s) => !undone.has(s)),
+    touchedChecklist: state.touchedChecklist.filter(
+      (id) => !(Object.hasOwn(sentList, id) && Object.hasOwn(p.checklist, id) && sentList[id] === p.checklist[id]),
+    ),
+    currentTouched: state.currentTouched && !(sent.currentStepId !== undefined && sent.currentStepId === p.currentStepId),
+  };
+}
+
+/**
+ * Server copy with the pending local operations overlaid. While anything is unsaved, every locally completed
+ * step stays visible (the server only ever receives this tab's operations, so this cannot erase another tab's work).
+ */
 function mergeServer(state: ProgressState, serverRaw: GuideProgress): ProgressState {
   const server = normalise(serverRaw);
   const local = state.progress;
@@ -157,7 +212,8 @@ export interface GuideSnapshot {
 
 interface Net {
   load(id: string): Promise<{ documentId: string; guide: ValidatedGuide; progress: GuideProgress; pageCount: number }>;
-  save(id: string, body: GuideProgress, opts: { keepalive: boolean }): Promise<GuideProgress>;
+  /** Sends pending operations; resolves with the server's merged progress. */
+  save(id: string, delta: ProgressDelta, opts: { keepalive: boolean }): Promise<GuideProgress>;
 }
 
 const url = (id: string) => `/api/guides/${encodeURIComponent(id)}`;
@@ -190,7 +246,7 @@ const defaultNet: Net = {
     let res: Response;
     try {
       res = await fetch(`${url(id)}/progress`, {
-        method: 'PUT',
+        method: 'PATCH',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify(body),
         keepalive,
@@ -222,6 +278,9 @@ export class GuideStore {
   private inFlight = false;
   private started = false;
   private flushAfterFlight = false;
+  /** Increments whenever a save starts; a refresh GET that overlapped a save is discarded. */
+  private saveEpoch = 0;
+  private refreshing = false;
 
   constructor(
     readonly id: string,
@@ -266,6 +325,29 @@ export class GuideStore {
     return this.load();
   }
 
+  /**
+   * Re-reads progress from the server (tab focused / made visible), so this tab picks up what another tab saved.
+   * Pending local operations are kept and overlaid. A response that overlapped a save is dropped: it may predate it.
+   */
+  refresh = async (): Promise<void> => {
+    if (this.snap.status !== 'ready' || this.refreshing || this.inFlight) return;
+    this.refreshing = true;
+    const epoch = this.saveEpoch;
+    try {
+      const r = await this.net.load(this.id);
+      if (epoch !== this.saveEpoch || this.inFlight) return;
+      const next = progressReducer(this.ps, { type: 'server', server: r.progress });
+      if (next !== this.ps) {
+        this.ps = next;
+        this.syncProgress();
+      }
+    } catch {
+      // A failed refresh is harmless: the next save returns the merged copy anyway.
+    } finally {
+      this.refreshing = false;
+    }
+  };
+
   private dispatch(a: ProgressAction) {
     const next = progressReducer(this.ps, a);
     if (next === this.ps) return;
@@ -308,11 +390,13 @@ export class GuideStore {
 
   private async send(keepalive: boolean) {
     const rev = this.ps.rev;
+    const sent = pendingDelta(this.ps);
     this.inFlight = true;
+    this.saveEpoch += 1;
     this.emit({ saveState: 'saving', saveFailed: false });
     try {
-      const server = await this.net.save(this.id, this.ps.progress, { keepalive });
-      this.ps = progressReducer(this.ps, { type: 'saved', rev, server });
+      const server = await this.net.save(this.id, sent, { keepalive });
+      this.ps = progressReducer(this.ps, { type: 'saved', rev, server, sent });
       this.retryCount = 0;
       this.inFlight = false;
       this.emit({ progress: this.ps.progress, saveState: this.ps.dirty ? 'saving' : 'idle', saveFailed: false });
@@ -354,9 +438,13 @@ function attachPageListeners() {
   if (pageListenersAttached || typeof window === 'undefined') return;
   pageListenersAttached = true;
   const flushAll = () => stores.forEach((s) => void s.flush(true));
+  // Another tab may have saved progress meanwhile (H-027): re-read when this tab comes back.
+  const refreshAll = () => stores.forEach((s) => void s.refresh());
   window.addEventListener('pagehide', flushAll);
+  window.addEventListener('focus', refreshAll);
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') flushAll();
+    else refreshAll();
   });
 }
 

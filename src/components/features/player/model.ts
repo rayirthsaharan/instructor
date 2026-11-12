@@ -82,6 +82,19 @@ export function primaryAction(step: Step, isDone: boolean, isLast: boolean): { k
   return isLast ? { kind: 'complete-last', label: 'Done - finish' } : { kind: 'complete', label: 'Done - next step' };
 }
 
+/**
+ * Short form of the Primary label for widths where the full one would wrap (USER_FLOWS 6.2): "I checked" on phones
+ * and in landscape, "Done" / "Next" with an arrow and "Finish" in landscape. The full label stays the accessible name.
+ */
+export function primaryShortForm(kind: PrimaryKind, layout: 'phone' | 'tablet' | 'desktop' | 'landscape'): { text: string; arrow: boolean } | null {
+  if (kind === 'irreversible') return layout === 'phone' || layout === 'landscape' ? { text: 'I checked', arrow: false } : null;
+  if (layout !== 'landscape') return null;
+  if (kind === 'complete') return { text: 'Done', arrow: true };
+  if (kind === 'next') return { text: 'Next', arrow: true };
+  if (kind === 'complete-last') return { text: 'Finish', arrow: false };
+  return null;
+}
+
 /** Warnings with severity `warning` before `caution`, manual order inside each group; never dropped. */
 export function sortedWarnings(warnings: readonly Warning[]): Warning[] {
   const rank = (w: Warning) => (w.severity === 'caution' ? 1 : 0);

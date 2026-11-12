@@ -1,31 +1,41 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '@/lib/client/api';
-import { GuideStore, type GuideProgress } from '@/lib/client/guide-store';
+import { GuideStore, type GuideProgress, type ProgressDelta } from '@/lib/client/guide-store';
 import type { ValidatedGuide } from '@/lib/guide/validate';
 
 const guide = { title: 'g' } as unknown as ValidatedGuide;
 const TIMERS = { debounceMs: 100, retryDelays: [1000, 2000] };
 
+/** Applies a delta the way the server does (PATCH /progress). */
+function applyDelta(p: GuideProgress, d: ProgressDelta): GuideProgress {
+  const drop = new Set(d.uncomplete ?? []);
+  const completedStepIds = p.completedStepIds.filter((s) => !drop.has(s));
+  for (const s of d.complete ?? []) if (!completedStepIds.includes(s)) completedStepIds.push(s);
+  return { currentStepId: d.currentStepId ?? p.currentStepId, completedStepIds, checklist: { ...p.checklist, ...d.checklist } };
+}
+
 function setup(opts: { server?: GuideProgress; saves?: Array<'ok' | ApiError> } = {}) {
-  const calls: GuideProgress[] = [];
+  const calls: ProgressDelta[] = [];
+  let server: GuideProgress = opts.server ?? { currentStepId: null, completedStepIds: [], checklist: {} };
   const keepalive: boolean[] = [];
   const queue = [...(opts.saves ?? [])];
   let loads = 0;
   const net = {
     async load() {
       loads += 1;
-      return { documentId: 'd1', guide, pageCount: 6, progress: opts.server ?? { currentStepId: null, completedStepIds: [], checklist: {} } };
+      return { documentId: 'd1', guide, pageCount: 6, progress: structuredClone(server) };
     },
-    async save(_id: string, body: GuideProgress, o: { keepalive: boolean }) {
+    async save(_id: string, body: ProgressDelta, o: { keepalive: boolean }) {
       calls.push(structuredClone(body));
       keepalive.push(o.keepalive);
       const next = queue.shift() ?? 'ok';
       if (next !== 'ok') throw next;
-      return body;
+      server = applyDelta(server, body);
+      return structuredClone(server);
     },
   };
   const store = new GuideStore('g1', net, TIMERS);
-  return { store, calls, keepalive, loads: () => loads };
+  return { store, calls, keepalive, loads: () => loads, server: () => server, setServer: (p: GuideProgress) => (server = p) };
 }
 
 beforeEach(() => vi.useFakeTimers());
@@ -61,7 +71,7 @@ describe('GuideStore persistence', () => {
     expect(calls).toHaveLength(0);
     await vi.advanceTimersByTimeAsync(2);
     expect(calls).toHaveLength(1);
-    expect(calls[0]).toEqual({ currentStepId: null, completedStepIds: ['s1', 's2'], checklist: { cam: 'have' } });
+    expect(calls[0]).toEqual({ complete: ['s1', 's2'], checklist: { cam: 'have' } });
     expect(store.getSnapshot().saveState).toBe('idle');
   });
 
@@ -127,12 +137,15 @@ describe('GuideStore persistence', () => {
 
   it('a change made while a save is in flight is sent afterwards and never lost', async () => {
     let release!: () => void;
-    const calls: GuideProgress[] = [];
+    const calls: ProgressDelta[] = [];
+    let server: GuideProgress = { currentStepId: null, completedStepIds: [], checklist: {} };
     const net = {
       load: async () => ({ documentId: 'd', guide, pageCount: 1, progress: { currentStepId: null, completedStepIds: [], checklist: {} } }),
-      save: (_: string, body: GuideProgress) => {
+      save: (_: string, body: ProgressDelta) => {
         calls.push(structuredClone(body));
-        return calls.length === 1 ? new Promise<GuideProgress>((r) => (release = () => r(body))) : Promise.resolve(body);
+        server = applyDelta(server, body);
+        const copy = structuredClone(server);
+        return calls.length === 1 ? new Promise<GuideProgress>((r) => (release = () => r(copy))) : Promise.resolve(copy);
       },
     };
     const store = new GuideStore('g', net, TIMERS);
@@ -146,17 +159,14 @@ describe('GuideStore persistence', () => {
     await vi.advanceTimersByTimeAsync(0);
     await vi.advanceTimersByTimeAsync(0);
     expect(calls).toHaveLength(2);
-    expect(calls[1]!.completedStepIds).toEqual(['s1', 's2']);
+    expect(calls[1]).toEqual({ complete: ['s2'] }); // s1 was already carried by the first save
     expect(store.getSnapshot().progress.completedStepIds).toEqual(['s1', 's2']);
   });
 
   it('merges newer server progress from the save response without dropping local steps', async () => {
-    const net = {
-      load: async () => ({ documentId: 'd', guide, pageCount: 1, progress: { currentStepId: null, completedStepIds: [], checklist: {} } }),
-      save: async () => ({ currentStepId: 's8', completedStepIds: ['s7'], checklist: {} }),
-    };
-    const store = new GuideStore('g', net, TIMERS);
+    const { store, setServer } = setup();
     await store.load();
+    setServer({ currentStepId: 's8', completedStepIds: ['s7'], checklist: {} }); // another tab saved meanwhile
     store.completeStep('s1');
     await store.flush();
     // Newer server progress is taken in, and the step just saved is not lost.

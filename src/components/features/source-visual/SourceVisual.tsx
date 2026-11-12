@@ -297,6 +297,9 @@ export function SourceVisual({
   const tag = mode === 'step' ? visualTag(page, lowConfidence, marksVisible) : null;
   const pageRect = ready ? { x: t.tx, y: t.ty, w: img.w * t.s, h: img.h * t.s } : null;
   const hasMultiple = pages.length > 1 && mode === 'step';
+  // Dim wash (DS 7.10 layer 3): only outside the step's own region and its highlights; never in the Original viewer.
+  const clearRegions = [...(page.region ? [page.region] : []), ...marks.map((m) => m.region)];
+  const dim = mode === 'step' && clearRegions.length > 0;
 
   return (
     <div
@@ -365,24 +368,28 @@ export function SourceVisual({
         <>
           {showOverlay && (
             <svg className="pointer-events-none absolute inset-0 size-full" aria-hidden="true" data-testid="mark-layer">
-              <defs>
-                <mask id={dimId} maskUnits="userSpaceOnUse" x={0} y={0} width={stage.w} height={stage.h}>
-                  <rect x={0} y={0} width={stage.w} height={stage.h} fill="white" />
-                  {marks.map((m) => {
-                    const r = regionToScreen(m.region, t, img);
-                    return <rect key={m.key} x={r.x} y={r.y} width={r.w} height={r.h} fill="black" />;
-                  })}
-                </mask>
-              </defs>
-              <rect
-                data-testid="dim-wash"
-                x={pageRect.x}
-                y={pageRect.y}
-                width={pageRect.w}
-                height={pageRect.h}
-                fill="var(--mark-dim)"
-                mask={`url(#${dimId})`}
-              />
+              {dim && (
+                <>
+                  <defs>
+                    <mask id={dimId} maskUnits="userSpaceOnUse" x={0} y={0} width={stage.w} height={stage.h}>
+                      <rect x={0} y={0} width={stage.w} height={stage.h} fill="white" />
+                      {clearRegions.map((region, i) => {
+                        const r = regionToScreen(region, t, img);
+                        return <rect key={i} x={r.x} y={r.y} width={r.w} height={r.h} fill="black" />;
+                      })}
+                    </mask>
+                  </defs>
+                  <rect
+                    data-testid="dim-wash"
+                    x={pageRect.x}
+                    y={pageRect.y}
+                    width={pageRect.w}
+                    height={pageRect.h}
+                    fill="var(--mark-dim)"
+                    mask={`url(#${dimId})`}
+                  />
+                </>
+              )}
               {marks.map((m) => {
                 const r = regionToScreen(m.region, t, img);
                 const unsure = lowConfidence || m.approximate;
@@ -498,6 +505,7 @@ export function SourceVisual({
       )}
 
       <div className="pointer-events-none absolute inset-x-2 bottom-2 flex items-end justify-between gap-2" data-no-gesture>
+        {mode === 'step' && (
         <div className="pointer-events-auto flex items-center gap-1 rounded-sm bg-surface/92 px-1 text-ink shadow-elev-1">
           <span className="type-tag px-2" data-testid="page-tag">
             p. {page.pageIndex + 1}
@@ -530,7 +538,8 @@ export function SourceVisual({
             </>
           )}
         </div>
-        <div className="pointer-events-auto flex items-center rounded-sm bg-surface/92 text-ink shadow-elev-1">
+        )}
+        <div className="pointer-events-auto ml-auto flex items-center rounded-sm bg-surface/92 text-ink shadow-elev-1">
           <button
             type="button"
             aria-label="Zoom out"

@@ -38,14 +38,12 @@ export type PartChipProps = {
   quantity?: string;
   /** Manual's own label ("A", "104321"). Never synthesise one. */
   manualLabel?: string;
-  /** Crop of the part's source region; omit when there is no region. */
-  thumbnailSrc?: string;
-  /** Custom thumbnail node (e.g. a cropped region); wins over `thumbnailSrc`. */
-  thumbnail?: ReactNode;
+  /** 1-based number of the callout on the picture that marks this part (DS 7.3); omit when nothing marks it. */
+  calloutNumber?: number;
   selected?: boolean;
   /** User marked the part missing in prep. */
   missing?: boolean;
-  /** Tool chip: wrench icon instead of thumbnail. */
+  /** Tool chip: wrench icon in the marker position. */
   tool?: boolean;
   /** For tools: false renders "Not in the box". */
   included?: boolean;
@@ -58,8 +56,7 @@ export function PartChip({
   name,
   quantity,
   manualLabel,
-  thumbnailSrc,
-  thumbnail,
+  calloutNumber,
   selected = false,
   missing = false,
   tool = false,
@@ -85,19 +82,23 @@ export function PartChip({
       {quantity && <span className="type-tag rounded-xs bg-surface-sunken px-1.5 py-1 text-ink">{quantity}</span>}
       {tool ? (
         <Icon name="wrench" size={20} className="text-ink-muted" />
-      ) : thumbnail ? (
-        thumbnail
       ) : (
-        thumbnailSrc && (
-          // eslint-disable-next-line @next/next/no-img-element -- small crop of a user page, size known
-          <img src={thumbnailSrc} alt="" width={32} height={32} className="size-8 shrink-0 rounded-xs border border-line bg-white object-contain" />
+        calloutNumber !== undefined && (
+          <span
+            data-testid="chip-marker"
+            aria-hidden="true"
+            className="type-tag flex size-6 shrink-0 items-center justify-center rounded-full"
+            style={{ background: 'var(--mark-callout-bg)', color: 'var(--mark-callout-fg)' }}
+          >
+            {calloutNumber}
+          </span>
         )
       )}
       {missing && <Icon name="warn" size={20} className="text-warn-fg" />}
       <span className="min-w-0 truncate font-semibold">{name}</span>
       {missing && <span className="type-body-sm font-semibold text-warn-fg">Missing</span>}
       {tool && !included && <span className="type-body-sm text-ink-muted whitespace-nowrap">Not in the box</span>}
-      {manualLabel && <span className="type-tag text-ink-muted">{manualLabel}</span>}
+      {manualLabel && <span className="type-tag min-w-0 max-w-[40%] shrink-0 truncate text-ink-muted">{manualLabel}</span>}
     </button>
   );
 }

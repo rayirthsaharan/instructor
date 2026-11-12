@@ -135,34 +135,47 @@ export function useSpeech() {
   const [speaking, setSpeaking] = useState(false);
   const run = useRef(0);
 
+  // speechSynthesis can throw (blocked, no voices, a policy): reading aloud is a convenience and must never break the page.
+  const cancel = () => {
+    try {
+      window.speechSynthesis.cancel();
+    } catch {
+      /* nothing to cancel */
+    }
+  };
+
   const stop = useCallback(() => {
     run.current += 1;
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) window.speechSynthesis.cancel();
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) cancel();
     setSpeaking(false);
   }, []);
 
   const speak = useCallback(
     (lines: string[], lang?: string) => {
       if (!supported || lines.length === 0) return;
-      window.speechSynthesis.cancel();
+      cancel();
       const id = ++run.current;
       setSpeaking(true);
-      lines.forEach((text, i) => {
-        const u = new SpeechSynthesisUtterance(text);
-        if (lang) u.lang = lang;
-        const end = () => {
-          if (run.current === id && i === lines.length - 1) setSpeaking(false);
-        };
-        u.onend = end;
-        u.onerror = end;
-        window.speechSynthesis.speak(u);
-      });
+      try {
+        lines.forEach((text, i) => {
+          const u = new SpeechSynthesisUtterance(text);
+          if (lang) u.lang = lang;
+          const end = () => {
+            if (run.current === id && i === lines.length - 1) setSpeaking(false);
+          };
+          u.onend = end;
+          u.onerror = end;
+          window.speechSynthesis.speak(u);
+        });
+      } catch {
+        if (run.current === id) setSpeaking(false);
+      }
     },
     [supported],
   );
 
   useEffect(() => () => {
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) window.speechSynthesis.cancel();
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) cancel();
   }, []);
 
   return { supported, speaking, speak, stop };

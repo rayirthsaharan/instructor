@@ -92,10 +92,10 @@ export function CompletionScreen({ guideId }: { guideId: string }) {
             <Icon name="check" size={32} />
           </span>
         ) : (
-          <ProgressRing percent={Math.round((m.doneCount / m.total) * 100)} label={`${m.doneCount} of ${m.total} steps done`} />
+          <ProgressRing size={56} text={`${m.doneCount}/${m.total}`} percent={Math.round((m.doneCount / m.total) * 100)} label={`${m.doneCount} of ${m.total} steps done`} />
         )}
-        <h1 className="type-display-xl">{finished ? 'Finished.' : 'Almost there.'}</h1>
-        <p className="type-body-lg text-ink-muted">
+        <h1 className="type-display-xl wrap-anywhere">{finished ? 'Finished.' : 'Not finished yet.'}</h1>
+        <p className="type-body-lg wrap-anywhere text-ink-muted">
           {finished
             ? `You completed all ${m.total} ${m.total === 1 ? 'step' : 'steps'} of ${guide.title}.`
             : `You've done ${m.doneCount} of ${m.total} steps of ${guide.title}.`}
@@ -119,7 +119,7 @@ export function CompletionScreen({ guideId }: { guideId: string }) {
                   className="flex min-h-14 items-center gap-3 rounded-sm text-ink no-underline hover:bg-surface-sunken"
                 >
                   <span className="type-tag w-8 shrink-0 text-ink-muted">{s.n}</span>
-                  <span className="min-w-0 flex-1">{s.title}</span>
+                  <span className="min-w-0 flex-1 wrap-anywhere">{s.title}</span>
                   <Icon name="chevronRight" />
                 </Link>
               </li>
@@ -136,7 +136,7 @@ export function CompletionScreen({ guideId }: { guideId: string }) {
           <ul className="mt-2 flex flex-col gap-2">
             {m.missing.map((p) => (
               <li key={p.id}>
-                <span className="font-semibold">{p.name}</span>
+                <span className="wrap-anywhere font-semibold">{p.name}</span>
                 {p.steps.length > 0 && (
                   <span className="type-body-sm block text-ink-muted">{`Needed in ${p.steps.length === 1 ? 'step' : 'steps'} ${p.steps.join(', ')}`}</span>
                 )}
@@ -148,14 +148,14 @@ export function CompletionScreen({ guideId }: { guideId: string }) {
 
       <Banner kind="info">Keep the original manual - it has the care, warranty and safety information.</Banner>
 
-      <div className="flex flex-col gap-2 lg:flex-row">
-        <ButtonLink href="/" size="lg">
+      <div className="flex flex-col gap-2 lg:flex-row lg:flex-wrap">
+        <ButtonLink href="/" size="lg" className="whitespace-nowrap lg:h-12 lg:flex-1">
           Back to library
         </ButtonLink>
-        <ButtonLink href={playHref(guideId, m.firstStepId)} variant="secondary" size="lg">
+        <ButtonLink href={playHref(guideId, m.firstStepId)} variant="secondary" size="lg" className="whitespace-nowrap lg:h-12 lg:flex-1">
           Review the steps
         </ButtonLink>
-        <ButtonLink href={originalHref(guideId, 1)} variant="quiet" size="lg">
+        <ButtonLink href={originalHref(guideId, 1)} variant="quiet" size="lg" className="whitespace-nowrap lg:h-12 lg:basis-full">
           Open original manual
         </ButtonLink>
       </div>

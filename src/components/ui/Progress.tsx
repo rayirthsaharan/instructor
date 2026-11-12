@@ -64,30 +64,34 @@ export function SegmentedProgress({ phases, current, total, title, completed, cl
   );
 }
 
-/** Ring (library card): 28px, 3px stroke, percent of completed steps. */
-export function ProgressRing({ percent, label }: { percent: number; label?: string }) {
+/**
+ * Ring: 28px with a 3px stroke on library cards; 56px with a 4px stroke and the count centred inside on Completion
+ * (USER_FLOWS 9: a small bare arc reads as a loading spinner).
+ */
+export function ProgressRing({ percent, label, size = 28, text }: { percent: number; label?: string; size?: number; text?: string }) {
   const p = Math.min(100, Math.max(0, percent));
-  const r = 12.5;
+  const stroke = size >= 56 ? 4 : 3;
+  const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
-  return (
+  const ring = (
     <svg
       role="progressbar"
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuenow={p}
       aria-label={label ?? `${p}% of steps done`}
-      width={28}
-      height={28}
-      viewBox="0 0 28 28"
+      width={size}
+      height={size}
+      viewBox={`0 0 ${size} ${size}`}
       className="shrink-0 -rotate-90"
     >
-      <circle cx="14" cy="14" r={r} fill="none" strokeWidth={3} className="stroke-line" />
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" strokeWidth={stroke} className="stroke-line" />
       <circle
-        cx="14"
-        cy="14"
+        cx={size / 2}
+        cy={size / 2}
         r={r}
         fill="none"
-        strokeWidth={3}
+        strokeWidth={stroke}
         strokeLinecap="round"
         className={p >= 100 ? 'stroke-success-fg' : 'stroke-accent'}
         strokeDasharray={c}
@@ -95,5 +99,14 @@ export function ProgressRing({ percent, label }: { percent: number; label?: stri
         style={{ transition: 'stroke-dashoffset var(--dur-base) var(--ease-in-out)' }}
       />
     </svg>
+  );
+  if (!text) return ring;
+  return (
+    <span className="relative inline-flex shrink-0" data-testid="progress-ring">
+      {ring}
+      <span aria-hidden="true" className="type-tag absolute inset-0 flex items-center justify-center text-ink">
+        {text}
+      </span>
+    </span>
   );
 }

@@ -16,7 +16,8 @@ An anonymous device session lives in a signed cookie (`<uuid>.<HMAC>`, httpOnly,
 | `GET /api/documents/:id/original[?index=n]` | the original file exactly as uploaded, `Content-Disposition: attachment` (`manual.pdf`, or `photo-n.ext`; `index` picks a photo of a photo set, default 0) |
 | `GET /api/guides` | array of `LibraryItem`, newest upload first |
 | `GET /api/guides/:id` | `{ id, documentId, guide, progress, pageCount }` (`guide` is a `ValidatedGuide`, schema in `src/lib/guide/schema.ts`) |
-| `PUT /api/guides/:id/progress` | saved `Progress` |
+| `PATCH /api/guides/:id/progress` | merged `Progress` (the app's write path) |
+| `PUT /api/guides/:id/progress` | saved `Progress` (whole-record replace; tooling and test seeding only) |
 | `DELETE /api/guides/:id` | `200 { deleted: true }`; removes the guide, its document and files. Analyses and page images shared with another document are kept until the last user is deleted |
 
 ### Upload (`POST /api/documents`)
@@ -59,7 +60,15 @@ Other codes: `not_found` (404), `invalid_request` (400, bad progress JSON or ids
 **Deviation from the brief:** documents that have no guide yet (queued, processing, failed, rejected) have `id: null`, `title: null`, `stepCount: 0`; link them through `documentId` (`/d/[documentId]`). `estimatedMinutes` is `null` when the manual gives none. Thumbnail: `/api/documents/<documentId>/pages/0/image`.
 
 ### Progress
-`PUT` body `{ currentStepId: string|null, completedStepIds: string[], checklist: Record<string, "unchecked"|"have"|"missing"> }`. `currentStepId` and every completed id must be a step of the guide; checklist keys must be part ids or tool ids of the guide. Duplicates in `completedStepIds` are dropped. Response and `GET /api/guides/:id` `progress`: the same three fields plus `updatedAt`. Unknown ids give `400 invalid_request` and nothing is saved.
+**`PATCH` (what the app uses).** Body: operations, applied in one transaction to the progress currently stored, so writes from several tabs or devices commute (H-027):
+`{ complete?: string[], uncomplete?: string[], currentStepId?: string|null, checklist?: Record<string, "unchecked"|"have"|"missing"> }`.
+- `complete` / `uncomplete` are set operations on step ids (idempotent; existing order is kept, new completions are appended). A step may not be in both lists.
+- `currentStepId` (when present) and each checklist key are last-writer-wins; checklist keys not sent are left as they are.
+- Every id must belong to the guide (steps; part or tool ids for the checklist). Unknown ids, unknown fields, or a step in both lists give `400 invalid_request` and nothing is saved. `{}` is a no-op that returns the current progress.
+- Response: the merged progress (`currentStepId`, `completedStepIds`, `checklist`, `updatedAt`). Clients adopt it, keeping only operations made since the request was sent.
+- Client rule: never send the whole copy. The store also re-reads `GET /api/guides/:id` when the tab regains focus or becomes visible.
+
+**`PUT`** replaces the whole record and is kept for tooling and test seeding; a stale client using it would erase another tab's work. Body `{ currentStepId: string|null, completedStepIds: string[], checklist: Record<string, "unchecked"|"have"|"missing"> }`. `currentStepId` and every completed id must be a step of the guide; checklist keys must be part ids or tool ids of the guide. Duplicates in `completedStepIds` are dropped. Response and `GET /api/guides/:id` `progress`: the same three fields plus `updatedAt`. Unknown ids give `400 invalid_request` and nothing is saved.
 
 ## Mock analysis (AI_PROVIDER=mock, the default)
 - The Lumen bookcase fixture (`fixtures/lumen-bookcase.pdf`, or the six `fixtures/lumen-bookcase/page-N.png` as a photo set, in order) returns the full fixture guide.

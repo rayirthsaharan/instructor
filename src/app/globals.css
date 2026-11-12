@@ -441,6 +441,12 @@
     scrollbar-gutter: stable;
   }
 
+  /* The player never scrolls the document, so there is no scrollbar to hold a gutter for: without this a ~15px strip of
+     the player shows beside full-screen overlays and clips their right-hand controls. */
+  html:has([data-fixed-screen]):has(dialog[open]) {
+    scrollbar-gutter: auto;
+  }
+
   .toast-enter {
     animation: fade-in var(--dur-fast) var(--ease-out);
   }

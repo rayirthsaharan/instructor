@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { getOwnedGuide, listLibrary, saveProgress, type OwnedGuide, type ProgressRecord } from '../db';
+import { applyProgressOps, getOwnedGuide, listLibrary, saveProgress, type OwnedGuide, type ProgressRecord } from '../db';
 import { getOwn } from '../guide/selectors';
 import { progressPercentage } from '../guide/selectors';
 import { validateGuide, type ValidatedGuide } from '../guide/validate';
@@ -80,21 +80,70 @@ const progressBody = z.object({
   checklist: z.record(z.string().max(100), z.enum(['unchecked', 'have', 'missing'])),
 });
 
+/** Rejects ids that are not part of the guide (nothing is saved). */
+function assertIdsInGuide(
+  guide: ValidatedGuide,
+  ids: { currentStepId?: string | null; stepIds: string[]; checklistIds: string[] },
+): void {
+  const unknownStep = (id: string) => getOwn(guide.steps, id) === undefined;
+  if (ids.currentStepId != null && unknownStep(ids.currentStepId)) throw new ApiError('invalid_request', 'The current step is not part of this guide.', 400);
+  if (ids.stepIds.some(unknownStep)) throw new ApiError('invalid_request', 'A completed step is not part of this guide.', 400);
+  const itemIds = new Set([...guide.parts.map((p) => p.id), ...guide.tools.map((t) => t.id)]);
+  if (ids.checklistIds.some((k) => !itemIds.has(k))) throw new ApiError('invalid_request', 'A checklist item is not part of this guide.', 400);
+}
+
+/**
+ * PUT replaces the whole progress record. Kept for tooling and test seeding; the app itself writes with PATCH,
+ * because a whole-copy write from a stale tab erases what another tab saved (H-027).
+ */
 export async function putProgress(req: Request, ctx: AppContext, session: SessionInfo, rawId: string): Promise<Response> {
   const owned = await ownedGuide(ctx, session, rawId);
   const parsed = progressBody.safeParse(await readJson(req));
   if (!parsed.success) throw new ApiError('invalid_request', 'The progress data is not in the expected shape.', 400);
   const guide = readStoredGuide(owned);
   const { currentStepId, completedStepIds, checklist } = parsed.data;
-  const unknownStep = (id: string) => getOwn(guide.steps, id) === undefined;
-  if (currentStepId !== null && unknownStep(currentStepId)) throw new ApiError('invalid_request', 'The current step is not part of this guide.', 400);
-  if (completedStepIds.some(unknownStep)) throw new ApiError('invalid_request', 'A completed step is not part of this guide.', 400);
-  const itemIds = new Set([...guide.parts.map((p) => p.id), ...guide.tools.map((t) => t.id)]);
-  if (Object.keys(checklist).some((k) => !itemIds.has(k))) throw new ApiError('invalid_request', 'A checklist item is not part of this guide.', 400);
+  assertIdsInGuide(guide, { currentStepId, stepIds: completedStepIds, checklistIds: Object.keys(checklist) });
   const saved = await saveProgress(
     ctx.db,
     owned.guide.id,
     { currentStepId, completedStepIds: [...new Set(completedStepIds)], checklist: { ...checklist } },
+    ctx.now(),
+  );
+  if (!saved) throw notFound('That guide');
+  return json(progressView(saved));
+}
+
+const progressOpsBody = z
+  .object({
+    complete: z.array(z.string().max(100)).max(1000).default([]),
+    uncomplete: z.array(z.string().max(100)).max(1000).default([]),
+    currentStepId: z.string().max(100).nullable().optional(),
+    checklist: z.record(z.string().max(100), z.enum(['unchecked', 'have', 'missing'])).default({}),
+  })
+  .strict();
+
+/**
+ * PATCH applies operations to the current server state in one transaction, so writes from several tabs commute:
+ * completing / un-completing are set operations on step ids, `currentStepId` and each checklist item are
+ * last-writer-wins. Returns the merged progress.
+ */
+export async function patchProgress(req: Request, ctx: AppContext, session: SessionInfo, rawId: string): Promise<Response> {
+  const owned = await ownedGuide(ctx, session, rawId);
+  const raw = await readJson(req);
+  const parsed = progressOpsBody.safeParse(raw);
+  if (!parsed.success) throw new ApiError('invalid_request', 'The progress data is not in the expected shape.', 400);
+  const { complete, uncomplete, currentStepId, checklist } = parsed.data;
+  const removing = new Set(uncomplete);
+  if (complete.some((s) => removing.has(s))) throw new ApiError('invalid_request', 'A step cannot be completed and un-completed at once.', 400);
+  const guide = readStoredGuide(owned);
+  // Keys as sent (JSON.parse keeps an own "__proto__" key that schema parsing would silently drop).
+  const sentChecklist = (raw as { checklist?: object }).checklist;
+  const checklistIds = [...new Set([...Object.keys(checklist), ...(sentChecklist ? Object.keys(sentChecklist) : [])])];
+  assertIdsInGuide(guide, { currentStepId, stepIds: [...complete, ...uncomplete], checklistIds });
+  const saved = await applyProgressOps(
+    ctx.db,
+    owned.guide.id,
+    { complete: [...new Set(complete)], uncomplete: [...removing], ...(currentStepId !== undefined && { currentStepId }), checklist },
     ctx.now(),
   );
   if (!saved) throw notFound('That guide');

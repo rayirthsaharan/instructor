@@ -207,3 +207,95 @@ test.describe('visual details', () => {
     await context.close();
   });
 });
+
+test.describe('M2 review fixes (D-017)', () => {
+  test('dim wash spares the step region; chips carry callout numbers; Ask is tinted', async ({ browser }) => {
+    const { context, page } = await start(browser, '375');
+    await openPlayer(page, guideId, '?step=s2');
+    await visualReady(page);
+    // one hole for the step's own region plus one per highlight
+    await expect(visual(page).locator('mask rect[fill="black"]')).toHaveCount(3);
+    const chips = page.getByTestId('step-chips');
+    await expect(chips.getByTestId('chip-marker')).toHaveText(['1', '2']);
+    await expect(chips.locator('img')).toHaveCount(0);
+    await expect(visual(page).getByTestId('callout')).toHaveText(['1', '2']);
+    const ask = await page.getByTestId('ask-button').evaluate((e) => getComputedStyle(e).backgroundColor);
+    expect(ask).not.toBe('rgba(0, 0, 0, 0)');
+    await context.close();
+  });
+
+  test('Marks off hides the status tag with the other marks', async ({ browser }) => {
+    const { context, page } = await start(browser, '375');
+    await openPlayer(page, guideId, '?step=s8');
+    await visualReady(page);
+    await expect(page.getByTestId('visual-tag')).toBeVisible();
+    await page.getByTestId('marks-toggle').click();
+    await expect(page.getByTestId('visual-tag')).toHaveCount(0);
+    await page.getByTestId('marks-toggle').click();
+    await expect(page.getByTestId('visual-tag')).toBeVisible();
+    await context.close();
+  });
+
+  test('phone landscape: short Primary label with the full name for assistive technology', async ({ browser }) => {
+    const { context, page } = await start(browser, 'landscape');
+    await openPlayer(page, guideId, '?step=s2');
+    await expect(page.getByTestId('primary')).toHaveText('Done');
+    await expect(page.getByTestId('primary')).toHaveAccessibleName('Done - next step');
+    const b = await box(page, 'primary');
+    expect(b.height).toBeLessThanOrEqual(57);
+    await context.close();
+  });
+
+  for (const vp of ['768', '1280'] as const) {
+    test(`${vp}: the Original viewer covers the whole viewport and shows the page without tag or wash`, async ({ browser }) => {
+      const { context, page } = await start(browser, vp);
+      await openPlayer(page, guideId, '?step=s2');
+      await visualReady(page);
+      await page.getByTestId('original-page').click();
+      const viewer = page.getByTestId('original-viewer');
+      await expect(page.getByTestId('viewer-visual')).toHaveAttribute('data-load', 'loaded');
+      const { width } = VIEWPORTS[vp].viewport;
+      const vb = (await viewer.boundingBox())!;
+      expect(vb.x).toBe(0);
+      expect(Math.round(vb.width)).toBe(width);
+      expect(await page.evaluate(() => document.documentElement.clientWidth)).toBe(width);
+      const fit = page.getByTestId('viewer-visual').getByTestId('zoom-reset');
+      const fb = (await fit.boundingBox())!;
+      expect(fb.x + fb.width).toBeLessThanOrEqual(width);
+      await expect(page.getByTestId('viewer-visual').getByTestId('page-tag')).toHaveCount(0);
+      await expect(page.getByTestId('viewer-visual').getByTestId('dim-wash')).toHaveCount(0);
+      await expect(page.getByTestId('viewer-visual').getByTestId('mark').first()).toBeVisible();
+      await expect(page.locator('[data-testid="page-thumb"]:visible').first()).toBeVisible();
+      await context.close();
+    });
+  }
+
+  test('1280: read-aloud and overflow are right-aligned; the rail has 12px above its first phase; the current row keeps its fill on hover', async ({ browser }) => {
+    const { context, page } = await start(browser, '1280');
+    await openPlayer(page, guideId, '?step=s2');
+    const more = (await page.getByRole('button', { name: 'More options for this guide' }).boundingBox())!;
+    expect(more.x + more.width).toBeGreaterThan(1280 - 40);
+    const rail = (await page.getByRole('complementary', { name: 'All steps' }).boundingBox())!;
+    const firstHeader = (await page.getByRole('navigation', { name: 'Steps' }).locator('h3').first().boundingBox())!;
+    expect(firstHeader.y - rail.y).toBeGreaterThanOrEqual(12);
+    const current = page.getByRole('navigation', { name: 'Steps' }).locator('[aria-current="step"]');
+    const before = await current.evaluate((e) => getComputedStyle(e).backgroundColor);
+    await current.hover();
+    expect(await current.evaluate((e) => getComputedStyle(e).backgroundColor)).toBe(before);
+    await context.close();
+  });
+
+  test('375: the page grid opens at half height for a short document', async ({ browser }) => {
+    const { context, page } = await start(browser, '375');
+    await openPlayer(page, guideId, '?step=s2');
+    await visualReady(page);
+    await page.getByTestId('original-page').click();
+    await page.getByRole('button', { name: /Page 3 of 6/ }).click();
+    const sheet = page.getByRole('dialog', { name: 'All pages' });
+    await expect(sheet).toBeVisible();
+    await page.waitForTimeout(400);
+    const h = (await sheet.locator('.sheet-inner').boundingBox())!.height;
+    expect(h).toBeLessThan(800 * 0.6);
+    await context.close();
+  });
+});

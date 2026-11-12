@@ -14,12 +14,14 @@ export function StepRail({
   onSelect,
   compact = false,
   scrollCurrentIntoView = true,
+  className,
 }: {
   groups: RailGroup[];
   currentStepId: string;
   onSelect: (stepId: string) => void;
   compact?: boolean;
   scrollCurrentIntoView?: boolean;
+  className?: string;
 }) {
   const root = useRef<HTMLElement>(null);
   useEffect(() => {
@@ -39,7 +41,7 @@ export function StepRail({
   };
 
   return (
-    <nav ref={root} aria-label="Steps" onKeyDown={onKeyDown} className="group/rail">
+    <nav ref={root} aria-label="Steps" onKeyDown={onKeyDown} className={cn('group/rail', className)}>
       {groups.map((g) => (
         <section key={g.phase.id} aria-label={g.phase.title}>
           <h3
@@ -82,8 +84,8 @@ function Row({ s, current, compact, onSelect }: { s: RailStep; current: boolean;
       aria-label={compact ? `Step ${s.number}: ${s.step.title}${s.done ? ', done' : ''}` : undefined}
       onClick={() => onSelect(s.step.id)}
       className={cn(
-        'flex min-h-14 w-full cursor-pointer items-center gap-3 px-4 py-2 text-left t-fast hover:bg-surface-sunken',
-        current ? 'border-l-[3px] border-accent bg-accent-soft pl-[13px]' : 'border-l-[3px] border-transparent pl-[13px]',
+        'flex min-h-14 w-full cursor-pointer items-center gap-3 px-4 py-2 text-left t-fast',
+        current ? 'border-l-[3px] border-accent bg-accent-soft pl-[13px]' : 'border-l-[3px] border-transparent pl-[13px] hover:bg-surface-sunken',
         compact && 'justify-center px-0 pl-0 group-hover/rail:justify-start group-hover/rail:pl-[13px] group-focus-within/rail:justify-start group-focus-within/rail:pl-[13px]',
       )}
     >

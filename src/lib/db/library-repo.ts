@@ -354,6 +354,45 @@ export async function saveProgress(
   return r && toProgress(r);
 }
 
+/**
+ * Operations a client sends instead of its whole copy, so writes from several tabs commute.
+ * `complete` / `uncomplete` are set operations (idempotent, must be disjoint); `currentStepId` and each
+ * checklist key are last-writer-wins. Ids are validated against the guide by the caller.
+ */
+export interface ProgressOps {
+  complete: string[];
+  uncomplete: string[];
+  currentStepId?: string | null;
+  checklist: Record<string, ChecklistState>;
+}
+
+/** Applies `ops` to the current stored progress in one IMMEDIATE transaction and returns the merged result. */
+export async function applyProgressOps(db: Db, guideId: string, ops: ProgressOps, now: number): Promise<ProgressRecord | undefined> {
+  return unwrap(db).transaction((tx) => {
+    const row = tx.select().from(progress).where(eq(progress.guideId, guideId)).get();
+    if (!row) return undefined;
+    const cur = toProgress(row);
+    const drop = new Set(ops.uncomplete);
+    const completed = cur.completedStepIds.filter((s) => !drop.has(s));
+    for (const s of ops.complete) if (!completed.includes(s)) completed.push(s);
+    // Null-prototype accumulator: keys come from the client (validated, but never trusted as plain-object keys).
+    const checklist: Record<string, ChecklistState> = Object.assign(Object.create(null) as Record<string, ChecklistState>, cur.checklist);
+    for (const [k, v] of Object.entries(ops.checklist)) checklist[k] = v;
+    const r = tx
+      .update(progress)
+      .set({
+        currentStepId: ops.currentStepId === undefined ? cur.currentStepId : ops.currentStepId,
+        completedStepsJson: JSON.stringify(completed),
+        checklistJson: JSON.stringify(checklist),
+        updatedAt: now,
+      })
+      .where(eq(progress.guideId, guideId))
+      .returning()
+      .get();
+    return r && toProgress(r);
+  }, { behavior: 'immediate' });
+}
+
 // --- deletion -----------------------------------------------------------------------------------
 
 /**

@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { Banner, Button, buttonClass, cn, Icon, Menu, type MenuItem } from '@/components/ui';
 import { segmentFills } from '@/components/ui/Progress';
 import { ExtraIcon } from '../source-visual/icons';
-import type { PrimaryKind, RailGroup, StepPosition } from './model';
+import { primaryShortForm, type PrimaryKind, type RailGroup, type StepPosition } from './model';
 import type { PlayerLayout } from './hooks';
 
 /** Segmented progress (DS 7.5) from real per-phase completion; the bar is never the accessible value on its own. */
@@ -160,6 +160,7 @@ export function ActionBar(p: ActionBarProps) {
   const square = 'size-14 shrink-0 !px-0';
   const wide = 'h-14 shrink-0 !px-3';
   const irreversiblePrimary = p.primary.kind === 'irreversible';
+  const short = primaryShortForm(p.primary.kind, p.layout);
   return (
     <div
       data-testid="action-bar"
@@ -200,9 +201,17 @@ export function ActionBar(p: ActionBarProps) {
           leadingIcon={irreversiblePrimary ? 'lock' : undefined}
           onClick={p.onPrimary}
           data-testid="primary"
-          className={cn('min-w-[132px] flex-1 !px-2', irreversiblePrimary && '!border-danger-fg !text-danger-fg')}
+          aria-label={short ? p.primary.label : undefined}
+          className={cn('min-w-[132px] flex-1 whitespace-nowrap !px-2', irreversiblePrimary && '!border-danger-fg !text-danger-fg')}
         >
-          {p.primary.label}
+          {short ? (
+            <span className="inline-flex items-center gap-2">
+              {short.text}
+              {short.arrow && <ExtraIcon name="arrowRight" />}
+            </span>
+          ) : (
+            p.primary.label
+          )}
         </Button>
         {showSteps && (
           <button
@@ -221,7 +230,7 @@ export function ActionBar(p: ActionBarProps) {
           onClick={p.onAsk}
           aria-label={labelled ? undefined : 'Ask'}
           data-testid="ask-button"
-          className={cn(buttonClass('quiet', 'lg', labelled ? wide : square), 'bg-accent-soft')}
+          className={cn(buttonClass('quiet', 'lg', labelled ? wide : square), '!bg-accent-soft hover:!bg-accent-soft')}
         >
           <ExtraIcon name="message" />
           {labelled && <span>Ask</span>}

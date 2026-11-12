@@ -441,7 +441,7 @@ function Player({ guideId, guide, documentId, pageCount, progress, actions, save
     ) : null;
 
   const topRow = (
-    <div className="flex items-center gap-1 px-2 md:px-4">
+    <div className="flex items-center gap-1 px-2 md:px-4 lg:px-8">
       {layout !== 'landscape' && <CloseLink href={overviewHref} />}
       <StepCounter position={position} review={reviewMode} onOpenSteps={layout === 'desktop' ? undefined : () => openPanel('steps')} asButton={layout === 'landscape'} />
       {speech.supported && <SpeakerButton speaking={speech.speaking} onToggle={toggleRead} />}
@@ -450,7 +450,7 @@ function Player({ guideId, guide, documentId, pageCount, progress, actions, save
   );
 
   const stepsRail = (compactRail: boolean) => (
-    <StepRail groups={groups} currentStepId={stepId} onSelect={goToStep} compact={compactRail} />
+    <StepRail groups={groups} currentStepId={stepId} onSelect={goToStep} compact={compactRail} className="pt-3" />
   );
 
   let body: React.ReactNode;
@@ -458,7 +458,9 @@ function Player({ guideId, guide, documentId, pageCount, progress, actions, save
     body = (
       <div className="flex h-dvh flex-col bg-bg">
         <header className="shrink-0 border-b border-line bg-surface pt-1">
-          <div className="flex h-14 items-center">{topRow}</div>
+          <div className="flex h-14 items-center">
+            <div className="w-full">{topRow}</div>
+          </div>
           {progressBar}
         </header>
         {!online && <OfflineBanner />}
@@ -524,7 +526,7 @@ function Player({ guideId, guide, documentId, pageCount, progress, actions, save
   }
 
   return (
-    <main data-testid="player" data-layout={layout} data-step={stepId} data-compact={compact}>
+    <main data-testid="player" data-fixed-screen data-layout={layout} data-step={stepId} data-compact={compact}>
       {body}
 
       {layout !== 'desktop' && (

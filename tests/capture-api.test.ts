@@ -6,7 +6,7 @@ import { GET as getImage } from '@/app/api/documents/[id]/pages/[index]/image/ro
 import { GET as getOriginal } from '@/app/api/documents/[id]/original/route';
 import { GET as listGuides } from '@/app/api/guides/route';
 import { GET as getGuide, DELETE as deleteGuide } from '@/app/api/guides/[id]/route';
-import { PUT as putProgress } from '@/app/api/guides/[id]/progress/route';
+import { PATCH as patchProgress, PUT as putProgress } from '@/app/api/guides/[id]/progress/route';
 import { SESSION_COOKIE, signSessionId } from '@/lib/session/cookie';
 import { UPLOAD_LIMIT_PER_SESSION } from '@/lib/limits';
 import { createTestApp, fixture, lumenPages, TestClient, uploadForm, type TestApp } from './helpers/app';
@@ -251,6 +251,76 @@ describe('guides', () => {
     // Failed writes changed nothing.
     expect((await (await c.call(getGuide, '/x', {}, { id: guideId })).json()).progress.currentStepId).toBe(second);
   }, 30_000);
+
+  // H-027: the app writes operations, so two tabs' writes commute instead of the last whole copy winning.
+  it('PATCH applies operations against the current state and returns the merged progress', async () => {
+    const c = new TestClient();
+    const { guideId } = await readyGuide(c);
+    const guide = (await (await c.call(getGuide, '/x', {}, { id: guideId })).json()).guide;
+    const [s1, s2, s3] = Object.keys(guide.steps);
+    const [p1, p2] = guide.parts.map((p: { id: string }) => p.id);
+    const patch = (body: unknown) =>
+      c.call(patchProgress, '/x', { method: 'PATCH', body: typeof body === 'string' ? body : JSON.stringify(body) }, { id: guideId });
+    const read = async () => (await (await c.call(getGuide, '/x', {}, { id: guideId })).json()).progress;
+
+    // Tab A completes s1; stale tab B (which never saw s1) only navigates: s1 survives.
+    expect((await patch({ complete: [s1], currentStepId: s2 })).status).toBe(200);
+    const fromB = await (await patch({ currentStepId: s2 })).json();
+    expect(fromB).toMatchObject({ currentStepId: s2, completedStepIds: [s1], updatedAt: expect.any(Number) });
+
+    // Per-item checklist: each write only touches its own keys.
+    await patch({ checklist: { [p1]: 'have', [p2]: 'have' } });
+    await patch({ checklist: { [p1]: 'missing' } });
+    expect((await read()).checklist).toEqual({ [p1]: 'missing', [p2]: 'have' });
+
+    // Set semantics: idempotent complete, explicit uncomplete wins over another tab's older view.
+    await patch({ complete: [s2, s2, s1] });
+    await patch({ uncomplete: [s1] });
+    expect((await read()).completedStepIds).toEqual([s2]);
+    // An empty body changes nothing and returns the current state.
+    expect(await (await patch({})).json()).toMatchObject({ currentStepId: s2, completedStepIds: [s2] });
+
+    const before = await read();
+    for (const bad of [
+      { complete: ['nope'] },
+      { uncomplete: ['constructor'] },
+      { currentStepId: 'nope' },
+      { checklist: { nope: 'have' } },
+      '{"checklist":{"__proto__":"have"}}',
+      '{"checklist":{"constructor":"have"}}',
+      { checklist: { [p1]: 'done' } },
+      { complete: [s3], uncomplete: [s3] },
+      { completedStepIds: [s1] }, // whole-copy fields are not accepted by PATCH
+      { complete: s1 },
+      [],
+    ]) {
+      const res = await patch(bad);
+      expect(res.status, JSON.stringify(bad)).toBe(400);
+      expect((await res.json()).error.code).toBe('invalid_request');
+    }
+    expect(await read()).toEqual(before);
+  }, 30_000);
+
+  it('PATCH writes from two tabs commute', async () => {
+    const results: unknown[] = [];
+    for (const order of [0, 1]) {
+      const c = new TestClient();
+      const { guideId } = await readyGuide(c);
+      const guide = (await (await c.call(getGuide, '/x', {}, { id: guideId })).json()).guide;
+      const [s1, s2, s3] = Object.keys(guide.steps);
+      const [p1, p2] = guide.parts.map((p: { id: string }) => p.id);
+      const patch = (body: unknown) => c.call(patchProgress, '/x', { method: 'PATCH', body: JSON.stringify(body) }, { id: guideId });
+      await patch({ complete: [s1], checklist: { [p1]: 'have' } });
+      const tabA = { complete: [s2], checklist: { [p2]: 'missing' } };
+      const tabB = { complete: [s3], uncomplete: [s1], checklist: { [p1]: 'unchecked' } };
+      for (const body of order === 0 ? [tabA, tabB] : [tabB, tabA]) expect((await patch(body)).status).toBe(200);
+      const p = (await (await c.call(getGuide, '/x', {}, { id: guideId })).json()).progress;
+      results.push({ done: [...p.completedStepIds].sort(), checklist: p.checklist, expected: [[s2, s3].sort(), { [p1]: 'unchecked', [p2]: 'missing' }] });
+    }
+    expect(results[0]).toEqual(results[1]);
+    const r = results[0] as { done: string[]; checklist: unknown; expected: [string[], unknown] };
+    expect([r.done, r.checklist]).toEqual(r.expected);
+  }, 60_000);
 });
 
 describe('ownership: session B cannot see or change session A resources', () => {
@@ -269,10 +339,11 @@ describe('ownership: session B cannot see or change session A resources', () => 
       b.call(getOriginal, '/x', {}, p),
       b.call(getGuide, '/x', {}, g),
       b.call(putProgress, '/x', { method: 'PUT', body: JSON.stringify({ currentStepId: null, completedStepIds: [], checklist: {} }) }, g),
+      b.call(patchProgress, '/x', { method: 'PATCH', body: JSON.stringify({}) }, g),
       b.call(deleteGuide, '/x', { method: 'DELETE' }, g),
       b.call(deleteDoc, '/x', { method: 'DELETE' }, p),
     ]);
-    expect(results.map((r) => r.status)).toEqual(Array(8).fill(404));
+    expect(results.map((r) => r.status)).toEqual(Array(9).fill(404));
     expect(await (await b.call(listGuides, '/x')).json()).toEqual([]);
     // A is untouched.
     expect((await status(a, documentId)).status).toBe('ready');

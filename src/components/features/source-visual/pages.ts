@@ -6,7 +6,7 @@ export interface MarkView {
   key: string;
   /** 1-based index in `step.highlights`; null for the step's own region (no callout). */
   number: number | null;
-  /** Text inside the callout: a short manual label ("A") or the number. */
+  /** Text inside the callout: always the 1-based index, never the label (DS 7.10, D-017). */
   callout: string | null;
   label?: string;
   partId?: string;
@@ -24,8 +24,6 @@ export interface VisualPage {
   approximate: boolean;
   marks: MarkView[];
 }
-
-const SHORT_LABEL = 2;
 
 function describe(n: number | null, label: string | undefined, part: Part | undefined): string {
   const name = label?.trim() || part?.name;
@@ -54,11 +52,10 @@ export function visualPages(step: Pick<Step, 'sources' | 'highlights'>, parts: r
     if (!isUsableRegion(h.source.region)) return; // nothing to draw: the page is still reachable in the pager
     const part = h.partId ? parts.find((p) => p.id === h.partId) : undefined;
     const n = i + 1;
-    const label = h.label?.trim();
     const mark: MarkView = {
       key: `h${i}`,
       number: n,
-      callout: label && label.length <= SHORT_LABEL ? label : String(n),
+      callout: String(n),
       label: h.label,
       partId: h.partId,
       region: h.source.region,
@@ -91,8 +88,9 @@ export type VisualTag = 'lowConfidence' | 'approximate' | 'wholePage' | null;
 
 /** The single bottom-centre tag (DS 7.10): low confidence wins over approximate, which wins over whole page. */
 export function visualTag(page: VisualPage, lowConfidence: boolean, marksVisible = true): VisualTag {
+  if (!marksVisible) return null; // Marks off hides the status tag with layers 3-5 (the text panel banner keeps the message)
   if (lowConfidence) return 'lowConfidence';
-  if (marksVisible && page.marks.some((m) => m.approximate)) return 'approximate';
+  if (page.marks.some((m) => m.approximate)) return 'approximate';
   if (!page.region) return 'wholePage';
   return null;
 }

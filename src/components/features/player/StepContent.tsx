@@ -11,24 +11,25 @@ import {
   PageTag,
   PartChip,
   ProvenanceTag,
-  SourceQuote,
+  QuoteOrLine,
   WarningBanner,
 } from '@/components/ui';
 import type { Guidance, Step } from '@/lib/guide/schema';
 import { partsForStep, toolsForStep } from '@/lib/guide/selectors';
 import type { ValidatedGuide } from '@/lib/guide/validate';
 import { PartThumb } from '../overview/part-thumb';
+import { visualPages } from '../source-visual/pages';
 import { missingPartSentence, sortedWarnings, type MissingPartUse, type StepPosition } from './model';
 
 const sectionLabel = 'type-label text-ink-muted';
 
 /** Guidance from the manual (with its quote) or labelled as Instructor's own (D-011). */
-function GuidanceBody({ g, page, lang }: { g: Guidance; page: number; lang: string }) {
+function GuidanceBody({ g, page, lang, onOpenPage }: { g: Guidance; page: number; lang: string; onOpenPage: () => void }) {
   return (
     <>
       {g.origin === 'inferred' && <InstructorNote />}
       <p>{g.text}</p>
-      {g.origin === 'manual' && g.sourceQuote && <SourceQuote quote={g.sourceQuote} page={page} lang={lang} />}
+      {g.origin === 'manual' && <QuoteOrLine text={g.text} quote={g.sourceQuote} page={page} lang={lang} onOpenPage={onOpenPage} />}
     </>
   );
 }
@@ -56,6 +57,9 @@ export function StepContent(p: StepContentProps) {
   const openFirstPage = () => p.onOpenOriginal(step.sources[0]?.pageIndex ?? 0);
   const parts = partsForStep(guide, step.id);
   const tools = toolsForStep(guide, step.id);
+  // The chip carries the same number as the callout that marks its part on the picture (DS 7.3).
+  const calloutNumbers = new Map<string, number>();
+  for (const pg of visualPages(step, guide.parts)) for (const m of pg.marks) if (m.partId && m.number !== null && !calloutNumbers.has(m.partId)) calloutNumbers.set(m.partId, m.number);
   const [partSheet, setPartSheet] = useState<string | null>(null);
   const sheetPart = partSheet ? parts.find((x) => x.part.id === partSheet) : undefined;
 
@@ -118,7 +122,7 @@ export function StepContent(p: StepContentProps) {
 
       {(step.sourceQuote || step.interpretedFromDiagram) && (
         <div className="flex flex-col items-start gap-2">
-          <SourceQuote quote={step.sourceQuote} page={page} lang={guide.language} onOpenPage={openFirstPage} />
+          <QuoteOrLine text={step.instruction} quote={step.sourceQuote} page={page} lang={guide.language} onOpenPage={openFirstPage} />
           {step.interpretedFromDiagram && <ProvenanceTag kind="diagram" />}
         </div>
       )}
@@ -136,7 +140,7 @@ export function StepContent(p: StepContentProps) {
                     name={part.name}
                     manualLabel={part.manualLabel}
                     quantity={quantity ? `x${quantity}` : undefined}
-                    thumbnail={<PartThumb documentId={p.documentId} source={part.source} size={32} />}
+                    calloutNumber={calloutNumbers.get(part.id)}
                     selected={selected}
                     missing={isMissing}
                     onSelect={() => {
@@ -172,8 +176,8 @@ export function StepContent(p: StepContentProps) {
           <div className="type-body-lg mt-1 flex flex-col gap-1 text-ink">
             <p>{step.checkpoint.text}</p>
             {step.checkpoint.origin === 'inferred' && <InstructorNote />}
-            {step.checkpoint.origin === 'manual' && step.checkpoint.sourceQuote && (
-              <SourceQuote quote={step.checkpoint.sourceQuote} page={page} lang={guide.language} />
+            {step.checkpoint.origin === 'manual' && (
+              <QuoteOrLine text={step.checkpoint.text} quote={step.checkpoint.sourceQuote} page={page} lang={guide.language} onOpenPage={openFirstPage} className="mt-1" />
             )}
           </div>
         </section>
@@ -182,12 +186,12 @@ export function StepContent(p: StepContentProps) {
       <div>
         {step.why && (
           <Disclosure label="Why this matters">
-            <GuidanceBody g={step.why} page={page} lang={guide.language} />
+            <GuidanceBody g={step.why} page={page} lang={guide.language} onOpenPage={openFirstPage} />
           </Disclosure>
         )}
         {step.commonMistake && (
           <Disclosure label="Common mistake">
-            <GuidanceBody g={step.commonMistake} page={page} lang={guide.language} />
+            <GuidanceBody g={step.commonMistake} page={page} lang={guide.language} onOpenPage={openFirstPage} />
           </Disclosure>
         )}
         <Disclosure label="Explain it more simply" className="border-b">

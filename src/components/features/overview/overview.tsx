@@ -81,7 +81,7 @@ function Fact({ value, caption, icon, children }: { value: string; caption: stri
   return (
     <div className="rounded-md border border-line bg-surface p-3 md:p-4">
       {icon && <Icon name={icon} size={20} className="mb-1 text-ink-muted" />}
-      <p className="type-display-md">{value}</p>
+      <p className="type-display-md wrap-anywhere">{value}</p>
       {children}
       <p className="type-body-sm text-ink-muted">{caption}</p>
     </div>
@@ -95,6 +95,25 @@ function Dots({ level }: { level: number }) {
         <span key={i} className={`size-2.5 rounded-full ${i <= level ? 'bg-ink' : 'border border-ink-subtle'}`} />
       ))}
     </span>
+  );
+}
+
+/** One phase of the outline: a disclosure row with a chevron (right closed, down open) and `aria-expanded`. */
+function PhaseRow({ title, count, done, children }: { title: string; count: number; done: number; children: React.ReactNode }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <li>
+      <details open={open} onToggle={(e) => setOpen(e.currentTarget.open)} className="rounded-md border border-line bg-surface">
+        <summary aria-expanded={open} className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 px-4 py-2 [&::-webkit-details-marker]:hidden">
+          <span className="min-w-0 wrap-anywhere font-semibold">{title}</span>
+          <span className="type-body-sm flex shrink-0 items-center gap-1 text-ink-muted">
+            {`${count} ${count === 1 ? 'step' : 'steps'}${done ? `, ${done} done` : ''}`}
+            <Icon name={open ? 'chevronDown' : 'chevronRight'} size={20} data-testid="phase-chevron" />
+          </span>
+        </summary>
+        <ol className="border-t border-line">{children}</ol>
+      </details>
+    </li>
   );
 }
 
@@ -123,6 +142,7 @@ function Ready({ guideId, guide, documentId, g }: { guideId: string; guide: Vali
   const [sheetOpen, setSheetOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [understood, setUnderstood] = useState(false);
+  const ackRef = useRef<HTMLInputElement>(null);
   const { checklist, completedStepIds } = g.progress;
   const counts = useMemo(() => checklistCounts(guide, checklist), [guide, checklist]);
   const blocked = useMemo(() => blockedSteps(guide, checklist), [guide, checklist]);
@@ -203,17 +223,27 @@ function Ready({ guideId, guide, documentId, g }: { guideId: string; guide: Vali
     );
   };
 
-  const startButton = (cls?: string) => (
-    <Button
-      size="lg"
-      className={cls}
-      disabled={startDisabled}
-      onClick={onStart}
-      helper={startDisabled ? 'Tick "I understand" above to start.' : undefined}
-    >
-      {target.label}
-    </Button>
+  // Until the safety acknowledgement is ticked, Start is disabled and says why, above the button (USER_FLOWS 5).
+  const startButton = (cls?: string, helperId = 'start-helper') => (
+    <>
+      {startDisabled && (
+        <p id={helperId} className="type-body-sm text-center text-ink-muted" data-testid="start-helper">
+          Tick &quot;I understand&quot; above to start.
+        </p>
+      )}
+      <Button size="lg" className={cls} disabled={startDisabled} aria-describedby={startDisabled ? helperId : undefined} onClick={onStart}>
+        {target.label}
+      </Button>
+    </>
   );
+
+  /** A step opened from the outline before the acknowledgement: scroll to the checkbox and focus it instead. */
+  const guardStep = (e: React.MouseEvent) => {
+    if (!startDisabled) return;
+    e.preventDefault();
+    ackRef.current?.scrollIntoView({ block: 'center' });
+    ackRef.current?.focus();
+  };
 
   const readinessBlock = (
     <div aria-live="polite">
@@ -249,18 +279,18 @@ function Ready({ guideId, guide, documentId, g }: { guideId: string; guide: Vali
       <main className={`${pageGutters} lg:grid lg:grid-cols-12 lg:gap-x-10`}>
         <div className="mx-auto w-full max-w-[640px] lg:col-span-7 lg:row-start-1 lg:max-w-none">
           <p className="type-label text-ink-muted">Here&apos;s the plan</p>
-          <h1 className="type-display-xl mt-1">{guide.title}</h1>
+          <h1 className="type-display-xl mt-1 wrap-anywhere">{guide.title}</h1>
           {isDemoGuide(guide) && (
             <p className="type-tag mt-2 inline-block rounded-xs bg-surface-sunken px-2 py-1 text-ink-muted" data-testid="demo-label">
               Demo guide - mock analysis, not read from your manual
             </p>
           )}
-          {guide.summary && <p className="type-body-lg mt-3 text-ink-muted">{guide.summary}</p>}
+          {guide.summary && <p className="type-body-lg mt-3 wrap-anywhere text-ink-muted">{guide.summary}</p>}
 
           <div className="mt-6 grid grid-cols-3 gap-2 md:gap-3" data-testid="facts">
             {guide.estimatedMinutes ? <Fact icon="clock" value={`About ${guide.estimatedMinutes} min`} caption="Time" /> : <Fact icon="clock" value="Not stated" caption="Time" />}
             <Fact icon="people" value={`${guide.peopleNeeded} ${guide.peopleNeeded === 1 ? 'person' : 'people'}`} caption="Needed" />
-            <Fact value={difficultyLabel(guide.difficulty)} caption="Difficulty">
+            <Fact icon="levels" value={difficultyLabel(guide.difficulty)} caption="Difficulty">
               <Dots level={guide.difficulty} />
             </Fact>
           </div>
@@ -273,6 +303,7 @@ function Ready({ guideId, guide, documentId, g }: { guideId: string; guide: Vali
                 {target.mode === 'start' && (
                   <label className="mt-3 flex min-h-11 cursor-pointer items-center gap-3 font-semibold">
                     <input
+                      ref={ackRef}
                       type="checkbox"
                       checked={understood}
                       onChange={(e) => setUnderstood(e.target.checked)}
@@ -336,7 +367,7 @@ function Ready({ guideId, guide, documentId, g }: { guideId: string; guide: Vali
                 {group('Tools', 'tool')}
                 {group('Parts', 'part')}
               </div>
-              <div className="mt-4 hidden lg:block">{startButton('w-full')}</div>
+              <div className="mt-4 hidden flex-col gap-2 lg:flex">{startButton('w-full', 'start-helper-lg')}</div>
             </Card>
           </div>
         </section>
@@ -354,30 +385,21 @@ function Ready({ guideId, guide, documentId, g }: { guideId: string; guide: Vali
               const phSteps = ph.stepIds.map((id) => steps.find((s) => s.id === id)).filter((s) => !!s);
               const done = phSteps.filter((s) => doneSet.has(s.id)).length;
               return (
-                <li key={ph.id}>
-                  <details className="rounded-md border border-line bg-surface">
-                    <summary className="flex min-h-14 cursor-pointer items-center justify-between gap-3 px-4 py-2">
-                      <span className="font-semibold">{ph.title}</span>
-                      <span className="type-body-sm shrink-0 text-ink-muted">
-                        {`${phSteps.length} ${phSteps.length === 1 ? 'step' : 'steps'}${done ? `, ${done} done` : ''}`}
-                      </span>
-                    </summary>
-                    <ol className="border-t border-line">
-                      {phSteps.map((s) => (
-                        <li key={s.id}>
-                          <Link
-                            href={`/g/${encodeURIComponent(guideId)}/play?step=${encodeURIComponent(s.id)}`}
-                            className="flex min-h-14 items-center gap-3 px-4 py-2 text-ink no-underline hover:bg-surface-sunken"
-                          >
-                            <span className="type-tag w-8 shrink-0 text-ink-muted">{steps.indexOf(s) + 1}</span>
-                            <span className="min-w-0 flex-1">{s.title}</span>
-                            {doneSet.has(s.id) && <span className="type-body-sm text-success-fg">Done</span>}
-                          </Link>
-                        </li>
-                      ))}
-                    </ol>
-                  </details>
-                </li>
+                <PhaseRow key={ph.id} title={ph.title} count={phSteps.length} done={done}>
+                  {phSteps.map((s) => (
+                    <li key={s.id}>
+                      <Link
+                        href={`/g/${encodeURIComponent(guideId)}/play?step=${encodeURIComponent(s.id)}`}
+                        onClick={guardStep}
+                        className="flex min-h-14 items-center gap-3 px-4 py-2 text-ink no-underline hover:bg-surface-sunken"
+                      >
+                        <span className="type-tag w-8 shrink-0 text-ink-muted">{steps.indexOf(s) + 1}</span>
+                        <span className="min-w-0 flex-1 wrap-anywhere">{s.title}</span>
+                        {doneSet.has(s.id) && <span className="type-body-sm text-success-fg">Done</span>}
+                      </Link>
+                    </li>
+                  ))}
+                </PhaseRow>
               );
             })}
           </ol>

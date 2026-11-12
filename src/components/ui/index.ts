@@ -10,7 +10,7 @@ export { Banner, WarningBanner, warningSourceCase, normaliseQuote, type BannerKi
 export { ToastProvider, ToastView, useToast, toastDuration, type ToastOptions } from './Toast';
 export { BottomSheet, ConfirmDialog, type DetentName } from './Overlay';
 export { Skeleton, SkeletonText, SkeletonRegion } from './Skeleton';
-export { SourceQuote, PageTag, ProvenanceTag, InstructorNote, type ProvenanceKind } from './SourceQuote';
+export { SourceQuote, SourceLine, QuoteOrLine, quoteEqualsText, PageTag, ProvenanceTag, InstructorNote, type ProvenanceKind } from './SourceQuote';
 export { CitationChip, citationLabel } from './CitationChip';
 export { Dropzone } from './Dropzone';
 export { PageThumbnailGrid, AddPagesTile, type PageTile } from './PageThumbnailGrid';
