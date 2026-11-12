@@ -270,3 +270,10 @@ Done: desktop dock with pinned step summary (shared `StepBanners` / `Checkpoint`
 How to verify: `npm run check` (745), `npm run e2e -- --trace off` (304/304 per engineer). Screenshots `artifacts/screenshots/m3/`.
 Open issues / risks: when banners alone exceed the 44% cap (step 7) the toggle row sits below the fold; real-device on-screen keyboard untested.
 Next: QA on the integrated assistant - dock on steps 5, 7, 8; `busy` and `ai_unavailable`; guards end to end.
+
+## H-038 | 2026-11-12 | from: qa-engineer -> to: orchestrator
+Task: QA of M3 (assistant + "Explain it more simply"), real HTTP and browser on the mock provider.
+Done: `tests/qa-m3-guards.test.ts` (guards, stub-provider routes, disconnect, simplify), `e2e/qa-m3-experience.spec.ts` (DOM recorder, streaming robustness, dock safety, a11y, rate limit). Verdict: FAIL (one P1 not fixed).
+Defects: (1) major/P1 dock: at 1280x600 step 7 and at 1024x768, 1280x720, 1280x600 step 8 the second banner wording (warning, or "Double-check") is cut off by the 44% summary cap while "Done - next step" / "I checked - done" is pressable (`AssistantDock.tsx` DockSummary max-h-[44%]). (2) major: false positives, legitimate answers replaced by not-in-manual: "one", "both", "once", "single", "minute", "step N" in prose (7 of 10 everyday sentences rejected; 0 of 14 restated fixture answers); same in simplify ("both side panels"). (3) minor bypasses: ordinals ("seventh hole"), lowercase roman numerals, accented number words ("fivé"), all-Cyrillic look-alikes ("ѕіх"). Observations: unverified claim text can show muted before it is replaced (design D-021 item 7).
+Counts: `npm run check` 860 pass / 13 intended failures (my 13 defect tests); e2e 339 pass / 4 fail (the dock tests). Stop-then-ask, tab reload, two tabs (409), disconnect, rate limit, keyboard, 320px all pass.
+Next: engineer fixes (1) and (2), then QA re-runs both new files.
