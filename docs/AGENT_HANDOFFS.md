@@ -196,3 +196,16 @@ Done: `/g/[id]/play` (URL-driven step and overlays), `src/components/features/{p
 How to verify: `npx playwright test e2e/m2-player-*.spec.ts --trace off` (51 tests).
 Open issues / risks: fixture step sources had no `region`, so crops showed the whole page (being fixed in M2-c); "Explain it more simply" and the Ask panel are stubs until M3; warning page tags use the step's first source; callout discs show the number, or the label when <= 2 characters; step changes use `replaceState` (Back leaves the player) - designer to confirm.
 Next: M2-c integration fixes, then QA and designer review.
+
+## H-027 | 2026-11-12 | from: qa-engineer -> to: orchestrator, software-engineer
+Task: Independent QA of M2 (guide store, Overview + checklist, Step player, Original viewer, Completion).
+Done: Added `e2e/qa-m2-integrity.spec.ts` (progress, retries, offline, tab close, two tabs, 15 URL-tampering cases, other-session 404), `e2e/qa-m2-experience.spec.ts` (provenance with crafted guides, long-token layout at 320, 44px targets, keyboard-only full guide, reduced motion, device-API stubs, checklist/Start, completion, Back stacking), `tests/qa-m2-invariants.test.ts` (reducer fuzz, URL fuzz). Updated `e2e/qa-m1-flow.spec.ts` (placeholder text -> the Overview's "Here's the plan", which is a paragraph, not a heading; keyboard test reaches "Back to library" with Shift+Tab after focus settles on the h1).
+Results: `npm run check` clean, 29 files / 576 tests pass. Full e2e 218 tests: 6 fail, all intentional (confirmed defects below); the qa-m1 keyboard test was fixed and passes (22/22).
+Open defects: (1) MAJOR two tabs: PUT /progress replaces server state with the sending tab's copy, so a stale tab erases another tab's completed steps (`src/lib/http/guides.ts:94`, `src/lib/client/guide-store.ts` send). Recommend senior-engineer escalation (data contract: merge server-side or send deltas, and/or re-GET on tab focus). (2) MINOR long unbroken guide title / part name / tool name overflows the Overview sideways at 320 (`overview.tsx:252`, `prep-row.tsx` name span); (3) MINOR unbroken tokens in manual quotes and manual labels overflow in the player (`ui/SourceQuote.tsx:49`, part label tag); (4) MINOR `speechSynthesis.speak()` throwing is uncaught (`player/hooks.ts:158`; `cancel()` at :140/:147 likewise unguarded).
+Next: engineer fixes 2-4 (add `break-words`/try-catch); escalate 1; QA re-runs `-g "two tabs|unbroken|speak"`.
+
+## H-028 | 2026-11-12 | from: ui-ux-designer -> to: software-engineer
+Task: Visual review of the M2 guide experience (23 screenshots).
+Done: Verdict "approve with fixes": 4 P1, 9 P2, 5 P3 items; rulings recorded in D-017. Specs updated: USER_FLOWS 1, 5, 6.2, 6.3, 8, 9, 10.1 (aligned with D-016), 10.3, 11; DESIGN_SYSTEM 7.3, 7.10, 7.15, 7.16, 9.
+Open issues / risks: items marked "verify" were judged from screenshots only.
+Next: engineer applies all (task M2-d); QA re-checks 375 irreversible, landscape, viewer at 768/1280, completion at 1280.

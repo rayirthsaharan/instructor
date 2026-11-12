@@ -51,7 +51,7 @@ for (const vp of ['375', '1280'] as VpName[]) {
       await page.reload();
       await expect(page).toHaveURL(GUIDE_URL, { timeout: 60_000 });
       const guideUrl = page.url();
-      await expect(page.getByRole('heading', { name: "Here's the plan" })).toBeVisible();
+      await expect(page.getByText("Here's the plan", { exact: true })).toBeVisible();
 
       // history: Back from the guide must not land on the spent Capture form or the processing page
       await page.goBack();
@@ -368,8 +368,12 @@ test('keyboard only: Library -> Capture -> upload -> Processing -> guide -> back
   console.log('focus after navigating to /d:', await active(page));
   await expect(page).toHaveURL(GUIDE_URL, { timeout: 60_000 });
   console.log('focus after navigating to /g:', await active(page));
+  // M2: the Overview is real and loads asynchronously; focus must settle on its h1 (route focus), and the
+  // "Back to library" link sits before the h1 in reading order, so it is reached with Shift+Tab.
+  await expect.poll(() => active(page), { timeout: 8000 }).toMatch(/^H1\|/);
   guard = 0;
-  while (!(await active(page)).includes('Back to library') && guard++ < 12) await page.keyboard.press('Tab');
+  while (!(await active(page)).includes('Back to library') && guard++ < 12) await page.keyboard.press('Shift+Tab');
+  expect(await active(page)).toContain('Back to library');
   await page.keyboard.press('Enter');
   await expect(page).toHaveURL(/\/$/);
   await context.close();
