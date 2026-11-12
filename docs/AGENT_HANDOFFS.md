@@ -209,3 +209,17 @@ Task: Visual review of the M2 guide experience (23 screenshots).
 Done: Verdict "approve with fixes": 4 P1, 9 P2, 5 P3 items; rulings recorded in D-017. Specs updated: USER_FLOWS 1, 5, 6.2, 6.3, 8, 9, 10.1 (aligned with D-016), 10.3, 11; DESIGN_SYSTEM 7.3, 7.10, 7.15, 7.16, 9.
 Open issues / risks: items marked "verify" were judged from screenshots only.
 Next: engineer applies all (task M2-d); QA re-checks 375 irreversible, landscape, viewer at 768/1280, completion at 1280.
+
+## H-029 | 2026-11-12 | from: senior-engineer -> to: qa-engineer
+Task: Escalation - two tabs on one guide lose completed steps.
+Done: Root cause: the store sent its whole local copy and the server replaced the record. Fix: operation-based `PATCH` progress contract (D-018) in `src/lib/db/library-repo.ts`, `src/lib/http/guides.ts`, the progress route and `src/lib/client/guide-store.ts`; `docs/API.md` updated; new `tests/ui-m2-store-two-tabs.test.ts`.
+How to verify: `npx playwright test e2e/qa-m2-integrity.spec.ts --trace off`; `npm run check` (598 tests).
+Open issues / risks: none known.
+Next: QA re-verify two tabs, offline/retry, keepalive save on tab close.
+
+## H-030 | 2026-11-12 | from: software-engineer -> to: qa-engineer
+Task: M2-d UI fix list (designer H-028 + QA H-027).
+Done: all 20 items; `wrap-anywhere` for overflow; overlays cover the viewport (`data-fixed-screen` disables the scrollbar gutter on the player); `ProgressRing` takes `size` and `text`; new `levels` icon; part chips show the callout number.
+How to verify: `npx playwright test e2e/m2-*.spec.ts e2e/qa-m2-experience.spec.ts --trace off`; `npx vitest run tests/ui-*`.
+Open issues / risks: `e2e/qa-m2-experience.spec.ts:413` still expects "Almost there." (spec is now "Not finished yet.", D-017) - QA to update.
+Next: QA re-check.
