@@ -1,6 +1,6 @@
 # Instructor - User Flows and Screen Specs
 
-Status: **v1.** Owner: `ui-ux-designer`. Tokens and components are defined in `docs/DESIGN_SYSTEM.md` (referred to as DS). Data names (`step.checkpoint`, `unreadablePages`) refer to the Guide contract in `docs/ARCHITECTURE.md` section 4 as amended by its section 10. Aligned with D-007, D-009, D-010 and D-015 (sections 3, 4 and 10.3).
+Status: **v1.** Owner: `ui-ux-designer`. Tokens and components are defined in `docs/DESIGN_SYSTEM.md` (referred to as DS). Data names (`step.checkpoint`, `unreadablePages`) refer to the Guide contract in `docs/ARCHITECTURE.md` section 4 as amended by its section 10. Aligned with D-007, D-009, D-010, D-015 (sections 3, 4 and 10.3) and D-016 (10.1). M2 review rulings (2026-11-12) are in sections 1, 5, 6.2, 6.3, 8 and 9.
 
 Layout references: **375** (`sm`), **768** (`md`), **1280** (`lg`). Page numbers shown to users are `pageIndex + 1`.
 
@@ -26,6 +26,8 @@ Library --(Add a manual)--> Capture --(Analyse)--> Processing --(done)--> Guide 
 7. **Completion**: finished; anything skipped is listed.
 
 Routes: `/` Library, `/new` Capture, `/d/[documentId]` Processing (resumable, D-009), `/g/[id]` Overview, `/g/[id]/play` Player. Player state lives in the URL so back/refresh/share-to-self work: `?step=<stepId>`, overlays as `&panel=ask | steps | original` and `&page=<n>`. The browser Back button closes the top overlay first, then leaves the player.
+
+History rule (confirmed at the M2 review): **step changes replace the history entry; opening an overlay pushes one.** Browser Back therefore never walks back through steps - a 24-step job must not leave 24 entries between the user and the Overview, and "previous step" already has a 56px button, a swipe and a key. Closing an overlay with its own close button goes back one entry (it does not push another).
 
 Global chrome: there is no persistent navigation bar. Library is home; every other screen has a single back affordance in its header. The player has its own chrome (section 6).
 
@@ -159,11 +161,11 @@ Purpose: "Can I start, and what am I in for?"
 1. Header: back to Library; overflow (Original manual, Delete guide).
 2. Eyebrow (`label`): "HERE'S THE PLAN". Title (`display-xl`): `guide.title`. Summary (`body-lg`): `guide.summary`.
 3. Facts row - three tiles with icon, value (`display-md`), caption (`body-sm`): time ("About 90 min" from `estimatedMinutes`), people ("2 people" from `peopleNeeded`), difficulty (3 dots filled 1-3 plus the word: "Easy" / "Moderate" / "Demanding").
-4. Notices, in this order when present: **safety-critical** notice (`guide.safetyCritical`: Warning banner "This job involves safety-critical work. Follow the original manual's warnings exactly. If you're unsure, stop and get a qualified person." with a required checkbox "I understand" before Start is enabled); **unreadable pages** banner (section 10.2); authority note (DS 7.12 Info), which here carries the one-time provenance key as a second sentence (DS 7.16).
+4. Notices, in this order when present: **safety-critical** notice (`guide.safetyCritical`: Warning banner "This job involves safety-critical work. Follow the original manual's warnings exactly. If you're unsure, stop and get a qualified person." with a checkbox "I understand" - rules under Interactions); **unreadable pages** banner (section 10.2); authority note (DS 7.12 Info), which here carries the one-time provenance key as a second sentence (DS 7.16).
 5. **Before you start** - readiness line ("7 of 12 checked" / "Everything checked" / "1 part marked missing"), then two groups:
-   - "Tools" - Checklist rows (DS 7.4) from `tools[]`; `included: false` shows "Not in the box - you need your own".
+   - "Tools" - Checklist rows (DS 7.4) from `tools[]`; `included: false` shows "Not in the box - you need your own" in `body-sm` `ink-muted` (a sentence, not a stamped label: never the mono `tag` face).
    - "Parts" - Checklist rows from `parts[]`: thumbnail = crop of `part.source`, name, `manualLabel`, "x`quantity`". Tapping the thumbnail opens the Part sheet with a larger crop and "Show in manual".
-6. **The steps** - phase outline: each phase as a row (title, "6 steps", done count); expands to its step titles (rows as in the Step rail). Tapping a step opens the player there.
+6. **The steps** - phase outline: each phase as a row (title, "6 steps", done count, trailing chevron: right when closed, down when open; `aria-expanded`); expands to its step titles (rows as in the Step rail). Tapping a step opens the player there. Without the chevron the row reads as a static card.
 7. Sticky footer: Primary (`lg`) "Start" - or "Continue at step 7" when progress exists, or "Review steps" when finished.
 
 **Layout**
@@ -179,6 +181,10 @@ Purpose: "Can I start, and what am I in for?"
 - Row overflow -> "I'm missing this" (section 10.4) / "Show in manual" (Original viewer at `part.source`).
 - "Check all" Quiet button per group (desktop and tablet only; on mobile it sits in the group's overflow) - for people who counted from the paper list.
 - **Start is never blocked by an incomplete checklist.** If items are unchecked, Start opens a small confirm sheet: "You haven't checked 5 items. Start anyway?" Secondary "Back to checklist" / Primary "Start anyway". With everything checked (or on Continue) it goes straight to the player.
+- **Safety acknowledgement** (`guide.safetyCritical` only). It is a one-time notice before the first step, not a lock:
+  - Shown and required only while the guide has **no progress** (no step opened or completed). Until it is ticked, "Start" is disabled with the helper line (`body-sm`, above the button) "Tick "I understand" above to start."; tapping a step in the phase outline does not open the player - it scrolls to the checkbox, focuses it and shows the same helper.
+  - Once progress exists ("Continue at step N", "Review steps") the banner stays but the checkbox is **not rendered** and nothing is gated: the user already acknowledged it, and the warnings themselves are on every affected step.
+  - The tick is page state only; it is not persisted. Reloading before starting asks again, which is harmless. A direct `/g/[id]/play` URL is not gated.
 
 **States**
 - Loading: skeleton for title (2 lines), facts row, 6 checklist rows.
@@ -238,9 +244,9 @@ The phone is propped against a box, 50-70 cm away, portrait or landscape. One ha
 4. Low-confidence banner (if `confidence: low`).
 5. Step title (`display-md`, `h1`).
 6. Instruction (`glance`). This is Instructor's wording of the step.
-7. Provenance slot, directly under the instruction (DS 7.16); omitted when empty: the **Source quote** "FROM YOUR MANUAL" (if `step.sourceQuote`), then the "Read from the picture" tag (if `interpretedFromDiagram`).
-8. Parts and tools for this step (Part chips; label `label` "FOR THIS STEP"). Quantity = `partsUsed[].quantity`; omitted if absent.
-9. Checkpoint block (if `checkpoint`).
+7. Provenance slot, directly under the instruction (DS 7.16); omitted when empty: the **Source quote** "FROM YOUR MANUAL" (if `step.sourceQuote`; when the quote equals the instruction it collapses to the one-line source line, DS 7.16 "Never the same words twice"), then the "Read from the picture" tag (if `interpretedFromDiagram`).
+8. Parts and tools for this step (Part chips; label `label` "FOR THIS STEP"). Quantity = `partsUsed[].quantity`; omitted if absent. A chip whose part is marked on the picture carries the same number as its callout (DS 7.3); chips have no thumbnail.
+9. Checkpoint block (if `checkpoint`). The checkpoint text appears exactly once; when it is the manual's own sentence the block says so with a source line instead of repeating it (DS 7.15).
 10. Disclosures: "Why this matters" (`why`), "Common mistake" (`commonMistake`), "Explain it more simply". Each is shown only if it has data, except "Explain it more simply", which is always present. The first two carry the caption from DS 7.16 inside their content.
 11. Quiet link "Show original page".
 
@@ -254,14 +260,25 @@ The phone is propped against a box, 50-70 cm away, portrait or landscape. One ha
 
 At 320 width the Steps button moves into the top bar counter (the counter itself becomes the button) so the Primary keeps >= 150.
 
+**The Primary label never wraps to two lines.** Where the full label does not fit on one line the short form is used; `aria-label` always carries the full label:
+
+| Full label | Short form | Short form is used |
+|---|---|---|
+| "Done - next step" | "Done" + trailing arrow-right icon | `landscape-compact` |
+| "Next step" | "Next" + trailing arrow-right icon | `landscape-compact` |
+| "Done - finish" | "Finish" | `landscape-compact` |
+| "I checked - done" | padlock + "I checked" | all of `sm`, and `landscape-compact` |
+
+The Ask button is `accent` icon on an `accent-soft` fill at every width (no border); it is the only tinted control in the bar.
+
 ### 6.3 Layout by width
 
 | Width | Layout |
 |---|---|
 | **375 portrait** | As 6.2. Visual edge to edge (radius 0). |
-| **Phone landscape** (`landscape-compact`, e.g. 667x375) | Common when propped. Top bar collapses to a 6px progress bar plus a 44 "x" overlaid top-left of the visual. Two columns: visual left 56% full height; right 44% holds the text panel (scrolls) with the action bar pinned at its bottom (Back 56, Primary flex, then Steps and Ask as 56 icons). Instruction stays `glance`. |
+| **Phone landscape** (`landscape-compact`, e.g. 667x375) | Common when propped. Top bar collapses to a 6px progress bar across the full width plus a 44 "x" overlaid top-left of the visual. Two columns: visual left 56% full height; right 44% holds a 44 compact header (the counter, which is the Steps button as at 320; read-aloud; overflow - right-aligned), then the text panel (scrolls) with the action bar pinned at its bottom (Back 56, Primary flex with short labels per 6.2, Ask 56; no Steps button). Instruction stays `glance`. |
 | **768** | Top bar 56. Visual stage 48% of viewport height, inset 24 with radius `md`. Text panel max-width 640 centred. Action bar: content max-width 640 centred; Back and Steps get text labels ("Back", "Steps"), Ask labelled "Ask". Step rail and Assistant open as sheets (max-width 560). |
-| **1280** | Three regions under a 56 top bar. **Left**: Step rail permanently visible, 280 wide, own scroll. **Centre**: visual stage, fills remaining width and full height minus bars, radius `md`, 24 padding. **Right**: text panel 420 wide, own scroll, with the action bar pinned at its bottom (Back / Primary / Ask - no Steps button). When the Assistant is open it **replaces the text panel's lower area**: the panel shows step title + instruction pinned at top (collapsible) and the chat below; the visual and rail stay. Between 1024 and 1199 the rail collapses to a 64 icon strip (status markers and numbers; expands on hover/focus). |
+| **1280** | Three regions under a 56 top bar (Close and counter left; read-aloud and overflow right-aligned at the 32 margin, as at 768 - never floating after the counter). **Left**: Step rail permanently visible, 280 wide, own scroll, 12 top padding before the first phase header. **Centre**: visual stage, fills remaining width and full height minus bars, radius `md`, 24 padding. The stage here is taller than most step regions, so the view shows the bracketed region with the rest of the page around it - this is intended (DS 7.10 layer 2: fit is always "contain", never a hard crop); the dim wash does the focusing. **Right**: text panel 420 wide, own scroll, with the action bar pinned at its bottom (Back / Primary / Ask - no Steps button). When the Assistant is open it **replaces the text panel's lower area**: the panel shows step title + instruction pinned at top (collapsible) and the chat below; the visual and rail stay. Between 1024 and 1199 the rail collapses to a 64 icon strip (status markers and numbers; expands on hover/focus). |
 
 ### 6.4 Interactions
 
@@ -355,7 +372,7 @@ Purpose: the unaltered manual, always reachable, returning to the same place.
 
 **Content hierarchy**
 1. Header: close ("Back to step 7" as text on `md`+, icon on `sm`), "Page 12 of 20" (`tag`), "Marks" toggle (shown only when opened with a region).
-2. Page stage: the full page, zoom and pan as DS 7.10 (same component, full-page mode). When opened from a step or a citation, the region is bracketed and the view starts fitted to the whole page (context first), with the brackets emphasised (4px) for 2s - no pulse animation.
+2. Page stage: the full page, zoom and pan as DS 7.10 (same component, full-page mode). When opened from a step or a citation, the region is bracketed and the view starts fitted to the whole page (context first), with the brackets emphasised (4px) for 2s - no pulse animation. In the viewer the page is shown at full strength: **no dim wash** (this is the unaltered manual; DS 7.10 full-page mode). Brackets, region tint and callouts are drawn and "Marks" hides them. The stage's own page tag ("p. 12") is not shown here - the header already says "Page 12 of 20".
 3. Page navigation: previous / next buttons (56 on `sm`), and a thumbnail strip.
 4. Unreadable pages (`unreadablePages`) carry a warn tag "We couldn't read this page" on the page and on its thumbnail.
 
@@ -369,6 +386,8 @@ Purpose: the unaltered manual, always reachable, returning to the same place.
 
 **Interactions**: swipe left/right at 1x or arrows to change page; `Esc` or Close returns to exactly the prior state (step, text scroll, zoom, open assistant sheet). Changing pages clears the region brackets (they belong to one page) and hides the Marks toggle. Focus returns to the control that opened the viewer.
 
+The overlay covers the whole viewport including any scrollbar gutter (`position: fixed; inset: 0`); no strip of the player may show beside it and no control may be clipped by it. Thumbnails that have not loaded are `surface-sunken` skeleton tiles, never blank white tiles (white reads as an empty page). The thumbnail grid sheet (375) opens at the `half` detent when the document has 9 pages or fewer, otherwise `full`.
+
 **States**: page loading (skeleton page at the page's aspect ratio); page failed ("Couldn't load this page" + "Try again"); single-page document (no navigation controls); opened without a region (no brackets, no Marks toggle).
 
 ---
@@ -380,14 +399,14 @@ Shown after "Done - finish" on the last step (a view within the player route; re
 **Content hierarchy**
 1. Segmented progress, fully `success`. Static: no completion animation.
 2. Success check disc (56) and `display-xl` "Finished." then `body-lg`: "You completed all 24 steps of <guide title>."
-3. **Skipped steps** (only if any step is not marked done): Warning-styled card "2 steps aren't marked done" with a list of those steps (rail rows, tappable -> player at that step). In this case the title is "Almost there." and the check disc is replaced by the progress ring.
+3. **Skipped steps** (only if any step is not marked done): Warning-styled card "2 steps aren't marked done" with a list of those steps (rail rows, tappable -> player at that step). In this case the title is "Not finished yet." (true whether 1 or 9 steps remain; "Almost there." was wrong when most steps were skipped), the `body-lg` line is "You've done 3 of 24 steps of <guide title>.", and the check disc is replaced by a 56px progress ring (4px stroke, track `line`, fill `accent`) with the count "3/24" in `tag` centred inside. The ring is never drawn smaller or without the count: a small bare arc reads as a loading spinner.
 4. **Missing parts reminder** (only if any part is still marked missing): list of the parts and "Needed in steps ...".
 5. Authority note: "Keep the original manual - it has the care, warranty and safety information."
 6. Actions: Primary "Back to library"; Secondary "Review the steps" (player at step 1, review mode); Quiet "Open original manual".
 
 No confetti, no ratings prompt, no invented claims ("your wardrobe is ready to use").
 
-**Layout**: one centred column, max-width 480 (375: top-aligned at 64, buttons full width 56; 768 / 1280: vertically centred; at 1280 the buttons sit in a row).
+**Layout**: one centred column, max-width 480 (375: top-aligned at 64, buttons full width 56; 768: vertically centred, buttons stacked full width 56; 1280: vertically centred, Primary and Secondary side by side at 50% each (height 48), the Quiet link centred on its own line below). Button labels never wrap at any width.
 
 **States**: skipped-steps variant and missing-parts variant as above; save failure -> toast per 6.4, screen still shows.
 
@@ -397,7 +416,14 @@ No confetti, no ratings prompt, no invented claims ("your wardrobe is ready to u
 
 ### 10.1 Rejected: not a manual
 Trigger: the pipeline reports the document is not instructions.
-The Processing URL (`/d/[documentId]`) shows this state instead of the stage list, also on a later visit: page icon with a "?" bracket, `display-lg` "This doesn't look like instructions", `body-lg` "We look for manuals and step-by-step guides - for example assembly or setup instructions. This file seems to be something else.", Primary "Try a different file" (-> Capture, empty), Quiet "Back to library". No guide is created; no Library card remains. No override ("analyse anyway") in v1.
+The Processing URL (`/d/[documentId]`) shows this state instead of the stage list, also on a later visit: page icon with a "?" bracket, `display-lg` "This doesn't look like instructions", `body-lg` "We look for manuals and step-by-step guides - for example assembly or setup instructions. This file seems to be something else.", Primary "Try a different file" (-> Capture, empty), Quiet "Back to library". No guide is created. No override ("analyse anyway") in v1.
+
+**The Library keeps a card for it (D-016 item 2)**, so the user can see what happened to the upload and remove it. This applies to rejected uploads here and to failed ones (10.3):
+- Card (DS 7.2, failed state): first-page thumbnail, the file name or "Untitled manual" as title, and a state line in `body-sm` with the danger icon - rejected: "Not a manual"; failed: "Couldn't finish - Try again". No progress ring, no step meta.
+- Tap: opens `/d/[documentId]`, which shows this state (or the 10.3 state).
+- Overflow menu: one item, "Delete". Same confirm dialog as a guide, with the sentence "Delete this upload? The file will be removed from this device's library."; toast "Upload deleted".
+- These cards sort with the others by last used and never appear in the "Continue" hero.
+- "Try a different file" does not remove the card; only Delete does.
 
 ### 10.2 Unreadable page(s)
 Trigger: `guide.unreadablePages` is not empty; the guide is still produced.
@@ -417,7 +443,7 @@ Processing screen: the title becomes "We couldn't finish your guide"; the failed
 | Double-checking, Finishing | "We built the steps but couldn't verify them against the original, so we haven't shown them." | "Try again" |
 | Repeated failure (3rd) | Adds: "It's still not working. Your manual is saved; try again later." | "Back to library" (Primary; no "Try again") |
 
-"Try again" restarts from the failed stage (stages are idempotent); the list resumes, it does not restart from the top. The Library shows the failed card until the user retries or deletes it. An unverified guide is never shown.
+"Try again" restarts from the failed stage (stages are idempotent); the list resumes, it does not restart from the top. The Library shows the failed card (10.1, D-016) until a retry succeeds or the user deletes it. An unverified guide is never shown.
 
 ### 10.4 Missing part
 1. Overview checklist -> row overflow -> "I'm missing this". The row becomes Missing (DS 7.4) and lists "Needed in steps 4, 9" (all steps whose `partsUsed` include the part). Undo via the same menu ("I found it").
@@ -442,5 +468,5 @@ Resolved by D-009 and now reflected above: highlights carry their own page; seve
 
 Still open (for the engineer / orchestrator):
 1. Is `warning.text` always the manual's wording, or can it be a normalised or translated version of `sourceQuote`? DS 7.12 handles both cases; confirm which occurs.
-2. Is `checkpoint` extracted from the manual or written by the pipeline? It is currently unmarked (treated as Instructor's wording). If it can be either, it needs a `sourceQuote` or a flag.
+2. Resolved at the M2 review: the checkpoint can carry its own manual quote, and the UI handles all three cases (DS 7.15). Confirm the field name in `docs/ARCHITECTURE.md`.
 3. "Start again with a new file" is this spec's label for PDF uploads; D-009 names only the photo wording.

@@ -200,10 +200,11 @@ Sizes: `md` height 48, `lg` height 56 (player, full-width mobile CTAs), `sm` hei
 ### 7.3 Chip and Part chip
 **Chip** (filter, suggestion): height 36 visual inside a 44 hit area, radius `sm`, 1px `ink-subtle` border, `body-sm` 600. Selected: `accent-soft` fill, `accent` border and text, leading check. Hover: `surface-sunken`. Disabled: 40% opacity.
 
-**Part chip** - anatomy left to right: quantity tag (`tag`, "x4", on `surface-sunken`, omitted when the step and the part both give no quantity), part thumbnail 32x32 (crop of `part.source` region, white background, 1px `line`; if no region: no thumbnail), name (`body` 600, 1 line clamp), manual label (`tag`, `ink-muted`, e.g. "A" or "104321"; omitted when `manualLabel` is absent - never synthesise one). Height 48, radius `sm`, `surface`, 1px `ink-subtle`.
+**Part chip** - anatomy left to right: quantity tag (`tag`, "x4", on `surface-sunken`, omitted when the step and the part both give no quantity), callout marker (a 24px copy of the callout disc, same number, same colours, no white ring; present only when a highlight on this step has this `partId`, otherwise omitted with no placeholder), name (`body` 600, 1 line clamp), manual label (`tag`, `ink-muted`, e.g. "A" or "104321"; omitted when `manualLabel` is absent - never synthesise one). Height 48, radius `sm`, `surface`, 1px `ink-subtle`.
 - Tap: selects the chip and the matching highlight (`highlights[].partId`) becomes `mark-fill-active`; second tap opens the Part sheet (name, label, quantity, description, larger crop, "Show in manual").
 - States: default; hover; selected (`accent-soft`, `accent` border); **missing** (user marked it missing in prep: `warn-soft` fill, warn icon, text "Missing"); focus; no disabled state.
-- Tool chips use the same shape with a wrench icon instead of the thumbnail and "Not in the box" (`body-sm`, `ink-muted`) when `included` is false.
+- **No thumbnail in the chip** (M2 review). A 32px crop of a parts-list cell is illegible and adds noise next to the full picture in the stage directly above. The part's picture lives where it can be read: the 48px checklist thumbnail on the Overview and the large crop in the Part sheet (second tap). The number is what ties the chip to the picture.
+- Tool chips use the same shape with a wrench icon (20) in the marker position and "Not in the box" (`body-sm`, `ink-muted`) when `included` is false.
 
 ### 7.4 Checklist row
 Anatomy: checkbox 28x28 (radius `xs`, 2px `ink-subtle` border) inside a full-row 56px-min target; thumbnail 48x48 (parts); name (`body` 600); meta line (`tag`: label and "x8"); trailing 44px overflow button ("I'm missing this", "Show in manual").
@@ -258,10 +259,10 @@ The most important component. It shows a piece of the original page with Instruc
 
 Layers, bottom to top:
 1. **Stage**: `surface-sunken`, radius `md` (0 when edge-to-edge on `sm`).
-2. **Page image**: unaltered; `object-fit: contain`. Initial view = the step's `sources[i].region`, padded by 6% of the page on each side (12% when that source has `regionFallback: true`, so an imprecise box still shows its surroundings) and clamped to the page; if the region is absent: the full page.
-3. **Dim wash** (`mark-dim`) over everything outside the union of the highlight regions **on the page being shown**. Drawn only when that page has at least one highlight.
+2. **Page image**: unaltered; `object-fit: contain`. Initial view = the step's `sources[i].region`, padded by 6% of the page on each side (12% when that source has `regionFallback: true`, so an imprecise box still shows its surroundings) and clamped to the page; if the region is absent: the full page. The fit is always "contain": the padded region is never cropped. When the stage's proportions differ from the region's (e.g. the tall desktop stage and a wide panel), the spare room shows more of the same page around the region - centred on the region, clamped to the page - rather than empty letterbox. Seeing the neighbouring panels there is intended; layer 3 does the focusing.
+3. **Dim wash** (`mark-dim`) over everything outside the **step's own source region** on the page being shown (union with any highlight that reaches outside it). The step's panel - including the manual's own caption and small print inside it - stays at full strength; only the rest of the page is dimmed. If the step has no usable region on this page, the wash covers everything outside the union of the highlights, and is drawn only when there is at least one. Never drawn in full-page mode (Original viewer).
 4. **Brackets**: each highlight is `{ source, panelId?, label?, partId? }` and is drawn on the page given by its own `highlight.source.pageIndex`, at `highlight.source.region` - never assumed to be on `sources[0]`. A highlight whose page is not the one shown is not drawn; the pager reaches it (USER_FLOWS 6.6). One set of four L-shaped corners per highlight; arm length = 18% of the region's shorter side, clamped 12-28px on screen; stroke per 2.3; corners rounded 2px; region tinted `mark-fill`.
-5. **Callouts**: 28px disc at the region's top-left corner, centred on the corner, kept inside the stage. Content: the highlight's `label` if present, otherwise its 1-based index. Hit area 44. Linked to a part chip when `partId` is set.
+5. **Callouts**: 28px disc at the region's top-left corner, centred on the corner, kept inside the stage. Content: **always the highlight's 1-based index** in the step's `highlights` order, counted across all of the step's pages so a number is unique within the step (M2 review; the `label` is never put in the disc). Reasons: a disc holding "A" or "G" imitates the manual's own circled part letters and could be taken for part of the source; mixed letters and numbers in one picture are ambiguous; and a number can be repeated on the linked part chip (7.3). The `label` is used as the disc's accessible name and tooltip ("Marked area 1: Top edge"), and when a callout with a label and no `partId` is selected it is shown as a `tag` on `surface` (92%) beside the disc until deselected. Hit area 44. Linked to a part chip when `partId` is set.
 6. **Controls** (`elev-1`, `surface` at 92% opacity, radius `sm`), bottom-right: zoom out, zoom in, reset ("Fit"), and top-right: "Marks" toggle (eye icon; hides layers 3-5 so nothing we draw can ever obscure the source), "Original page" (opens the Original viewer at this page). Bottom-left: page tag "p. 12" and, with several sources, a pager "1 / 2" with previous/next (44px).
 
 Behaviour:
@@ -272,6 +273,10 @@ Behaviour:
 - Tapping a callout selects it and its part chip (and vice versa); selected region uses `mark-fill-active`.
 
 States: loading (skeleton stage with bracket corners in `line`, no spinner); loaded; marks hidden (toggle shows `aria-pressed="false"`, small "Marks off" tag); **low confidence** (dashed `mark-unsure-stroke` brackets, and the stage carries a persistent "Double-check with the original" tag bottom-centre); **approximate region** (any drawn region whose source has `regionFallback: true`: that region's brackets are dashed `mark-unsure-stroke`, and the stage carries one "Approximate area" tag bottom-centre, `unsure` colours; when the step is also low confidence, only the low-confidence tag is shown); **no usable region** (full page, no brackets, tag "Whole page shown"); **image failed** (stage shows icon, "Couldn't load this page", Secondary "Try again"; the instruction text remains usable); zoomed (reset button becomes accent).
+
+Status tags ("Double-check with the original", "Approximate area", "Whole page shown"): bottom-centre; when the bottom row has no room beside the page tag and the zoom controls (`sm`, landscape), centred 8 above that row. "Marks" off hides the status tag together with layers 3-5 (the text-panel banner still carries the message), so nothing Instructor draws can sit on the manual's content.
+
+Full-page mode (Original viewer): no dim wash, no page tag (the viewer's header names the page); brackets, tint and callouts as above.
 
 Alt text: `"Manual page 12, area for step 7: <step title>"`. Highlights are exposed as a list: "Marked area 1: Cam lock (part B)". The picture is not described beyond what the Guide data contains.
 
@@ -315,7 +320,11 @@ Read-aloud speaks the banner text, then the quote when it differs.
 
 ### 7.15 Smaller parts
 - **Disclosure** ("Why", "Common mistake", "Explain simpler"): full-width row 48, chevron points right (closed) or down (open), `body` 600; content `body-lg` on `surface-sunken` inset; `aria-expanded`.
-- **Checkpoint block**: `success-soft` fill, check-in-circle icon, label "YOU'LL KNOW IT'S RIGHT WHEN", text `body-lg`. Not interactive.
+- **Checkpoint block**: `success-soft` fill, radius `md`, padding 12 16, check-in-circle icon, label "YOU'LL KNOW IT'S RIGHT WHEN", text `body-lg`. The checkpoint text is shown exactly once. Provenance follows the same three cases as warnings (7.12), compared after trimming and collapsing whitespace:
+  - quote equals the checkpoint text: the text, then an 8px gap and one source line in `body-sm` `ink-muted`: "From your manual" + page tag "p. 3" (44px-target button -> Original viewer at the checkpoint's source). **No blockquote, no repeated sentence.**
+  - quote differs: the text, then the full Source quote (7.16) inside the block, 12px below the text, always expanded.
+  - no quote: the text only (Instructor's wording, unmarked).
+  Not interactive apart from the page tag.
 - **Menu**: `surface-raised`, `elev-2`, radius `sm`, rows 48, destructive row in `danger-fg`.
 - **Dialog** (destructive confirm only): centred, max 400, title, one sentence, Secondary "Cancel" + Danger action; focus starts on Cancel.
 - **Text input**: height 48, 1.5px `ink-subtle` border, radius `sm`; focus border `accent` + ring; error border `danger-fg` + message below with icon.
@@ -332,9 +341,12 @@ The user must be able to tell, at a glance, what comes straight from the manual 
 
 **Source quote** (the only "verified" marker): a `<blockquote>` with a 3px `ink` left rule, 12px inset, no fill, no border. First line: `label` "FROM YOUR MANUAL" followed by the page tag (`tag`, "p. 12"; a 44px-target button that opens the Original viewer at that source). Then the quote in `body`, `ink`, rendered **verbatim**: no trimming, no case change, no translation, no added quotation marks, never truncated or collapsed; `lang` = the manual's language. Not interactive apart from the page tag. It is rendered only when the data has a `sourceQuote`; the UI never builds one from other fields. Neutral ink, not green: green means "done", and a "verified" tick would claim more than a matched quote proves.
 
+**Never the same words twice (M2 review).** Wherever a Source quote would sit directly under Instructor text that is identical to it (compare after trimming and collapsing whitespace; nothing fuzzier - a quote that differs by one character is shown in full), the blockquote is replaced by a single source line under that text: `body-sm` `ink-muted` "From your manual" + the page tag button. The sentence above it then *is* the manual's sentence, and the line says so. This applies to the step instruction, the checkpoint (7.15) and warnings (7.12, where it was already the rule).
+
 | Signal | Where | Treatment |
 |---|---|---|
-| `step.sourceQuote` | Under the instruction | Source quote |
+| `step.sourceQuote` | Under the instruction | Source quote; the one-line source line when it equals the instruction |
+| Checkpoint's manual quote | Inside the checkpoint block | 7.15 |
 | `warning.sourceQuote` | In the warning banner | 7.12 |
 | `interpretedFromDiagram` | Under the instruction (after the quote, if both) | One-line tag, 7.12: eye + "Read from the picture - the manual has no words here" |
 | `regionFallback` | On the visual | Dashed brackets + "Approximate area" tag, 7.10. Nothing in the text panel |
@@ -363,4 +375,5 @@ Noise rules: at most one Source quote and one tag per step outside banners; `con
 
 ## 9. Open points
 - Resolved (D-009): severity is `caution | warning` (7.12); highlights carry their own page (7.10).
-- Open: whether `warning.text` can differ from `sourceQuote`, and whether `checkpoint` is extracted or generated (USER_FLOWS section 11). 7.12 and 7.16 are safe either way.
+- Open: whether `warning.text` can differ from `sourceQuote` (USER_FLOWS section 11). 7.12 and 7.16 are safe either way.
+- Resolved (M2 review, 2026-11-12): checkpoint provenance and de-duplication (7.15, 7.16); part chips carry the callout number instead of a thumbnail (7.3); callout discs always show the index (7.10); the dim wash spares the step's own region and is off in the Original viewer (7.10); "contain" fit on the desktop stage is intended (7.10).

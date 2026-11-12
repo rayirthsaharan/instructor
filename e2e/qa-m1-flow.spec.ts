@@ -51,7 +51,7 @@ for (const vp of ['375', '1280'] as VpName[]) {
       await page.reload();
       await expect(page).toHaveURL(GUIDE_URL, { timeout: 60_000 });
       const guideUrl = page.url();
-      await expect(page.getByText('Guide overview coming next')).toBeVisible();
+      await expect(page.getByRole('heading', { name: "Here's the plan" })).toBeVisible();
 
       // history: Back from the guide must not land on the spent Capture form or the processing page
       await page.goBack();
