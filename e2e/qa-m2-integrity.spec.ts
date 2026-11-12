@@ -223,3 +223,87 @@ test.describe('sessions', () => {
     });
   }
 });
+
+test.describe('PATCH progress contract (D-018)', () => {
+  test('two tabs, both orders: completions from either tab are kept; uncomplete beats a stale tab; checklist is per item', async ({ browser }) => {
+    const { context, page: a } = await start(browser, { currentStepId: S(1) });
+    const b = await context.newPage();
+    await openPlayer(a, guideId);
+    await openPlayer(b, guideId);
+    // B completes step 1 first, then A (stale) completes step 2 after pressing ArrowRight
+    await primary(b).click();
+    await expect.poll(async () => (await getProgress(context, guideId)).completedStepIds).toEqual([S(1)]);
+    await a.bringToFront();
+    await a.keyboard.press('ArrowRight');
+    await primary(a).click();
+    await expect.poll(async () => (await getProgress(context, guideId)).completedStepIds.sort()).toEqual([S(1), S(2)]);
+    // A (does not know about step 1 yet or does after refresh) un-completes step 2 via the menu path: use the API-level op through the UI
+    await a.keyboard.press('ArrowLeft');
+    await expect(a.getByTestId('done-tag')).toBeVisible();
+    await a.getByRole('button', { name: /more|menu|options/i }).first().click();
+    await a.getByRole('menuitem', { name: 'Mark as not done' }).click();
+    await expect.poll(async () => (await getProgress(context, guideId)).completedStepIds).not.toContain(S(2));
+    // stale B (still believes step 2 not done) completes step 3: step 1 stays, step 2 stays un-done
+    await b.bringToFront();
+    await b.keyboard.press('ArrowRight');
+    await b.keyboard.press('ArrowRight');
+    await primary(b).click();
+    await expect.poll(async () => (await getProgress(context, guideId)).completedStepIds.length).toBe(2);
+    const p = await getProgress(context, guideId);
+    expect(p.completedStepIds, 'step 1 kept, un-completed step 2 not resurrected by the stale tab').toContain(S(1));
+    expect(p.completedStepIds).not.toContain(S(2));
+    await context.close();
+  });
+
+  test('checklist writes from two sessions of the same device touch only their own item', async ({ browser }) => {
+    const { context } = await start(browser, {});
+    const patch = (data: object) => context.request.patch(`/api/guides/${guideId}/progress`, { data });
+    const items = Object.keys(((await (await context.request.get(`/api/guides/${guideId}`)).json()) as { guide: { parts: { id: string }[] } }).guide.parts.map((p) => p.id).reduce((o, id) => ({ ...o, [id]: 1 }), {}));
+    expect((await patch({ checklist: { [items[0]!]: 'missing' } })).ok()).toBe(true);
+    expect((await patch({ checklist: { [items[1]!]: 'have' } })).ok()).toBe(true);
+    const p = await getProgress(context, guideId);
+    expect(p.checklist[items[0]!]).toBe('missing');
+    expect(p.checklist[items[1]!]).toBe('have');
+    await context.close();
+  });
+
+  test('PATCH rejects unknown ids, unknown fields and conflicting lists with 400 and saves nothing', async ({ browser }) => {
+    const { context } = await start(browser, { currentStepId: S(1), completedStepIds: [S(1)] });
+    const patch = (data: unknown) => context.request.patch(`/api/guides/${guideId}/progress`, { data });
+    for (const bad of [
+      { complete: ['nope'] },
+      { complete: [S(2)], uncomplete: [S(2)] },
+      { complete: [S(3)], bogus: 1 },
+      { complete: [S(3)], currentStepId: 'nope' },
+      { complete: [S(3)], checklist: { 'no-such-part': 'have' } },
+      { complete: [S(3)], checklist: { 'cam-lock': 'weird' } },
+      { complete: '__proto__' },
+      { complete: [S(3)], uncomplete: [{}] },
+    ]) {
+      const r = await patch(bad);
+      expect(r.status(), JSON.stringify(bad)).toBe(400);
+    }
+    const p = await getProgress(context, guideId);
+    expect(p.completedStepIds).toEqual([S(1)]);
+    expect(p.currentStepId).toBe(S(1));
+    expect((await patch({})).ok()).toBe(true);
+    // other session cannot patch
+    const other = await browser.newContext();
+    expect((await other.request.patch(`/api/guides/${guideId}/progress`, { data: { complete: [S(2)] } })).status()).toBe(404);
+    await other.close();
+    await context.close();
+  });
+
+  test('the tab re-reads progress when it regains focus', async ({ browser }) => {
+    const { context, page } = await start(browser, { currentStepId: S(1) });
+    await openPlayer(page, guideId);
+    await putProgress(context, guideId, { currentStepId: S(1), completedStepIds: [S(1), S(2)] }); // changed elsewhere
+    await page.evaluate(() => {
+      window.dispatchEvent(new Event('focus'));
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+    await page.keyboard.press('ArrowRight');
+    await expect(page.getByTestId('done-tag')).toBeVisible({ timeout: 5000 });
+    await context.close();
+  });
+});

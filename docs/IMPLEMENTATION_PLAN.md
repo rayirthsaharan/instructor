@@ -29,12 +29,14 @@ Each task names its owner agent. Every feature task runs the feature loop in `CL
 - [x] Senior-engineer security review of the upload path (H-019) - all findings fixed
 - [ ] AnthropicProvider (real analysis + verify) - **deferred: needs user approval for API spend (D-010)**
 
-## M2. Guide experience
-- [ ] Guide overview and prep checklist (F3)
-- [ ] Step player: source visual with highlights, zoom/pan, navigation, progress, resume (F4)
-- [ ] Original viewer (F6)
-- [ ] Read-aloud, wake lock, irreversible and low-confidence treatments (F4)
-- [ ] Completion screen
+## M2. Guide experience - DONE 2026-11-12 (designer approved, QA passed, orchestrator verified)
+- [x] Shared guide store with operation-based progress saves (D-018)
+- [x] Guide overview and prep checklist (F3)
+- [x] Step player: source visual with brackets, callouts and dim wash, zoom/pan, marks toggle, navigation, progress, resume (F4)
+- [x] Original viewer (F6)
+- [x] Read-aloud, wake lock, irreversible and low-confidence treatments, provenance labelling (F4, D-011)
+- [x] Completion screen
+- Note: the milestone security review for M2 is combined with M3's (the only new server surface in M2 is the PATCH progress route, written by the senior engineer).
 
 ## M3. Assistant
 - [ ] Chat API with streaming, grounding and validated citations (F5)

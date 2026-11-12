@@ -223,3 +223,10 @@ Done: all 20 items; `wrap-anywhere` for overflow; overlays cover the viewport (`
 How to verify: `npx playwright test e2e/m2-*.spec.ts e2e/qa-m2-experience.spec.ts --trace off`; `npx vitest run tests/ui-*`.
 Open issues / risks: `e2e/qa-m2-experience.spec.ts:413` still expects "Almost there." (spec is now "Not finished yet.", D-017) - QA to update.
 Next: QA re-check.
+
+## H-031 | 2026-11-12 | from: qa-engineer -> to: orchestrator
+Task: M2 re-check after fixes (D-017, D-018, H-029, H-030).
+Done: "Almost there." -> "Not finished yet." in `e2e/qa-m2-experience.spec.ts`. `qa-m1-flow.spec.ts:331` passes (22/22): it failed earlier only because the test assumed focus order; the focus-on-h1 behaviour is correct, not a regression (fixed in H-027 with Shift+Tab). New: PATCH contract tests in `e2e/qa-m2-integrity.spec.ts` (two tabs both orders, uncomplete vs stale tab, per-item checklist, 8 bad bodies give 400 and save nothing, other session 404, refresh on focus); `e2e/qa-m2-p1.spec.ts` (primary label at 375/landscape, overlays cover viewport at 768/1280, no repeated quote); `e2e/qa-m2-imagefail.spec.ts`.
+Results: all four H-027 defects fixed (two-tab loss, 320px overflow, speech guards). Image-error block: not reproduced as removed or re-created on focus, visibility, URL sync, save or time (3 runs; code read of `SourceVisual.tsx` 118-126, 328-365: error state is keyed by URL+retry and only changes on the Try again click). No app defect found; the `toPass` retry looks unnecessary but is harmless.
+Counts: `npm run check` clean, 31 files / 598 tests pass. Full e2e all pass (230 before the new P1 file, plus 5 new passing).
+Open defects: none.

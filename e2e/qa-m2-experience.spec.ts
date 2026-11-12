@@ -420,7 +420,7 @@ test.describe('checklist, blocked steps, completion', () => {
     await expect(primary(page)).toContainText(/finish/i);
     await primary(page).click();
     await expect(page).toHaveURL(new RegExp(`/g/${guideId}/done$`));
-    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Almost there.');
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Not finished yet.');
     const skipped = page.getByTestId('skipped');
     await expect(skipped).toContainText("1 step isn't marked done");
     await expect(skipped.getByRole('link')).toHaveCount(1);
