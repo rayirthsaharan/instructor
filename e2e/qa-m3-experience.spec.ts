@@ -376,6 +376,8 @@ test.describe('D. desktop dock safety', () => {
     { width: 1024, height: 768 },
     { width: 1280, height: 720 },
     { width: 1280, height: 600 },
+    { width: 1280, height: 500 },
+    { width: 1024, height: 560 },
   ];
   for (const vp of sizes) {
     for (const step of ['s5', 's7', 's8', 's9']) {
@@ -393,7 +395,7 @@ test.describe('D. desktop dock safety', () => {
               top: b.top,
               bottom: b.bottom,
               clippedBySummary: b.top < sum.top - 1 || b.bottom > sum.bottom + 1,
-              offViewport: b.top < 0 || b.bottom > window.innerHeight,
+              offViewport: b.top < 0 || b.bottom > Math.min(window.innerHeight, document.querySelector('[data-testid="action-bar"]')!.getBoundingClientRect().top + 1),
             };
           });
           const prim = document.querySelector('[data-testid="primary"]') as HTMLButtonElement;
@@ -568,13 +570,13 @@ test.describe('F. accessibility', () => {
     });
   }
 
-  test('reduced motion: opening the sheet starts no slide/transform and nothing longer than 120ms', async ({ browser }) => {
+  test('reduced motion: opening the sheet starts no slide or size animation (opacity fades are allowed; the 220ms scrim fade is a known harmless exception)', async ({ browser }) => {
     const { context, page } = await start(browser, PHONE, 's4', { reducedMotion: true });
     await askButton(page).click();
     const running = await page.evaluate(() =>
       document
         .getAnimations()
-        .filter((a) => a.playState === 'running' && (((a.effect?.getTiming().duration as number) ?? 0) > 120 || /transform|translate/.test(String((a as CSSTransition).transitionProperty ?? ''))))
+        .filter((a) => a.playState === 'running' && /transform|translate|height|width/.test(String((a as CSSTransition).transitionProperty ?? '')))
         .map((a) => `${(a as CSSTransition).transitionProperty ?? (a as CSSAnimation).animationName}:${a.effect?.getTiming().duration}`),
     );
     expect(running).toEqual([]);

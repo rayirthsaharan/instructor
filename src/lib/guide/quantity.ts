@@ -17,14 +17,14 @@ const NUMBER_WORD_VALUES: Record<string, string> = {
 /** Quantity words that are not plain numbers; each stands for itself and must appear in the evidence. */
 const OTHER_QUANTITY_WORDS = new Set([
   'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety',
-  'hundred', 'hundreds', 'thousand', 'half', 'halves', 'quarter', 'quarters', 'third', 'thirds', 'dozen', 'dozens', 'twice', 'double', 'triple', 'pair', 'pairs',
-  'couple', 'several', 'thrice',
-  // Ordinals from third upward ("first" and "second" are ordinary words). "one", "single", "both", "once", "few" and "pair" are ordinary too (D-022).
+  'hundred', 'hundreds', 'thousand', 'thousands', 'million', 'millions', 'billion', 'half', 'halfway', 'halves', 'quarter', 'quarters', 'third', 'thirds', 'dozen', 'dozens', 'twice', 'double', 'triple',
+  'twofold', 'threefold', 'fourfold', 'fivefold', 'tenfold', 'couple', 'several', 'thrice',
+  // Ordinals from third upward ("first" and "second" are ordinary words). "one", "single", "both", "once", "few" and "pair" are ordinary too (D-022); "pair" counts only directly before a unit.
   'fourth', 'fifth', 'sixth', 'seventh', 'eighth', 'ninth', 'tenth', 'eleventh', 'twelfth', 'thirteenth', 'fourteenth', 'fifteenth', 'sixteenth', 'seventeenth',
   'eighteenth', 'nineteenth', 'twentieth', 'thirtieth', 'fortieth', 'fiftieth', 'hundredth', 'thousandth',
 ]);
 
-/** Units that are not a quantity on their own even after "a"/"an" ("a degree of care"). A time unit after "a"/"an" is a quantity unless "to" follows ("take a minute to look"). */
+/** Units that are not a quantity on their own even after "a"/"an" ("a degree of care"). */
 const NOT_STANDALONE = new Set(['degree', 'percent', 'seconds', 'minutes', 'hours', 'days', 'weeks', 'months', 'years', 'degrees']);
 
 /** Unit words; a quantity when attached to a number or number word, or after "a"/"an" for measurement units ("an inch"). Canonical form on the right. */
@@ -92,7 +92,6 @@ function tokenise(text: string): Tok[] {
 
 /** Quantity keys of one already-normalised text: key -> how it is shown to a person. */
 const NOT_A_NOUN = new Set(['of', 'in', 'on', 'to', 'the', 'and', 'or', 'at', 'for', 'per', 'from', 'with', 'a', 'an', 'by', 'is', 'are', 'x', 'than', 'then', 'into', 'each']);
-const TIME_WORDS = new Set(['minute', 'hour', 'day', 'week', 'month', 'year']);
 const foldNoun = (w: string) => (w.length > 3 ? w.toLowerCase().replace(/ies$/, 'y').replace(/(s|x|z|ch|sh)es$/, '$1').replace(/s$/, '') : w.toLowerCase());
 
 /** `evidence`: a number also matches answers that attach it to any of the next three words; an answer's number is tied to the word right after it. */
@@ -154,10 +153,15 @@ function keysOf(text: string, into: Map<string, string>, evidence: boolean): voi
         i += 2;
         continue;
       }
+      if (/^pairs?$/.test(lower) && nextUnit !== undefined) {
+        into.set(`w:${lower}`, lower);
+        i++;
+        continue;
+      }
       const prev = toks[i - 1];
       const article = prev?.t === 'w' && /^an?$/i.test(prev.v);
       if (OTHER_QUANTITY_WORDS.has(lower)) into.set(`w:${lower}`, lower);
-      else if (article && Object.hasOwn(LONG_UNITS, lower) && !NOT_STANDALONE.has(lower) && !(TIME_WORDS.has(lower) && next?.t === 'w' && next.v.toLowerCase() === 'to')) into.set(`u:${LONG_UNITS[lower]}`, lower);
+      else if (article && Object.hasOwn(LONG_UNITS, lower) && !NOT_STANDALONE.has(lower)) into.set(`u:${LONG_UNITS[lower]}`, lower);
       else if (tok.v.length >= 2 && ((tok.v === tok.v.toUpperCase() && ROMAN.test(tok.v)) || (/^[ivx]+$/i.test(tok.v) && ROMAN.test(tok.v.toUpperCase())))) into.set(`roman:${tok.v.toUpperCase()}`, tok.v);
     }
     i++;

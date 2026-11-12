@@ -412,3 +412,36 @@ describe('QA M3 E: simplify route', () => {
     expect((await (await post()).json()).cached).toBe(true);
   });
 });
+
+describe('QA M3 re-check: D-022 calibration', () => {
+  const rej = (step: string, t: string) => finalize(step, t).notInManual;
+  it.each([
+    'Wait an hour.', 'Take an inch.', 'Use a litre.', 'Press the dowel into the seventh hole.', 'Press the third hole.', 'Press xii dowels.',
+    'Press fivé dowels.', 'Press ѕіх dowels.', 'Press 五 dowels.', 'Use one inch.', 'Wait zero minutes.', 'Press two screws.', 'Press four screws in.', 'See step 42.',
+  ])('still rejected: %s', (t) => expect(rej('s2', t), t).toBe(true));
+  it.each([
+    'Check every day.', 'Do not pound the nails.', 'Press the first hole, then the second.', 'Press 4 dowels.', 'Press four dowels in.',
+    'Use one of the dowels, on both sides, once, a single one.', 'Take a minute to check.', 'Keep a few spare.',
+  ])('accepted: %s', (t) => expect(rej('s2', t), t).toBe(false));
+  it('"step N" only for a real step number', () => {
+    expect(rej('s6', 'See step 2 for the dowels.')).toBe(false);
+    expect(rej('s6', 'See step 11.')).toBe(true);
+  });
+  it('"pair" is an ordinary word (D-022 item 2)', () => {
+    expect(rej('s1', 'Pair each part with the matching entry in the parts list.')).toBe(false);
+    expect(rej('s1', 'Keep a pair of hands free.')).toBe(false);
+  });
+  it('legitimate answers stream progressively and hold only from the number on', () => {
+    const h = new QuantityHoldback(false);
+    const shown: string[] = [];
+    for (const p of ['Press the dowels in straight. ', 'Pushing at an angle can split ', 'the panel edge, so use 4 ', 'dowels. Then check them. ']) shown.push(h.push(p));
+    expect(shown[0]).toContain('Press the dowels in straight.');
+    expect(shown[1]).toContain('Pushing at an angle');
+    expect(shown.join('')).not.toMatch(/\d|dowels\. Then/);
+  });
+  it('rarer-word false-positive rate after D-022 (informational)', () => {
+    const rarer = ['Pair each part with the entry.', 'Check the strap every day.', 'Stand at the foot of the bookcase.', 'Do not pound the nails.', 'Keep the few small fittings together.'];
+    const bad = rarer.filter((t) => rej('s1', t));
+    console.info(`[qa-m3] D-022 rarer words rejected: ${bad.length}/${rarer.length} ${bad.join(' | ')}`);
+  });
+});
