@@ -17,6 +17,7 @@ export const COPY = {
   historyFailed: "Couldn't load your earlier questions.",
   limitReached: "You've reached the question limit for this guide.",
   rateLimited: "You're asking quickly. Wait a little, then try again.",
+  unavailable: "The assistant isn't available right now. Try again in a little while.",
   busy: 'Still answering your last question. Wait for it to finish, then try again.',
   clear: 'Clear conversation',
   clearTitle: 'Clear this conversation?',
@@ -46,6 +47,8 @@ export function errorView(code: string): { kind: ErrorKind; text: string } {
     case 'message_limit':
     case 'limit_reached':
       return { kind: 'limit', text: COPY.limitReached };
+    case 'ai_unavailable':
+      return { kind: 'inline', text: COPY.unavailable };
     case 'stopped':
       return { kind: 'inline', text: COPY.stopped };
     default:

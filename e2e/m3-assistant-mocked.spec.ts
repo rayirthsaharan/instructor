@@ -116,7 +116,7 @@ for (const vp of ['375', '1280'] as const) {
         user('What size is the screw?', 's4'),
         answer("The manual doesn't give a screw size for this step.", 's4', { notInManual: true }),
         user('Anything else to know?', 's4'),
-        answer('Check each lock sits flush.', 's4', { note: 'no-source', citations: [] }),
+        answer('Check each lock sits flush.', 's4', { note: 'no_citation', citations: [] }),
       ];
       const { context, page } = await start(browser, vp, { history, step: 's4' });
       await expect(page.getByTestId('user-message')).toHaveCount(3);

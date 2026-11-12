@@ -63,12 +63,13 @@ export function cleanCitations(raw: unknown): Citation[] {
 export function parseMessage(raw: unknown): ChatMessage | null {
   if (!isObj(raw)) return null;
   const { id, role, text, stepId, createdAt } = raw;
-  if (typeof id !== 'string' || (role !== 'user' && role !== 'assistant') || typeof text !== 'string' || typeof stepId !== 'string') return null;
+  if (typeof id !== 'string' || (role !== 'user' && role !== 'assistant') || typeof text !== 'string') return null;
+  if (stepId !== null && stepId !== undefined && typeof stepId !== 'string') return null;
   return {
     id,
     role,
     text,
-    stepId,
+    stepId: stepId ?? '',
     createdAt: typeof createdAt === 'number' || typeof createdAt === 'string' ? createdAt : 0,
     citations: cleanCitations(raw.citations),
     notInManual: raw.notInManual === true,
@@ -387,8 +388,8 @@ export function conversationItems(state: Pick<ChatState, 'messages' | 'turn'>): 
   const items: ConversationItem[] = [];
   let prev: string | null = null;
   const mark = (stepId: string) => {
-    if (stepId !== prev) items.push({ kind: 'divider', stepId });
-    prev = stepId;
+    if (stepId && stepId !== prev) items.push({ kind: 'divider', stepId });
+    if (stepId) prev = stepId;
   };
   for (const m of state.messages) {
     mark(m.stepId);
