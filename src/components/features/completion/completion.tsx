@@ -160,7 +160,7 @@ export function CompletionScreen({ guideId }: { guideId: string }) {
         </ButtonLink>
       </div>
 
-      {g.saveState === 'error' && (
+      {g.saveFailed && (
         <Banner
           kind="error"
           label="Couldn't save"

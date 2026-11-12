@@ -151,6 +151,8 @@ export interface GuideSnapshot {
   documentId: string | null;
   progress: GuideProgress;
   saveState: SaveState;
+  /** True only once automatic retries are exhausted (or pointless): the point at which the UI shows its error banner. */
+  saveFailed: boolean;
 }
 
 interface Net {
@@ -210,6 +212,7 @@ export class GuideStore {
     documentId: null,
     progress: EMPTY_PROGRESS,
     saveState: 'idle',
+    saveFailed: false,
   };
   private ps = initialProgressState();
   private listeners = new Set<() => void>();
@@ -306,17 +309,16 @@ export class GuideStore {
   private async send(keepalive: boolean) {
     const rev = this.ps.rev;
     this.inFlight = true;
-    this.emit({ saveState: 'saving' });
+    this.emit({ saveState: 'saving', saveFailed: false });
     try {
       const server = await this.net.save(this.id, this.ps.progress, { keepalive });
       this.ps = progressReducer(this.ps, { type: 'saved', rev, server });
       this.retryCount = 0;
       this.inFlight = false;
-      this.emit({ progress: this.ps.progress, saveState: this.ps.dirty ? 'saving' : 'idle' });
+      this.emit({ progress: this.ps.progress, saveState: this.ps.dirty ? 'saving' : 'idle', saveFailed: false });
       if (this.ps.dirty) void this.flush();
     } catch (e) {
       this.inFlight = false;
-      this.emit({ saveState: 'error' });
       // The server rejected the content (4xx other than rate limits): retrying the same body cannot help.
       const permanent = e instanceof ApiError && e.status >= 400 && e.status < 500 && e.status !== 429 && e.status !== 408;
       const delay = this.timers.retryDelays[this.retryCount];
@@ -327,6 +329,8 @@ export class GuideStore {
           void this.flush();
         }, delay);
       }
+      // Waiting for retrySave (nothing scheduled): only now is the failure shown to the user.
+      this.emit({ saveState: 'error', saveFailed: !this.retryTimer });
     }
     if (this.flushAfterFlight) {
       this.flushAfterFlight = false;
@@ -390,6 +394,7 @@ export function useGuide(guideId: string) {
     uncompleteStep: store.uncompleteStep,
     setChecklistItem: store.setChecklistItem,
     saveState: snap.saveState,
+    saveFailed: snap.saveFailed,
     retrySave: store.retrySave,
     /** Reload the guide after a load error. */
     reload: retry,

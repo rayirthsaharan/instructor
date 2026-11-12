@@ -1,3 +1,4 @@
+import { shotDir } from './screenshot-dir';
 import type { Browser, BrowserContext, Page, Route } from '@playwright/test';
 
 export type Doc = {
@@ -152,4 +153,13 @@ const PNG = Buffer.from(
 );
 export const photoFile = (n: number) => ({ name: `page-${n}.png`, mimeType: 'image/png', buffer: PNG });
 
-export const SHOT = 'test-results/m1';
+export const SHOT = shotDir('m1');
+
+/** Serves the Lumen guide (retitled) at /api/guides/<id> so the real Overview renders for a fake-API guide. */
+export async function routeGuide(page: Page, id: string, title: string) {
+  const { readFileSync } = await import('node:fs');
+  const g = JSON.parse(readFileSync('fixtures/lumen-bookcase.guide.json', 'utf8')) as Record<string, unknown>;
+  await page.route(`**/api/guides/${id}`, (r) =>
+    r.fulfill({ contentType: 'application/json', body: JSON.stringify({ documentId: 'doc-fake', guide: { ...g, title }, progress: null, pageCount: 6 }) }),
+  );
+}

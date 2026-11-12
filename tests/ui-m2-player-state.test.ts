@@ -123,14 +123,14 @@ describe('visual pages (USER_FLOWS 6.6, DS 7.10)', () => {
     const step = { ...guide.steps.s2!, highlights: [{ source: { pageIndex: 4, region: { x: 0.1, y: 0.1, w: 0.2, h: 0.2 }, regionFallback: false }, partId: 'dowel', label: 'Dowels' }] };
     const pages = visualPages(step, guide.parts);
     expect(pages.map((p) => p.pageIndex)).toEqual([2, 4]);
-    expect(pages[0]!.marks).toHaveLength(0);
+    expect(pages[0]!.marks.filter((m) => m.key.startsWith('h'))).toHaveLength(0);
     expect(pages[1]!.marks).toHaveLength(1);
     expect(pageForPart(pages, 'dowel')).toBe(1);
     expect(pageForPart(pages, 'nope')).toBe(-1);
   });
   it('highlights without a usable region are not drawn', () => {
     const pages = visualPages(guide.steps.s6!, guide.parts);
-    expect(pages[0]!.marks).toHaveLength(0);
+    expect(pages[0]!.marks.filter((m) => m.key.startsWith('h'))).toHaveLength(0);
   });
   it('numbers callouts and describes marked areas', () => {
     const pages = visualPages(guide.steps.s2!, guide.parts);
@@ -153,7 +153,14 @@ describe('visual pages (USER_FLOWS 6.6, DS 7.10)', () => {
     expect(visualTag(page!, false, false)).toBeNull();
   });
   it('shows "Whole page shown" when there is no region', () => {
-    const [page] = visualPages(guide.steps.s2!, guide.parts);
+    const step = { ...guide.steps.s2!, highlights: [], sources: [{ pageIndex: 2, panelId: 'p3-a', regionFallback: false }] };
+    const [page] = visualPages(step, guide.parts);
     expect(visualTag(page!, false)).toBe('wholePage');
+  });
+  it('the Lumen fixture steps crop to their panel; only the deliberate fallback step (s1) shows the whole page', () => {
+    for (const [id, st] of Object.entries(guide.steps)) {
+      const tag = visualTag(visualPages(st, guide.parts)[0]!, false);
+      expect(tag === 'wholePage', id).toBe(id === 's1');
+    }
   });
 });

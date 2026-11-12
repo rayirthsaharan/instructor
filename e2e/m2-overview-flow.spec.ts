@@ -11,12 +11,8 @@ test('checklist states persist across reload; a missing part lists the steps it 
   await expect(page.getByTestId('prep-row')).toHaveCount(12);
   await expect(page.getByTestId('readiness')).toHaveText('0 of 12 checked');
 
-  // The shared Menu closes on any scroll, so bring the row into view and let the scroll event pass before opening it.
   const openRowMenu = async (name: string) => {
-    const button = row(page, name).getByRole('button', { name: `More options for ${name}` });
-    await button.scrollIntoViewIfNeeded();
-    await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
-    await button.click();
+    await row(page, name).getByRole('button', { name: `More options for ${name}` }).click();
   };
   const save = () => page.waitForResponse((r) => r.url().endsWith('/progress') && r.request().method() === 'PUT');
   let saved = save();

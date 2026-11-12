@@ -71,7 +71,7 @@ export function PlayerRoute() {
         uncompleteStep: g.uncompleteStep,
         setChecklistItem: g.setChecklistItem,
       }}
-      saveState={g.saveState}
+      saveState={g.saveFailed ? 'error' : g.saveState === 'error' ? 'saving' : g.saveState}
       retrySave={g.retrySave}
     />
   );

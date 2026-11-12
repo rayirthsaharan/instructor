@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { FakeApi, guide, newPage, noHorizontalScroll, SHOT, VIEWPORTS, type VpName } from './m1-helpers';
+import { FakeApi, guide, newPage, noHorizontalScroll, routeGuide, SHOT, VIEWPORTS, type VpName } from './m1-helpers';
 
 const shots: VpName[] = ['375', '1280'];
 
@@ -141,10 +141,11 @@ test('a processing manual that finishes while the Library is open shows "Your gu
   await expect(page.getByTestId('guide-card')).toContainText('Reading your manual');
   api.guides = [guide({ id: 'g9', documentId: 'd9', title: 'Pico toaster manual', status: 'ready' })];
   await expect(page.getByText('Your guide is ready')).toBeVisible({ timeout: 8000 });
+  await routeGuide(page, 'g9', 'Pico toaster manual');
   await page.getByRole('button', { name: 'Open', exact: true }).click();
   await expect(page).toHaveURL(/\/g\/g9$/);
   await expect(page.getByRole('heading', { name: 'Pico toaster manual' })).toBeVisible();
-  await expect(page.getByText('Guide overview coming next')).toBeVisible();
+  await expect(page.getByText("Here's the plan")).toBeVisible();
   await context.close();
 });
 

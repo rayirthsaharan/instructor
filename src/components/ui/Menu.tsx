@@ -47,14 +47,19 @@ export function Menu({
     const onDown = (e: PointerEvent) => {
       if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
     };
-    const onMove = () => setOpen(false);
+    const onResize = () => setOpen(false);
+    // The menu is fixed-positioned, so it only goes stale when its trigger leaves the viewport.
+    const onScroll = () => {
+      const r = triggerRef.current?.getBoundingClientRect();
+      if (!r || r.bottom <= 0 || r.top >= window.innerHeight || r.right <= 0 || r.left >= window.innerWidth) setOpen(false);
+    };
     document.addEventListener('pointerdown', onDown);
-    window.addEventListener('resize', onMove);
-    window.addEventListener('scroll', onMove, true);
+    window.addEventListener('resize', onResize);
+    window.addEventListener('scroll', onScroll, true);
     return () => {
       document.removeEventListener('pointerdown', onDown);
-      window.removeEventListener('resize', onMove);
-      window.removeEventListener('scroll', onMove, true);
+      window.removeEventListener('resize', onResize);
+      window.removeEventListener('scroll', onScroll, true);
     };
   }, [open]);
 

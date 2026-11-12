@@ -10,6 +10,8 @@ import {
   buttonClass,
   Card,
   ConfirmDialog,
+  Icon,
+  type IconName,
   Menu,
   Skeleton,
   SkeletonRegion,
@@ -75,9 +77,10 @@ function OverviewSkeleton() {
   );
 }
 
-function Fact({ value, caption, children }: { value: string; caption: string; children?: React.ReactNode }) {
+function Fact({ value, caption, icon, children }: { value: string; caption: string; icon?: IconName; children?: React.ReactNode }) {
   return (
     <div className="rounded-md border border-line bg-surface p-3 md:p-4">
+      {icon && <Icon name={icon} size={20} className="mb-1 text-ink-muted" />}
       <p className="type-display-md">{value}</p>
       {children}
       <p className="type-body-sm text-ink-muted">{caption}</p>
@@ -255,8 +258,8 @@ function Ready({ guideId, guide, documentId, g }: { guideId: string; guide: Vali
           {guide.summary && <p className="type-body-lg mt-3 text-ink-muted">{guide.summary}</p>}
 
           <div className="mt-6 grid grid-cols-3 gap-2 md:gap-3" data-testid="facts">
-            {guide.estimatedMinutes ? <Fact value={`About ${guide.estimatedMinutes} min`} caption="Time" /> : <Fact value="Not stated" caption="Time" />}
-            <Fact value={`${guide.peopleNeeded} ${guide.peopleNeeded === 1 ? 'person' : 'people'}`} caption="Needed" />
+            {guide.estimatedMinutes ? <Fact icon="clock" value={`About ${guide.estimatedMinutes} min`} caption="Time" /> : <Fact icon="clock" value="Not stated" caption="Time" />}
+            <Fact icon="people" value={`${guide.peopleNeeded} ${guide.peopleNeeded === 1 ? 'person' : 'people'}`} caption="Needed" />
             <Fact value={difficultyLabel(guide.difficulty)} caption="Difficulty">
               <Dots level={guide.difficulty} />
             </Fact>
@@ -302,7 +305,7 @@ function Ready({ guideId, guide, documentId, g }: { guideId: string; guide: Vali
               The original manual is the authority. If this guide and the manual differ, follow the manual. Steps are Instructor&apos;s
               wording of your manual. Text marked FROM YOUR MANUAL is the manual&apos;s exact words.
             </Banner>
-            {g.saveState === 'error' && (
+            {g.saveFailed && (
               <Banner
                 kind="error"
                 label="Couldn't save"

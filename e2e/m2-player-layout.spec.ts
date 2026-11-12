@@ -2,7 +2,7 @@ import { expect, test, type Browser, type BrowserContext, type Page } from '@pla
 import { mkdirSync } from 'node:fs';
 import { openPlayer, putProgress, SHOT, uploadLumen, visual, visualReady, VIEWPORTS, type VpName } from './m2-player-helpers';
 
-// Layouts at 375 / 768 / 1280 (and phone landscape) with screenshots in test-results/m2/.
+// Layouts at 375 / 768 / 1280 (and phone landscape) with screenshots in artifacts/screenshots/m2/.
 let guideId = '';
 let state: Awaited<ReturnType<BrowserContext['storageState']>>;
 

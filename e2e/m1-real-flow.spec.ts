@@ -18,7 +18,7 @@ test('upload the Lumen bookcase PDF, follow Processing, land on the guide placeh
   await expect(page.getByRole('heading', { name: 'Reading your manual' })).toBeVisible();
   await expect(page).toHaveURL(/\/g\/[0-9a-f-]{36}$/, { timeout: 60_000 });
   await expect(page.getByRole('heading', { level: 1 })).not.toHaveText('Your guide');
-  await expect(page.getByText('Guide overview coming next')).toBeVisible();
+  await expect(page.getByText("Here's the plan")).toBeVisible();
 
   await page.getByRole('link', { name: 'Back to library' }).click();
   await expect(page.getByTestId('guide-card')).toHaveCount(1);

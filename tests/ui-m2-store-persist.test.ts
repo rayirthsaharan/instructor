@@ -92,6 +92,7 @@ describe('GuideStore persistence', () => {
     store.completeStep('s1');
     await vi.advanceTimersByTimeAsync(101);
     expect(store.getSnapshot().saveState).toBe('error');
+    expect(store.getSnapshot().saveFailed).toBe(false); // an automatic retry is pending: no banner yet
     expect(store.getSnapshot().progress.completedStepIds).toEqual(['s1']);
     await vi.advanceTimersByTimeAsync(1000);
     expect(calls).toHaveLength(2);
@@ -106,6 +107,7 @@ describe('GuideStore persistence', () => {
     await vi.advanceTimersByTimeAsync(101 + 1000 + 2000 + 5000);
     expect(calls).toHaveLength(3);
     expect(store.getSnapshot().saveState).toBe('error');
+    expect(store.getSnapshot().saveFailed).toBe(true);
     await store.retrySave();
     expect(calls).toHaveLength(4);
     expect(store.getSnapshot().saveState).toBe('idle');
@@ -118,6 +120,7 @@ describe('GuideStore persistence', () => {
     await vi.advanceTimersByTimeAsync(5000);
     expect(calls).toHaveLength(1);
     expect(store.getSnapshot().saveState).toBe('error');
+    expect(store.getSnapshot().saveFailed).toBe(true);
     await store.retrySave();
     expect(calls).toHaveLength(2);
   });

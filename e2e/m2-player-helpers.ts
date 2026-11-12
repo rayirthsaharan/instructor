@@ -1,8 +1,9 @@
+import { shotDir } from './screenshot-dir';
 import { expect, type Browser, type BrowserContext, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-export const SHOT = 'test-results/m2';
+export const SHOT = shotDir('m2');
 
 export const VIEWPORTS = {
   '375': { viewport: { width: 375, height: 800 }, isMobile: true, hasTouch: true },

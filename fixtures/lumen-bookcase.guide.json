@@ -317,7 +317,13 @@
         {
           "pageIndex": 2,
           "panelId": "p3-a",
-          "regionFallback": false
+          "regionFallback": false,
+          "region": {
+            "x": 0.05,
+            "y": 0.14,
+            "w": 0.9,
+            "h": 0.38
+          }
         }
       ],
       "why": {
@@ -378,7 +384,13 @@
         {
           "pageIndex": 2,
           "panelId": "p3-b",
-          "regionFallback": false
+          "regionFallback": false,
+          "region": {
+            "x": 0.05,
+            "y": 0.54,
+            "w": 0.9,
+            "h": 0.38
+          }
         }
       ],
       "checkpoint": {
@@ -427,7 +439,13 @@
         {
           "pageIndex": 3,
           "panelId": "p4-a",
-          "regionFallback": false
+          "regionFallback": false,
+          "region": {
+            "x": 0.05,
+            "y": 0.14,
+            "w": 0.9,
+            "h": 0.38
+          }
         }
       ]
     },
@@ -481,7 +499,13 @@
         {
           "pageIndex": 3,
           "panelId": "p4-b",
-          "regionFallback": false
+          "regionFallback": false,
+          "region": {
+            "x": 0.05,
+            "y": 0.54,
+            "w": 0.9,
+            "h": 0.38
+          }
         }
       ]
     },
@@ -520,7 +544,13 @@
         {
           "pageIndex": 4,
           "panelId": "p5-a",
-          "regionFallback": false
+          "regionFallback": false,
+          "region": {
+            "x": 0.05,
+            "y": 0.14,
+            "w": 0.9,
+            "h": 0.38
+          }
         }
       ]
     },
@@ -575,7 +605,13 @@
         {
           "pageIndex": 4,
           "panelId": "p5-b",
-          "regionFallback": false
+          "regionFallback": false,
+          "region": {
+            "x": 0.05,
+            "y": 0.54,
+            "w": 0.9,
+            "h": 0.38
+          }
         }
       ]
     },
@@ -617,7 +653,13 @@
         {
           "pageIndex": 5,
           "panelId": "p6-a",
-          "regionFallback": false
+          "regionFallback": false,
+          "region": {
+            "x": 0.05,
+            "y": 0.14,
+            "w": 0.9,
+            "h": 0.38
+          }
         }
       ]
     },
@@ -667,7 +709,13 @@
         {
           "pageIndex": 5,
           "panelId": "p6-b",
-          "regionFallback": false
+          "regionFallback": false,
+          "region": {
+            "x": 0.05,
+            "y": 0.54,
+            "w": 0.9,
+            "h": 0.38
+          }
         }
       ]
     },
@@ -695,7 +743,13 @@
         {
           "pageIndex": 5,
           "panelId": "p6-b",
-          "regionFallback": false
+          "regionFallback": false,
+          "region": {
+            "x": 0.05,
+            "y": 0.54,
+            "w": 0.9,
+            "h": 0.38
+          }
         }
       ]
     }

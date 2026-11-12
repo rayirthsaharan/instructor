@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { doc, FakeApi, guide, newPage, noHorizontalScroll, SHOT, type VpName } from './m1-helpers';
+import { doc, FakeApi, guide, newPage, noHorizontalScroll, routeGuide, SHOT, type VpName } from './m1-helpers';
 
 const shots: VpName[] = ['375', '1280'];
 
@@ -76,12 +76,13 @@ test('ready: redirects (replace) to /g/<guideId> and the placeholder shows the t
   api.guides = [guide({ id: 'g7', documentId: 'j', title: 'Orchard garden shed assembly' })];
   api.docs['j'] = doc({ id: 'j', stage: 'verify' });
   await api.install(page);
+  await routeGuide(page, 'g7', 'Orchard garden shed assembly');
   await page.goto('/');
   await page.goto('/d/j');
   api.docs['j'] = doc({ id: 'j', status: 'ready', stage: 'publish', progress: 1, guideId: 'g7' });
   await expect(page).toHaveURL(/\/g\/g7$/, { timeout: 8000 });
   await expect(page.getByRole('heading', { name: 'Orchard garden shed assembly' })).toBeVisible();
-  await expect(page.getByText('Guide overview coming next')).toBeVisible();
+  await expect(page.getByText("Here's the plan")).toBeVisible();
   await page.screenshot({ path: `${SHOT}/guide-placeholder-375-light.png`, animations: 'disabled' });
   // The Processing URL is not left in history
   await page.goBack();

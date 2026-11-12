@@ -522,6 +522,9 @@ test.describe('source visual', () => {
 
   test('no usable region: the whole page is shown and tagged', async ({ browser }) => {
     const { context, page } = await start(browser);
+    await patchGuide(page, guideId, (g) => {
+      g.steps.s3.sources = [{ pageIndex: 2, panelId: 'p3-b', regionFallback: false }];
+    });
     await openPlayer(page, guideId, '?step=s3');
     await visualReady(page);
     await expect(page.getByTestId('visual-tag')).toHaveText('Whole page shown');
@@ -581,7 +584,7 @@ test.describe('step content', () => {
     await expect(stepTitle(page)).toContainText('Press in the cam locks');
     await expect(content.getByText('Read from the picture - the manual has no words here')).toBeVisible();
     await expect(content.locator('[data-kind="unsure"]')).toHaveCount(0); // medium confidence: no marker
-    await expect(visual(page)).toHaveAttribute('data-tag', 'wholePage');
+    await expect(visual(page)).toHaveAttribute('data-tag', ''); // cropped to its panel
     await context.close();
   });
 
