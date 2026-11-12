@@ -8,7 +8,7 @@ import type { ValidatedGuide } from '@/lib/guide/validate';
 import { stepPosition } from '../player/model';
 import { PartThumb } from '../overview/part-thumb';
 import { Composer } from './Composer';
-import { COPY, errorView } from './copy';
+import { COPY } from './copy';
 import { AssistantAnswer, StepDivider, TurnView, UserBubble, type CitationEnv } from './Messages';
 
 export interface AssistantViewProps {
@@ -29,6 +29,13 @@ export function ContextStrip({ guide, documentId, stepId, onTap }: { guide: Vali
   const step = getOwn(guide.steps, stepId);
   if (!step) return null;
   const { number } = stepPosition(guide, stepId);
+  // The sheet covers the step's banners, so the strip says they exist (irreversible wins).
+  const warnings = step.warnings.length;
+  const safety = step.irreversible
+    ? { text: "Can't be undone", icon: 'lock' as const, cls: 'bg-danger-soft text-danger-fg' }
+    : warnings > 0
+      ? { text: `${warnings} ${warnings === 1 ? 'warning' : 'warnings'}`, icon: 'warn' as const, cls: 'bg-warn-soft text-warn-fg' }
+      : null;
   const body = (
     <>
       <span className="relative flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-xs bg-surface-sunken text-ink-subtle">
@@ -39,17 +46,23 @@ export function ContextStrip({ guide, documentId, stepId, onTap }: { guide: Vali
       </span>
       <span className="min-w-0 flex-1">
         <span className="type-label block text-ink-muted" data-testid="context-label">
-          ABOUT STEP {number}
+          STEP {number}
         </span>
         <span className="type-body block truncate font-semibold text-ink" data-testid="context-title">
           {step.title}
         </span>
       </span>
+      {safety && (
+        <span className={`type-tag inline-flex shrink-0 items-center gap-1 rounded-xs px-2 py-0.5 ${safety.cls}`} data-testid="context-safety">
+          <Icon name={safety.icon} size={16} />
+          {safety.text}
+        </span>
+      )}
     </>
   );
   const cls = 'flex h-16 w-full items-center gap-3 border-b border-line px-4 text-left';
   return onTap ? (
-    <button type="button" onClick={onTap} className={`${cls} cursor-pointer t-fast hover:bg-surface-sunken`} data-testid="context-strip" aria-label={`About step ${number}: ${step.title}. Close the assistant and go back to the step`}>
+    <button type="button" onClick={onTap} className={`${cls} cursor-pointer t-fast hover:bg-surface-sunken`} data-testid="context-strip" aria-label={`Step ${number}: ${step.title}.${safety ? ` ${safety.text}.` : ''} Close and go back to the step`}>
       {body}
     </button>
   ) : (
@@ -82,6 +95,7 @@ export function AssistantPanel(p: AssistantViewProps & { onClear: () => void; on
   const pinned = useRef(true);
 
   const env: CitationEnv = {
+    currentStepId: p.stepId,
     stepNumber: (id) => (getOwn(guide.steps, id) ? stepPosition(guide, id).number : undefined),
     pageExists: (i) => i < Math.max(1, p.pageCount),
     onGoToStep: p.onGoToStep,
@@ -95,7 +109,6 @@ export function AssistantPanel(p: AssistantViewProps & { onClear: () => void; on
     if (el && pinned.current) el.scrollTop = el.scrollHeight;
   }, [items.length, answerLength, state.history]);
 
-  const limited = state.turn?.status === 'failed' && state.turn.error ? errorView(state.turn.error.code).kind === 'limit' : false;
   const hasMessages = state.messages.length > 0;
 
   return (
@@ -158,14 +171,14 @@ export function AssistantPanel(p: AssistantViewProps & { onClear: () => void; on
           <ul className="-mt-1 mb-1 flex flex-wrap gap-x-2" aria-label="Suggested questions" data-testid="suggestions">
             {a.suggestions.map((s) => (
               <li key={s}>
-                <Chip aria-pressed={undefined} disabled={!p.online || limited} onClick={() => a.send(s)}>
+                <Chip aria-pressed={undefined} disabled={!p.online} onClick={() => a.send(s)}>
                   {s}
                 </Chip>
               </li>
             ))}
           </ul>
         )}
-        <Composer busy={a.busy} disabledReason={p.online ? undefined : COPY.offline} limitReached={limited} onSend={a.send} onStop={a.stop} />
+        <Composer busy={a.busy} disabledReason={p.online ? undefined : COPY.offline} onSend={a.send} onStop={a.stop} />
       </div>
     </div>
   );

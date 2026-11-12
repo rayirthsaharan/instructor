@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState, useSyncExternalStore } from 'react';
 import { cn } from '@/components/ui';
 import { COUNTER_FROM, MAX_QUESTION_CHARS } from '@/lib/client/assistant';
 import { COPY } from './copy';
@@ -20,11 +20,16 @@ function StopIcon() {
   );
 }
 
+function subscribeCoarse(cb: () => void) {
+  const mq = matchMedia('(pointer: coarse)');
+  mq.addEventListener('change', cb);
+  return () => mq.removeEventListener('change', cb);
+}
+
 /** Composer (DS 7.13): multiline, 16px text (no iOS zoom), up to 4 lines, Send 48 / Stop while streaming. */
 export function Composer({
   busy,
   disabledReason,
-  limitReached,
   onSend,
   onStop,
   className,
@@ -32,19 +37,20 @@ export function Composer({
   busy: boolean;
   /** Offline: composer disabled with this helper. */
   disabledReason?: string;
-  limitReached?: boolean;
   onSend: (text: string) => void;
   onStop: () => void;
   className?: string;
 }) {
   const [text, setText] = useState('');
+  // On touch screens Enter is a new line, so the keyboard key says so (USER_FLOWS 7).
+  const coarse = useSyncExternalStore(subscribeCoarse, () => matchMedia('(pointer: coarse)').matches, () => false);
   const ref = useRef<HTMLTextAreaElement>(null);
   const stopRef = useRef<HTMLButtonElement>(null);
   const helperId = useId();
   const countId = useId();
   const len = text.length;
   const over = len > MAX_QUESTION_CHARS;
-  const blocked = !!disabledReason || !!limitReached;
+  const blocked = !!disabledReason;
   const canSend = !busy && !blocked && text.trim().length > 0 && !over;
 
   // Grow with the text up to 4 lines (the CSS max-height), then scroll inside.
@@ -89,7 +95,7 @@ export function Composer({
           aria-describedby={cn(disabledReason && helperId, len >= COUNTER_FROM && countId) || undefined}
           aria-invalid={over || undefined}
           placeholder={COPY.placeholder}
-          enterKeyHint="send"
+          enterKeyHint={coarse ? 'enter' : 'send'}
           data-testid="composer-input"
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => {

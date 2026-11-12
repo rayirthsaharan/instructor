@@ -150,6 +150,8 @@ export interface ActionBarProps {
   onPrimary: () => void;
   onSteps: () => void;
   onAsk: () => void;
+  /** Desktop: the assistant dock is open (the Ask button is its toggle). */
+  askOpen?: boolean;
   coach?: { onDismiss: () => void } | null;
 }
 
@@ -229,8 +231,12 @@ export function ActionBar(p: ActionBarProps) {
           type="button"
           onClick={p.onAsk}
           aria-label={labelled ? undefined : 'Ask'}
+          aria-expanded={p.layout === 'desktop' ? !!p.askOpen : undefined}
           data-testid="ask-button"
-          className={cn(buttonClass('quiet', 'lg', labelled ? wide : square), '!bg-accent-soft hover:!bg-accent-soft')}
+          className={cn(
+            buttonClass('quiet', 'lg', labelled ? wide : square),
+            p.askOpen ? '!bg-accent !text-on-accent hover:!bg-accent-hover' : '!bg-accent-soft hover:!bg-accent-soft',
+          )}
         >
           <ExtraIcon name="message" />
           {labelled && <span>Ask</span>}

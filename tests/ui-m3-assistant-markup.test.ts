@@ -78,16 +78,38 @@ describe('turn states', () => {
     expect(html(h(TurnView, { turn: turn('rate_limited'), onRetry: noop }))).toContain(esc(COPY.rateLimited));
     expect(html(h(TurnView, { turn: turn('busy'), onRetry: noop }))).toContain(esc(COPY.busy));
   });
-  it('the question limit has no retry', () => {
-    const t = html(h(TurnView, { turn: turn('message_limit'), onRetry: noop }));
-    expect(t).toContain('question limit');
-    expect(t).not.toContain('turn-retry');
-  });
-  it('streaming shows a caret that is hidden from assistive technology', () => {
+  it('streaming shows muted provisional text and a status line, no caret', () => {
     const t = html(h(TurnView, { turn: { localId: 'l', stepId: 's4', question: 'q', answer: 'abc', status: 'streaming' }, onRetry: noop }));
-    expect(t).toContain('data-testid="caret"');
-    expect(t).toContain('aria-hidden="true"');
+    expect(t).not.toContain('caret');
+    expect(t).toContain('text-ink-muted" data-testid="provisional"');
+    expect(t).toContain(esc(COPY.statusChecking));
     expect(t).not.toContain('aria-live');
+  });
+  it('before the first delta the status says it is looking in the manual', () => {
+    const t = html(h(TurnView, { turn: { localId: 'l', stepId: 's4', question: 'q', answer: '', status: 'streaming' }, onRetry: noop }));
+    expect(t).toContain(esc(COPY.statusLooking));
+    expect(t).not.toContain('provisional');
+  });
+  it('an unavailable assistant keeps the question and offers Try again', () => {
+    const t = html(h(TurnView, { turn: turn('ai_unavailable'), onRetry: noop }));
+    expect(t).toContain('Why?');
+    expect(t).toContain(esc(COPY.unavailable));
+    expect(t).toContain('turn-retry');
+  });
+});
+
+describe('citation chips and composer hint', () => {
+  it('the Step chip is hidden when it cites the step being shown, and carries an arrow otherwise', () => {
+    const msg = m({ citations: [{ pageIndex: 2, stepId: 's4' }] });
+    const here = html(h(AssistantAnswer, { message: msg, env: { ...env, currentStepId: 's4' }, onOpenManual: noop }));
+    expect(here).not.toContain('cite-step');
+    expect(here).toContain('cite-page');
+    const away = html(h(AssistantAnswer, { message: msg, env: { ...env, currentStepId: 's9' }, onOpenManual: noop }));
+    expect(away).toContain('cite-step');
+    expect(away).toContain('M5 12h14');
+  });
+  it('the keyboard key says send on server render (pointer unknown)', () => {
+    expect(html(h(Composer, { busy: false, onSend: noop, onStop: noop }))).toMatch(/enterkeyhint="send"/i);
   });
 });
 

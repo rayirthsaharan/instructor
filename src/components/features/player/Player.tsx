@@ -445,6 +445,7 @@ function Player({ guideId, guide, documentId, pageCount, progress, actions, save
       onBack={goPrev}
       onPrimary={onPrimary}
       onSteps={() => openPanel('steps')}
+      askOpen={url.panel === 'ask' && layout === 'desktop'}
       onAsk={() => (url.panel === 'ask' && layout === 'desktop' ? closePanel() : url.panel !== 'ask' && openPanel('ask'))}
       coach={coach}
     />
@@ -512,7 +513,7 @@ function Player({ guideId, guide, documentId, pageCount, progress, actions, save
           </div>
           <div className="min-w-0 flex-1 p-6">{visual}</div>
           <div className="flex w-[420px] shrink-0 flex-col bg-surface shadow-[inset_1px_0_0_var(--color-line)]">
-            {assistantOpen ? <AssistantDock {...assistantProps} onClose={closePanel} /> : textPanel}
+            {assistantOpen ? <AssistantDock {...assistantProps} onClose={closePanel} missing={missing} onFoundPart={(id) => actions.setChecklistItem(id, 'have')} onOpenOriginal={openOriginal} /> : textPanel}
             {bar}
           </div>
         </div>

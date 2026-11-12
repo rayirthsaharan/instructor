@@ -258,7 +258,7 @@ describe('conversation reducer', () => {
     s = chatReducer(s, { type: 'delta', localId: 'l1', text: 'Hel' });
     s = chatReducer(s, { type: 'delta', localId: 'l1', text: 'lo' });
     expect(s.turn).toMatchObject({ answer: 'Hello', status: 'streaming' });
-    expect(s.announce).toBe('');
+    expect(s.announce).toBe('Looking in your manual.');
     s = chatReducer(s, { type: 'done', localId: 'l1', message: msg({ id: 'a1', text: 'Hello' }) });
     expect(s.turn).toBeNull();
     expect(s.messages.map((m) => [m.role, m.text])).toEqual([['user', 'Why?'], ['assistant', 'Hello']]);
@@ -325,11 +325,10 @@ describe('keyboard inset and error copy', () => {
     expect(keyboardInset(800, 770, 0)).toBe(0);
     expect(keyboardInset(800, 800, 0)).toBe(0);
   });
-  it('never shows server text; limit, rate and busy codes have their own copy', () => {
+  it('never shows server text; rate and busy codes have their own copy', () => {
     expect(errorView('rate_limited').kind).toBe('info');
     expect(errorView('busy').kind).toBe('info');
     expect(errorView('rate_limited').text).not.toBe(errorView('busy').text);
-    expect(errorView('message_limit').kind).toBe('limit');
     expect(errorView('provider_error')).toEqual({ kind: 'inline', text: "That didn't go through." });
     expect(errorView('stopped').kind).toBe('inline');
     expect(errorView('ai_unavailable').text).toContain('isn\'t available');

@@ -63,7 +63,7 @@ export interface AssistantPrompt {
 }
 
 /** The explicit "the manual does not say" answer. Shared by the mock, the guards and the UI contract. */
-export const NOT_IN_MANUAL_TEXT = 'That is not in your manual, so I cannot answer it from here. Check the manufacturer or the printed leaflet rather than relying on a guess.';
+export const NOT_IN_MANUAL_TEXT = "I couldn't find this in your manual, so I won't guess. Check the original manual or ask the manufacturer.";
 
 export interface AnswerQuestionInput {
   guide: ValidatedGuide;

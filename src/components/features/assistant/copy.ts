@@ -13,7 +13,9 @@ export const COPY = {
   askAgain: 'Ask again',
   offline: "You're offline. Questions need a connection.",
   historyFailed: "Couldn't load your earlier questions.",
-  limitReached: "You've reached the question limit for this guide.",
+  statusLooking: 'Looking in your manual...',
+  statusChecking: 'Checking this against your manual...',
+  statusSlow: 'Still checking. This can take up to a minute.',
   rateLimited: "You're asking quickly. Wait a little, then try again.",
   unavailable: "The assistant isn't available right now. Try again in a little while.",
   busy: 'Still answering your last question. Wait for it to finish, then try again.',
@@ -33,7 +35,7 @@ export const COPY = {
   },
 } as const;
 
-export type ErrorKind = 'inline' | 'info' | 'limit';
+export type ErrorKind = 'inline' | 'info';
 
 /** How a failed turn is shown. Server messages are never shown: the copy is fixed and says what to do next. */
 export function errorView(code: string): { kind: ErrorKind; text: string } {
@@ -42,9 +44,6 @@ export function errorView(code: string): { kind: ErrorKind; text: string } {
       return { kind: 'info', text: COPY.rateLimited };
     case 'busy':
       return { kind: 'info', text: COPY.busy };
-    case 'message_limit':
-    case 'limit_reached':
-      return { kind: 'limit', text: COPY.limitReached };
     case 'ai_unavailable':
       return { kind: 'inline', text: COPY.unavailable };
     case 'stopped':

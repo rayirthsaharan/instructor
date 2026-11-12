@@ -11,7 +11,6 @@ export interface Msg {
   createdAt: number;
   citations: Array<{ stepId?: string; pageIndex: number; region?: { x: number; y: number; w: number; h: number } }>;
   notInManual: boolean;
-  note?: string;
 }
 
 let n = 0;

@@ -58,7 +58,7 @@ for (const vp of ['375', '1280'] as const) {
       await expect(panelOf(page)).toBeVisible();
       expect(query(page).get('panel')).toBe('ask');
       expect(query(page).get('step')).toBe('s2');
-      await expect(page.getByTestId('context-label')).toHaveText('ABOUT STEP 2');
+      await expect(page.getByTestId('context-label')).toHaveText('STEP 2');
       await expect(page.getByTestId('context-title')).toHaveText('Insert the dowels');
       if (vp === '375') {
         const sheet = page.getByRole('dialog', { name: 'Ask about this step' });
@@ -147,12 +147,14 @@ for (const vp of ['375', '1280'] as const) {
       await expect(page.getByTestId('suggestions')).toHaveCount(0);
       await sendDelta(page, 'They keep the panels <b>lined</b> up');
       await expect(page.getByTestId('assistant-streaming')).toContainText('They keep the panels <b>lined</b> up');
-      await expect(page.getByTestId('caret')).toBeVisible();
+      await expect(page.getByTestId('caret')).toHaveCount(0);
+      await expect(page.getByTestId('provisional')).toHaveCSS('color', await page.getByTestId('answer-status').evaluate((e) => getComputedStyle(e).color));
+      await expect(page.getByTestId('answer-status')).toHaveText('Checking this against your manual...');
       await expect(page.locator('b')).toHaveCount(0);
-      await expect(page.getByTestId('assistant-live')).toHaveText('');
+      await expect(page.getByTestId('assistant-live')).toHaveText('Looking in your manual.'); // announced once, when the question is sent
       await shot(page, `${vp}-streaming`);
       await sendDelta(page, ' while the glue sets.\nSecond line.');
-      await expect(page.getByTestId('assistant-live')).toHaveText('');
+      await expect(page.getByTestId('assistant-live')).toHaveText('Looking in your manual.');
       await sendDone(page, answer('They keep the panels <b>lined</b> up while the glue sets.\nSecond line.', 's2', { citations: [{ stepId: 's2', pageIndex: 2 }] }));
       await expect(page.getByTestId('assistant-streaming')).toHaveCount(0);
       await expect(page.getByTestId('assistant-live')).toContainText('Second line.');
@@ -161,6 +163,37 @@ for (const vp of ['375', '1280'] as const) {
       await expect(page.locator('[data-testid="assistant-message"] b')).toHaveCount(0);
       await expect(page.getByTestId('citations').getByTestId('cite-page')).toHaveText('p. 3');
       await shot(page, `${vp}-answer`);
+      await context.close();
+    });
+
+    test('held-back answer: status line before the first words, while checking, and after 20 seconds', async ({ browser }) => {
+      const { context, page } = await start(browser, vp);
+      await page.clock.install();
+      await ask(page, 'How many dowels?');
+      const status = page.getByTestId('answer-status');
+      await expect(status).toHaveText('Looking in your manual...');
+      await expect(page.getByTestId('provisional')).toHaveCount(0);
+      await shot(page, `${vp}-held-looking`);
+      await sendDelta(page, 'You need');
+      await expect(status).toHaveText('Checking this against your manual...');
+      await shot(page, `${vp}-held-checking`);
+      await page.clock.runFor(21_000);
+      await expect(status).toHaveText('Still checking. This can take up to a minute.');
+      await shot(page, `${vp}-held-slow`);
+      await sendDone(page, answer('You need 4 dowels.'));
+      await expect(page.getByTestId('assistant-streaming')).toHaveCount(0);
+      await expect(page.getByTestId('assistant-message')).toContainText('You need 4 dowels.');
+      await context.close();
+    });
+
+    test('an assistant that is unavailable keeps the question and offers Try again', async ({ browser }) => {
+      const { context, page } = await start(browser, vp);
+      await ask(page, 'Will this work?');
+      await sendError(page, 'ai_unavailable', 'timeout');
+      const err = page.getByTestId('turn-error');
+      await expect(err).toContainText("The assistant isn't available right now. Try again in a little while.");
+      await expect(page.getByTestId('user-message')).toHaveText('Will this work?');
+      await expect(err.getByRole('button', { name: 'Try again' })).toBeVisible();
       await context.close();
     });
 
@@ -291,7 +324,7 @@ for (const vp of ['375', '1280'] as const) {
       await expect(page).toHaveURL(/step=s4/);
       await expect(page.getByTestId('step-counter')).toContainText('Step 4 of 10');
       if (vp === '1280') {
-        await expect(page.getByTestId('context-label')).toHaveText('ABOUT STEP 4'); // the dock stays open
+        await expect(page.getByTestId('context-label')).toHaveText('STEP 4'); // the dock stays open
         expect(query(page).get('panel')).toBe('ask');
       } else {
         await expect(panelOf(page)).toBeHidden();
@@ -347,11 +380,11 @@ for (const vp of ['375', '1280'] as const) {
 test.describe('step awareness', () => {
   test('desktop dock: changing step updates the context and the next question uses the new step', async ({ browser }) => {
     const { context, page, api } = await start(browser, '1280');
-    await expect(page.getByTestId('context-label')).toHaveText('ABOUT STEP 2');
+    await expect(page.getByTestId('context-label')).toHaveText('STEP 2');
     await page.getByTestId('dock-close').focus();
     await page.getByRole('button', { name: 'Steps' }).count(); // no Steps button on desktop
     await page.keyboard.press('ArrowRight'); // arrows work while the dock is open and focus is not in the field
-    await expect(page.getByTestId('context-label')).toHaveText('ABOUT STEP 3');
+    await expect(page.getByTestId('context-label')).toHaveText('STEP 3');
     await expect(page.getByTestId('context-title')).toHaveText('Fit the cam bolts');
     expect(query(page).get('panel')).toBe('ask');
     await expect.poll(() => api.suggestionRequests).toContain('s3');
@@ -361,13 +394,55 @@ test.describe('step awareness', () => {
     await page.keyboard.press('Tab'); // leave the field
     await page.getByTestId('conversation').focus();
     await page.keyboard.press('ArrowRight');
-    await expect(page.getByTestId('context-label')).toHaveText('ABOUT STEP 4');
+    await expect(page.getByTestId('context-label')).toHaveText('STEP 4');
     await ask(page, 'And this one?');
     expect((await posts(page))[1]).toMatchObject({ stepId: 's4' });
     await sendDone(page, answer('A lock.', 's4'));
     await expect(page.getByTestId('step-divider')).toHaveText(['ABOUT STEP 3', 'ABOUT STEP 4']);
     await shot(page, '1280-two-steps');
     await context.close();
+  });
+
+  for (const [stepId, name, irreversible] of [['s5', 'warning', false], ['s7', 'irreversible', true]] as const) {
+    test(`desktop dock: a ${name} step keeps its banners on screen above the chat and out of the toggle`, async ({ browser }) => {
+      const { context, page } = await start(browser, '1280', { step: stepId });
+      const banners = page.getByTestId('dock-banners');
+      await expect(banners).toBeVisible();
+      await expect(banners).toContainText(irreversible ? "Can't be undone" : 'Caution');
+      await expect(banners.locator('[role="note"]').first()).toBeVisible();
+      await shot(page, `1280-dock-${name}`);
+      const toggle = page.getByTestId('dock-step-toggle');
+      await toggle.click();
+      await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+      await expect(banners).toBeVisible(); // collapsing never hides a warning
+      await expect(page.getByTestId('dock-instruction')).toHaveCount(0);
+      // the summary is capped at 44% of the column and sits above the conversation
+      const sum = (await page.getByTestId('dock-summary').boundingBox())!;
+      const conv = (await page.getByTestId('conversation').boundingBox())!;
+      expect(sum.y + sum.height).toBeLessThanOrEqual(conv.y + 1);
+      await toggle.click();
+      await expect(page.getByTestId('dock-instruction')).toBeVisible();
+      await context.close();
+    });
+  }
+
+  test('desktop dock: the Ask button is the dock toggle (open state, aria-expanded)', async ({ browser }) => {
+    const { context, page } = await start(browser, '1280');
+    await expect(askButton(page)).toHaveAttribute('aria-expanded', 'true');
+    await askButton(page).click();
+    await expect(page.getByTestId('assistant-dock')).toHaveCount(0);
+    await expect(askButton(page)).toHaveAttribute('aria-expanded', 'false');
+    await context.close();
+  });
+
+  test('phone sheet: the context strip names the safety tag of the step', async ({ browser }) => {
+    const { context, page } = await start(browser, '375', { step: 's7' });
+    await expect(page.getByTestId('context-label')).toHaveText('STEP 7');
+    await expect(page.getByTestId('context-safety')).toHaveText("Can't be undone");
+    await context.close();
+    const w = await start(browser, '375', { step: 's5' });
+    await expect(w.page.getByTestId('context-safety')).toHaveText('1 warning');
+    await w.context.close();
   });
 
   test('desktop dock: the step pinned at the top collapses; Enter sends, Shift+Enter adds a line', async ({ browser }) => {

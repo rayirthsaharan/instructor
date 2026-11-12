@@ -354,7 +354,7 @@ export function chatReducer(state: ChatState, a: ChatAction): ChatState {
     case 'send':
       // A new question replaces a failed one (that is "Try again"); it is never added on top of a running one.
       if (state.turn?.status === 'streaming') return state;
-      return { ...state, announce: '', turn: { localId: a.localId, stepId: a.stepId, question: a.text, answer: '', status: 'streaming' } };
+      return { ...state, announce: 'Looking in your manual.', turn: { localId: a.localId, stepId: a.stepId, question: a.text, answer: '', status: 'streaming' } };
     case 'delta':
       if (state.turn?.localId !== a.localId || state.turn.status !== 'streaming') return state;
       return { ...state, turn: { ...state.turn, answer: state.turn.answer + a.text } };

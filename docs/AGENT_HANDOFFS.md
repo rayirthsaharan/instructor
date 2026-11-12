@@ -263,3 +263,10 @@ Task: Visual review of the M3 assistant (37 screenshots).
 Done: Verdict "not shippable until two P1s are fixed": (P1) on desktop the dock hides warnings, checkpoint and the irreversible banner while "Done - next step" stays pressable; (P1) held-back streaming looks frozen. Plus 5 P2 and 3 P3 items. Rulings in D-021. Specs updated: USER_FLOWS 6.2, 6.3, 6.4, 6.6, section 7 rewritten; DESIGN_SYSTEM 7.11, 7.13, 7.16, 9.
 Open issues / risks: landscape sheet and keyboard-safe composer untested on a real phone.
 Next: engineer applies all (task M3-d); QA re-checks the dock with warning and irreversible steps.
+
+## H-037 | 2026-11-12 | from: software-engineer -> to: qa-engineer
+Task: M3-d assistant UI fixes (D-021) and contract absorption (D-020).
+Done: desktop dock with pinned step summary (shared `StepBanners` / `Checkpoint` from `StepContent.tsx`; banners never collapsible; summary capped at 44%); held-back streaming status states; Ask toggle state; new not-in-manual copy; citation chip rules; safety tag; `note` and limit states removed; `toPass` wrapper removed.
+How to verify: `npm run check` (745), `npm run e2e -- --trace off` (304/304 per engineer). Screenshots `artifacts/screenshots/m3/`.
+Open issues / risks: when banners alone exceed the 44% cap (step 7) the toggle row sits below the fold; real-device on-screen keyboard untested.
+Next: QA on the integrated assistant - dock on steps 5, 7, 8; `busy` and `ai_unavailable`; guards end to end.

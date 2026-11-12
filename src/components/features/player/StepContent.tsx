@@ -35,6 +35,91 @@ function GuidanceBody({ g, page, lang, onOpenPage }: { g: Guidance; page: number
   );
 }
 
+/**
+ * Everything the user must see before acting, in the safety order of USER_FLOWS 6.2 (items 1-4). Shared by the text panel
+ * and the desktop assistant dock so both show the same components with the same wording (DS 7.12).
+ */
+export function StepBanners({
+  step,
+  guide,
+  page,
+  missing,
+  onFoundPart,
+  onOpenPage,
+}: {
+  step: Step;
+  guide: ValidatedGuide;
+  page: number;
+  missing: MissingPartUse[];
+  onFoundPart: (partId: string) => void;
+  onOpenPage: () => void;
+}) {
+  return (
+    <>
+      {step.irreversible && <Banner kind="irreversible" />}
+      {sortedWarnings(step.warnings).map((w, i) => (
+        <WarningBanner
+          key={i}
+          severity={w.severity}
+          text={w.text}
+          sourceQuote={w.sourceQuote}
+          page={page}
+          lang={guide.language}
+          onOpenPage={onOpenPage}
+        />
+      ))}
+      {missing.map((m) => (
+        <Banner
+          key={m.part.id}
+          kind="caution"
+          label="Missing part"
+          action={
+            <Button variant="quiet" size="sm" onClick={() => onFoundPart(m.part.id)}>
+              I found it
+            </Button>
+          }
+        >
+          {missingPartSentence(m)}
+        </Banner>
+      ))}
+      {step.confidence === 'low' && (
+        <Banner
+          kind="unsure"
+          action={
+            <Button variant="quiet" size="sm" onClick={onOpenPage}>
+              Show original page
+            </Button>
+          }
+        />
+      )}
+
+    </>
+  );
+}
+
+/** "You'll know it's right when" block (DS 7.15). */
+export function Checkpoint({ step, guide, page, onOpenPage }: { step: Step; guide: ValidatedGuide; page: number; onOpenPage: () => void }) {
+  return (
+    <>
+      {step.checkpoint && (
+        <section className="rounded-md bg-success-soft p-3" data-testid="checkpoint">
+          <p className="type-label flex items-center gap-2 text-success-fg">
+            <Icon name="checkCircle" size={20} /> You&apos;ll know it&apos;s right when
+          </p>
+          <div className="type-body-lg mt-1 flex flex-col gap-1 text-ink">
+            <p>{step.checkpoint.text}</p>
+            {step.checkpoint.origin === 'inferred' && <InstructorNote />}
+            {step.checkpoint.origin === 'manual' && (
+              <QuoteOrLine text={step.checkpoint.text} quote={step.checkpoint.sourceQuote} page={page} lang={guide.language} onOpenPage={onOpenPage} className="mt-1" />
+            )}
+          </div>
+        </section>
+      )}
+
+    </>
+  );
+}
+
 export interface StepContentProps {
   guideId: string;
   guide: ValidatedGuide;
@@ -68,42 +153,14 @@ export function StepContent(p: StepContentProps) {
 
   return (
     <article data-testid="step-content" data-step={step.id} className="flex flex-col gap-4">
-      {step.irreversible && <Banner kind="irreversible" />}
-      {sortedWarnings(step.warnings).map((w, i) => (
-        <WarningBanner
-          key={i}
-          severity={w.severity}
-          text={w.text}
-          sourceQuote={w.sourceQuote}
-          page={page}
-          lang={guide.language}
-          onOpenPage={openFirstPage}
-        />
-      ))}
-      {p.missing.map((m) => (
-        <Banner
-          key={m.part.id}
-          kind="caution"
-          label="Missing part"
-          action={
-            <Button variant="quiet" size="sm" onClick={() => p.onFoundPart(m.part.id)}>
-              I found it
-            </Button>
-          }
-        >
-          {missingPartSentence(m)}
-        </Banner>
-      ))}
-      {step.confidence === 'low' && (
-        <Banner
-          kind="unsure"
-          action={
-            <Button variant="quiet" size="sm" onClick={openFirstPage}>
-              Show original page
-            </Button>
-          }
-        />
-      )}
+      <StepBanners
+        step={step}
+        guide={guide}
+        page={page}
+        missing={p.missing}
+        onFoundPart={p.onFoundPart}
+        onOpenPage={openFirstPage}
+      />
 
       <div>
         <h1 tabIndex={-1} className="type-display-md outline-none focus-visible:outline-2 focus-visible:outline-offset-4" data-testid="step-title">
@@ -171,20 +228,7 @@ export function StepContent(p: StepContentProps) {
         </section>
       )}
 
-      {step.checkpoint && (
-        <section className="rounded-md bg-success-soft p-3" data-testid="checkpoint">
-          <p className="type-label flex items-center gap-2 text-success-fg">
-            <Icon name="checkCircle" size={20} /> You&apos;ll know it&apos;s right when
-          </p>
-          <div className="type-body-lg mt-1 flex flex-col gap-1 text-ink">
-            <p>{step.checkpoint.text}</p>
-            {step.checkpoint.origin === 'inferred' && <InstructorNote />}
-            {step.checkpoint.origin === 'manual' && (
-              <QuoteOrLine text={step.checkpoint.text} quote={step.checkpoint.sourceQuote} page={page} lang={guide.language} onOpenPage={openFirstPage} className="mt-1" />
-            )}
-          </div>
-        </section>
-      )}
+      <Checkpoint step={step} guide={guide} page={page} onOpenPage={openFirstPage} />
 
       <div>
         {step.why && (

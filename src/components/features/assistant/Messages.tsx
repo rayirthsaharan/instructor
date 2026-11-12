@@ -1,6 +1,8 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { Button, cn, Icon } from '@/components/ui';
+import { ExtraIcon } from '../source-visual/icons';
 import type { ChatMessage, Citation, Turn } from '@/lib/client/assistant';
 import { COPY, errorView } from './copy';
 
@@ -8,6 +10,8 @@ import { COPY, errorView } from './copy';
 export interface CitationEnv {
   /** 1-based step number, or undefined when the id is not a step of this guide. */
   stepNumber: (stepId: string) => number | undefined;
+  /** The step the player is showing; a Step chip that cites it is redundant and is hidden. */
+  currentStepId?: string;
   /** True when the page exists in the manual. */
   pageExists: (pageIndex: number) => boolean;
   onGoToStep: (stepId: string) => void;
@@ -24,14 +28,15 @@ function CitationChips({ citations, env }: { citations: Citation[]; env: Citatio
   const usable = citations.filter((c) => env.pageExists(c.pageIndex));
   if (usable.length === 0) return null;
   return (
-    <div role="group" aria-label="Where this is in your manual" className="mt-2 flex flex-wrap gap-x-2 gap-y-3" data-testid="citations">
+    <div role="group" aria-label="Where this is in your manual" className="mt-2 flex flex-wrap gap-x-4 gap-y-3" data-testid="citations">
       {usable.map((c, i) => {
         const n = c.stepId ? env.stepNumber(c.stepId) : undefined;
         return (
-          <span key={`${c.stepId ?? ''}-${c.pageIndex}-${i}`} className="inline-flex gap-1">
-            {c.stepId && n !== undefined && (
+          <span key={`${c.stepId ?? ''}-${c.pageIndex}-${i}`} className="inline-flex gap-2">
+            {c.stepId && n !== undefined && c.stepId !== env.currentStepId && (
               <button type="button" className={chipClass} aria-label={`Go to step ${n}`} data-testid="cite-step" onClick={() => env.onGoToStep(c.stepId!)}>
                 Step {n}
+                <ExtraIcon name="arrowRight" size={16} />
               </button>
             )}
             <button
@@ -94,22 +99,38 @@ export function AssistantAnswer({ message, env, onOpenManual }: { message: ChatM
   );
 }
 
+/** After this long without a verified answer the status line says it can take up to a minute. */
+export const SLOW_AFTER_MS = 20_000;
+
+/**
+ * Held-back answer (D-019, D-021 item 7). Provisional text is muted; a visible status line always shows work in progress.
+ * The status is announced once (the panel's polite live region is set when the question is sent), never per change.
+ */
+function StreamingAnswer({ text }: { text: string }) {
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setSlow(true), SLOW_AFTER_MS);
+    return () => clearTimeout(t);
+  }, []);
+  const status = slow ? COPY.statusSlow : text === '' ? COPY.statusLooking : COPY.statusChecking;
+  return (
+    <div className="border-l-[3px] border-accent pl-3" data-testid="assistant-streaming" aria-busy="true">
+      <p className="type-body-sm text-ink-muted">{COPY.instructorNote}</p>
+      {text !== '' && <p className="type-body-lg mt-1 whitespace-pre-wrap wrap-anywhere text-ink-muted" data-testid="provisional">{text}</p>}
+      <p className="type-body-sm mt-1 text-ink-muted" data-testid="answer-status" aria-hidden="true">
+        {status}
+      </p>
+    </div>
+  );
+}
+
 /** The question in flight (or failed) and the answer so far. */
 export function TurnView({ turn, onRetry }: { turn: Turn; onRetry: () => void }) {
   const view = turn.error ? errorView(turn.error.code) : null;
   return (
     <>
       <UserBubble text={turn.question} />
-      {turn.status === 'streaming' && (
-        <div className="border-l-[3px] border-accent pl-3" data-testid="assistant-streaming" aria-busy="true">
-          <p className="type-body-sm text-ink-muted">{COPY.instructorNote}</p>
-          <p className="type-body-lg mt-1 whitespace-pre-wrap wrap-anywhere text-ink">
-            {turn.answer}
-            <span aria-hidden="true" data-testid="caret" className="ml-0.5 inline-block h-[1.1em] w-0.5 translate-y-[0.2em] bg-accent" />
-          </p>
-          {turn.answer === '' && <span className="sr-only">Looking in your manual</span>}
-        </div>
-      )}
+      {turn.status === 'streaming' && <StreamingAnswer text={turn.answer} />}
       {turn.status === 'failed' && view && (
         <div data-testid="turn-error" data-code={turn.error?.code} className={cn(view.kind === 'inline' && 'pl-1')}>
           {view.kind === 'inline' ? (
@@ -124,11 +145,9 @@ export function TurnView({ turn, onRetry }: { turn: Turn; onRetry: () => void })
               </div>
             </div>
           )}
-          {view.kind !== 'limit' && (
-            <Button variant="quiet" size="sm" className="-ml-3" onClick={onRetry} data-testid="turn-retry">
-              {turn.error?.code === 'stopped' ? COPY.askAgain : COPY.tryAgain}
-            </Button>
-          )}
+          <Button variant="quiet" size="sm" className="-ml-3" onClick={onRetry} data-testid="turn-retry">
+            {turn.error?.code === 'stopped' ? COPY.askAgain : COPY.tryAgain}
+          </Button>
         </div>
       )}
     </>
