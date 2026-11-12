@@ -1,6 +1,8 @@
 import { buildSimplifyPrompt } from '../assistant/prompt';
 import { cleanAnswerText, findIntroducedLinks } from '../assistant/text';
 import { getOwn } from '../guide/selectors';
+import { isEnglish } from '../assistant/guard';
+import { hasNonLatinLetters } from '../guide/quantity';
 import { findIntroducedQuantities } from '../guide/validate';
 import type { AIProvider, SimplifyStepInput } from './provider';
 
@@ -28,6 +30,7 @@ export async function simplifyStepChecked(provider: AIProvider, input: SimplifyS
   const { text: raw } = await provider.simplifyStep(prompt ? { ...input, prompt } : input);
   const text = cleanAnswerText(typeof raw === 'string' ? raw : '', MAX_SIMPLIFIED_CHARS + 1);
   const introduced = [...findIntroducedQuantities(original, text), ...findIntroducedLinks([original], text)];
-  if (introduced.length > 0 || !text || text.length > MAX_SIMPLIFIED_CHARS) return { text: original, fellBack: true, introduced };
+  const foreign = isEnglish(input.guide.language) && hasNonLatinLetters(text) && !hasNonLatinLetters(original);
+  if (introduced.length > 0 || foreign || !text || text.length > MAX_SIMPLIFIED_CHARS) return { text: original, fellBack: true, introduced };
   return { text, fellBack: false, introduced: [] };
 }

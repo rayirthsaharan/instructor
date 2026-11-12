@@ -1,3 +1,4 @@
+import { hasNonLatinLetters, isStepReference } from '../guide/quantity';
 import { containsQuantity } from '../guide/validate';
 
 /** A word that looks like a web or email address is held back too: addresses are verified only at the end. */
@@ -13,7 +14,16 @@ export class QuantityHoldback {
   private buf = '';
   private sent = 0;
 
-  constructor(private readonly holdAll = false) {}
+  /**
+   * `holdAll`: release nothing while streaming. `opts.stepCount`: "step N" with N a real step is not a quantity.
+   * `opts.english`: a word in a non-Latin script (which cannot be checked) is held too.
+   */
+  constructor(private readonly holdAll = false, private readonly opts: { stepCount?: number; english?: boolean } = {}) {}
+
+  private risky(prev: string | undefined, word: string): boolean {
+    if (this.opts.stepCount !== undefined && isStepReference(prev, word, this.opts.stepCount)) return false;
+    return containsQuantity(word) || (prev !== undefined && containsQuantity(`${prev} ${word}`) && !containsQuantity(prev)) || LOOKS_LIKE_LINK.test(word) || (this.opts.english === true && hasNonLatinLetters(word));
+  }
 
   /** Appends text and returns the part that is safe to show now. */
   push(delta: string): string {
@@ -24,12 +34,13 @@ export class QuantityHoldback {
     if (limit <= this.sent) return '';
     let end = limit;
     const word = /\S+\s+/g;
-    word.lastIndex = this.sent;
+    let prev: string | undefined;
     for (let m = word.exec(this.buf); m !== null && m.index < limit; m = word.exec(this.buf)) {
-      if (containsQuantity(m[0]) || LOOKS_LIKE_LINK.test(m[0])) {
+      if (m.index >= this.sent && this.risky(prev, m[0])) {
         end = m.index;
         break;
       }
+      prev = m[0].trim();
     }
     if (end <= this.sent) return '';
     const out = this.buf.slice(this.sent, end);

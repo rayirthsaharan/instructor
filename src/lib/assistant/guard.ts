@@ -1,5 +1,6 @@
 import { NOT_IN_MANUAL_TEXT, type Citation } from '../ai/provider';
 import { getOwn } from '../guide/selectors';
+import { hasNonLatinLetters, stripStepReferences } from '../guide/quantity';
 import { findIntroducedQuantities, validateCitations, type GuideIssue, type ValidatedGuide } from '../guide/validate';
 import type { Step } from '../guide/schema';
 import { cleanAnswerText, findIntroducedLinks } from './text';
@@ -71,7 +72,8 @@ export function finalizeAnswer(input: { guide: ValidatedGuide; pageCount: number
     const step = getOwn(input.guide.steps, id);
     return step ? stepEvidenceParts(input.guide, step) : [];
   });
-  const introduced = findIntroducedQuantities(evidence, cleaned);
+  if (isEnglish(input.guide.language) && hasNonLatinLetters(cleaned)) return replace('answer_non_latin', 'The answer contains words in another script, which cannot be checked against an English manual, and was replaced.');
+  const introduced = findIntroducedQuantities(evidence, stripStepReferences(cleaned, Object.keys(input.guide.steps).length));
   if (introduced.length > 0) return replace('answer_unverified_quantity', `Answer contained quantities not found in the cited steps (${introduced.join(', ')}) and was replaced.`);
   const links = findIntroducedLinks(evidence, cleaned);
   if (links.length > 0) return replace('answer_unverified_link', `Answer contained web or email addresses not found in the cited steps (${links.join(', ')}) and was replaced.`);

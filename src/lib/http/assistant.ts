@@ -146,7 +146,7 @@ export async function postMessage(req: Request, ctx: AppContext, session: Sessio
       void (async () => {
         try {
           const prompt = buildAssistantPrompt({ guide, currentStepId: stepId, completedStepIds, history, userText: text });
-          const hold = new QuantityHoldback(holdAll);
+          const hold = new QuantityHoldback(holdAll, { stepCount: Object.keys(guide.steps).length, english: !holdAll });
           let full = '';
           let end: Extract<AnswerEvent, { type: 'done' }> | undefined;
           const it = provider.answerQuestion({ guide, currentStepId: stepId, completedStepIds, message: text, history, prompt, signal: providerCtl.signal })[Symbol.asyncIterator]();

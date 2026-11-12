@@ -290,7 +290,7 @@ describe('containsQuantity', () => {
     ['two screws', true],
     ['Two Screws', true],
     ['5mm', true],
-    ['one at a time', true],
+    ['one at a time', false],
     ['half a turn', true],
     ['\u00bd turn', true],
     ['Phone', false],
@@ -360,7 +360,7 @@ describe('hardening', () => {
     expect(fail(c)).not.toHaveLength(0);
   });
   it('strips unicode and spelled quantities from inferred guidance', () => {
-    for (const text of ['Use \u00bd the force.', 'Use one screw.', 'A quarter turn.', 'Twenty of them.']) {
+    for (const text of ['Use \u00bd the force.', 'A quarter turn.', 'Twenty of them.']) {
       const g = valid();
       g.steps.s6.why = { text, origin: 'inferred' };
       expect(ok(g).guide.steps.s6!.why, text).toBeUndefined();

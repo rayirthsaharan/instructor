@@ -561,3 +561,36 @@ test.describe('Explain it more simply', () => {
     await context.close();
   });
 });
+
+// D-022 item 7: banners are never clipped, even in short windows; the dock column scrolls instead.
+test.describe('desktop dock in short windows', () => {
+  for (const size of [
+    { width: 1280, height: 600 },
+    { width: 1024, height: 768 },
+  ]) {
+    for (const stepId of ['s7', 's8', 's9']) {
+      test(`${size.width}x${size.height} step ${stepId}: every banner is fully on screen above the Primary`, async ({ browser }) => {
+        const context = await browser.newContext({ viewport: size, storageState: state, reducedMotion: 'reduce' });
+        await putProgress(context, guideId, {});
+        const page = await context.newPage();
+        await installStreamControl(page);
+        await mockAssistantApi(page);
+        await openPlayer(page, guideId, `?step=${stepId}`);
+        await openAssistant(page);
+        const r = await page.evaluate(() => {
+          const scroll = document.querySelector('[data-testid="dock-scroll"]')!.getBoundingClientRect();
+          const banners = [...document.querySelectorAll('[data-testid="dock-banners"] > [role="note"]')].map((el) => el.getBoundingClientRect());
+          return { scrollTop: scroll.top, scrollBottom: scroll.bottom, banners: banners.map((b) => ({ top: b.top, bottom: b.bottom })), height: window.innerHeight };
+        });
+        expect(r.banners.length).toBeGreaterThan(0);
+        for (const b of r.banners) {
+          expect(b.top).toBeGreaterThanOrEqual(r.scrollTop - 1);
+          expect(b.bottom).toBeLessThanOrEqual(r.scrollBottom + 1);
+          expect(b.bottom).toBeLessThanOrEqual(r.height);
+        }
+        await shot(page, `${size.width}x${size.height}-dock-${stepId}`);
+        await context.close();
+      });
+    }
+  }
+});

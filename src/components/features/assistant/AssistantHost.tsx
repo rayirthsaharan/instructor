@@ -86,8 +86,8 @@ function DockSummary({ p, headingFocus }: { p: DockProps; headingFocus: React.Re
   const page = (step.sources[0]?.pageIndex ?? 0) + 1;
   const openPage = () => p.onOpenOriginal(step.sources[0]?.pageIndex ?? 0);
   return (
-    <div className="max-h-[44%] shrink-0 overflow-y-auto overscroll-contain border-b border-line" data-testid="dock-summary">
-      <div className="flex flex-col gap-2 px-4 pt-4 empty:hidden empty:pt-0" data-testid="dock-banners">
+    <div className="shrink-0 border-b border-line" data-testid="dock-summary">
+      <div className="flex flex-col gap-2 px-4 pt-3 empty:hidden empty:pt-0" data-testid="dock-banners">
         <StepBanners step={step} guide={p.guide} page={page} missing={p.missing} onFoundPart={p.onFoundPart} onOpenPage={openPage} />
       </div>
       <button
@@ -109,7 +109,7 @@ function DockSummary({ p, headingFocus }: { p: DockProps; headingFocus: React.Re
         </span>
       </button>
       {!collapsed && (
-        <div className="flex flex-col gap-3 px-4 pb-4 pl-11" data-testid="dock-details">
+        <div className="flex max-h-[44dvh] flex-col gap-3 overflow-y-auto overscroll-contain px-4 pb-4 pl-11" data-testid="dock-details">
           <p className="type-body text-ink" data-testid="dock-instruction">
             {step.instruction}
           </p>
@@ -164,16 +164,19 @@ export function AssistantDock(p: DockProps) {
           }
         }}
       >
-        <header className="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-line pl-4 pr-2">
-          <h2 id={headingId} ref={heading} tabIndex={-1} className="type-display-md outline-none focus-visible:outline-2">
-            {COPY.title}
-          </h2>
-          <IconButton icon="close" aria-label="Close" onClick={p.onClose} data-testid="dock-close" />
-        </header>
-        <DockSummary key={p.stepId} p={p} headingFocus={toggle} />
-        {clear.failed && failNote}
-        <div className="flex min-h-[240px] flex-1 flex-col">
-          <AssistantPanel {...p} showStrip={false} onClear={clear.ask} />
+        {/* Banners are never capped or clipped (D-022 item 7): when the window is short the whole column scrolls. */}
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain" data-testid="dock-scroll">
+          <header className="flex h-12 shrink-0 items-center justify-between gap-2 border-b border-line pl-4 pr-2">
+            <h2 id={headingId} ref={heading} tabIndex={-1} className="type-display-md outline-none focus-visible:outline-2">
+              {COPY.title}
+            </h2>
+            <IconButton icon="close" aria-label="Close" onClick={p.onClose} data-testid="dock-close" />
+          </header>
+          <DockSummary key={p.stepId} p={p} headingFocus={toggle} />
+          {clear.failed && failNote}
+          <div className="flex min-h-[200px] flex-1 flex-col">
+            <AssistantPanel {...p} showStrip={false} onClear={clear.ask} />
+          </div>
         </div>
       </section>
       {clear.dialog}
