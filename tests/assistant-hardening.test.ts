@@ -65,7 +65,14 @@ describe('D-020 (2): quantity detection', () => {
 
   it('a/an + time unit is a quantity; a number must sit on the same noun as in the evidence', () => {
     for (const t of ['Wait an hour.', 'Wait a minute or two.', 'Back in a day.']) expect(containsQuantity(t), t).toBe(true);
-    expect(containsQuantity('Take a minute to rest')).toBe(false);
+    // "to" no longer excuses a duration; only the idiom "take a minute to" does.
+    for (const t of ['Leave it for an hour to dry.', 'Give it a minute to set.']) expect(containsQuantity(t), t).toBe(true);
+    expect(findIntroducedQuantities(['Leave it for an hour to dry.'], 'Leave it for an hour to dry.')).toEqual([]);
+    expect(findIntroducedQuantities(['Let the glue dry.'], 'Leave it for an hour to dry.')).not.toEqual([]);
+    for (const t of ['A million parts', 'a thousand', 'a hundred', 'a dozen', 'halfway through', 'half', 'x2', '2x', 'twofold', 'double the force', 'twice']) expect(containsQuantity(t), t).toBe(true);
+    expect(containsQuantity('Keep a pair of hands free.')).toBe(false);
+    expect(containsQuantity('Pair each part with its entry.')).toBe(false);
+    expect(containsQuantity('Use a pair inches apart')).toBe(true);
     expect(findIntroducedQuantities(['Press 4 dowels in'], 'Use 4 screws')).not.toEqual([]);
     expect(findIntroducedQuantities(['Press 4 wooden dowels in'], 'Use 4 dowels')).toEqual([]);
     expect(findIntroducedQuantities(['Press 4 dowels in'], 'Use 4')).toEqual([]);
@@ -73,7 +80,7 @@ describe('D-020 (2): quantity detection', () => {
   });
 
   it('plain words are not quantities', () => {
-    for (const t of ['Phone', 'second panel', 'twofold', 'tighten firmly', 'Mix well', 'Part G and part L', 'CAM LOCK', 'one of the', 'both sides', 'Take a minute to rest', 'the first and second', 'wait once', 'minute detail', 'day to day']) expect(containsQuantity(t), t).toBe(false);
+    for (const t of ['Phone', 'second panel', 'tighten firmly', 'Mix well', 'Part G and part L', 'CAM LOCK', 'one of the', 'both sides', 'Take a minute to rest', 'the first and second', 'wait once', 'minute detail', 'day to day']) expect(containsQuantity(t), t).toBe(false);
   });
 
   it('holdback: bypass words are held, even split across deltas', () => {

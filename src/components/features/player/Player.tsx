@@ -15,7 +15,7 @@ import { swipeDirection } from '../source-visual/geometry';
 import { marksForPage, pageForPart, visualPages, type MarkView } from '../source-visual/pages';
 import { SourceVisual } from '../source-visual/SourceVisual';
 import { ActionBar, CloseLink, OfflineBanner, OverflowMenu, PlayerProgress, SpeakerButton, StepCounter } from './chrome';
-import { useOnline, usePlayerLayout, useSpeech, useStoredFlag, useWakeLock, useWideRail } from './hooks';
+import { useMediaQuery, useOnline, usePlayerLayout, useSpeech, useStoredFlag, useWakeLock, useWideRail } from './hooks';
 import {
   missingPartsForStep,
   NOTICE_TEXT,
@@ -117,6 +117,8 @@ function Player({ guideId, guide, documentId, pageCount, progress, actions, save
   const url = parsePlayerSearch(searchParams);
   const layout = usePlayerLayout();
   const wideRail = useWideRail();
+  // Desktop windows under 560px tall have no room for the dock: the assistant opens as the modal sheet instead.
+  const shortDesktop = useMediaQuery('(max-height: 559.98px)') && layout === 'desktop';
   const online = useOnline();
 
   // Which step: the URL wins; otherwise where the user left off, decided once when the player opens.
@@ -513,7 +515,7 @@ function Player({ guideId, guide, documentId, pageCount, progress, actions, save
           </div>
           <div className="min-w-0 flex-1 p-6">{visual}</div>
           <div className="flex w-[420px] shrink-0 flex-col bg-surface shadow-[inset_1px_0_0_var(--color-line)]">
-            {assistantOpen ? <AssistantDock {...assistantProps} onClose={closePanel} missing={missing} onFoundPart={(id) => actions.setChecklistItem(id, 'have')} onOpenOriginal={openOriginal} /> : textPanel}
+            {assistantOpen && !shortDesktop ? <AssistantDock {...assistantProps} onClose={closePanel} missing={missing} onFoundPart={(id) => actions.setChecklistItem(id, 'have')} onOpenOriginal={openOriginal} /> : textPanel}
             {bar}
           </div>
         </div>
@@ -574,7 +576,7 @@ function Player({ guideId, guide, documentId, pageCount, progress, actions, save
         </BottomSheet>
       )}
 
-      {layout !== 'desktop' && <AssistantSheet {...assistantProps} open={assistantOpen} onClose={closePanel} />}
+      {(layout !== 'desktop' || shortDesktop) && <AssistantSheet {...assistantProps} open={assistantOpen} onClose={closePanel} />}
 
       <OriginalViewer
         open={url.panel === 'original'}

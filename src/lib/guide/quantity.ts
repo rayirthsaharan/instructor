@@ -161,7 +161,7 @@ function keysOf(text: string, into: Map<string, string>, evidence: boolean): voi
       const prev = toks[i - 1];
       const article = prev?.t === 'w' && /^an?$/i.test(prev.v);
       if (OTHER_QUANTITY_WORDS.has(lower)) into.set(`w:${lower}`, lower);
-      else if (article && Object.hasOwn(LONG_UNITS, lower) && !NOT_STANDALONE.has(lower)) into.set(`u:${LONG_UNITS[lower]}`, lower);
+      else if (article && Object.hasOwn(LONG_UNITS, lower) && !NOT_STANDALONE.has(lower) && !(lower === 'minute' && next?.t === 'w' && next.v.toLowerCase() === 'to' && /^takes?$/i.test((toks[i - 2] as { v?: string } | undefined)?.v ?? ''))) into.set(`u:${LONG_UNITS[lower]}`, lower);
       else if (tok.v.length >= 2 && ((tok.v === tok.v.toUpperCase() && ROMAN.test(tok.v)) || (/^[ivx]+$/i.test(tok.v) && ROMAN.test(tok.v.toUpperCase())))) into.set(`roman:${tok.v.toUpperCase()}`, tok.v);
     }
     i++;

@@ -467,7 +467,9 @@
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
-  *::after {
+  *::after,
+  *::backdrop,
+  dialog::backdrop {
     transition-property: opacity !important;
     transition-duration: 80ms !important;
     animation-duration: 80ms !important;

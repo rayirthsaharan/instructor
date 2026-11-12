@@ -295,7 +295,7 @@ describe('containsQuantity', () => {
     ['\u00bd turn', true],
     ['Phone', false],
     ['second panel', false],
-    ['twofold', false],
+    ['twofold', true],
     ['tighten firmly', false],
   ])('%s -> %s', (text, expected) => expect(containsQuantity(text)).toBe(expected));
 });
