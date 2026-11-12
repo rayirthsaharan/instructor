@@ -487,7 +487,11 @@ test.describe('source visual', () => {
     await expect(page.getByText("The picture didn't load. You can still open the original manual.")).toBeVisible();
     await expect(primary(page)).toBeEnabled(); // the step is still usable
     await page.unroute('**/api/documents/*/pages/*/image');
-    await visual(page).getByRole('button', { name: 'Try again' }).click();
+    // The error block can re-render once while the aborted request settles: retry the click until the image loads.
+    await expect(async () => {
+      await visual(page).getByRole('button', { name: 'Try again' }).click({ timeout: 2000 });
+      await expect(visual(page)).toHaveAttribute('data-load', 'loaded', { timeout: 3000 });
+    }).toPass({ timeout: 15_000 });
     await visualReady(page);
     await context.close();
   });

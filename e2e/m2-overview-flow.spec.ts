@@ -83,7 +83,10 @@ test('Start needs the safety acknowledgement, confirms with unchecked items, and
   await expect(page).toHaveURL(new RegExp(`/g/${guideId}$`));
 
   await start.click();
+  // Let the player's save of the current step finish before seeding, or its PATCH would land after the seed.
+  const saved = page.waitForResponse((r) => r.url().endsWith('/progress') && r.request().method() === 'PATCH');
   await page.getByRole('dialog', { name: 'Start anyway?' }).getByRole('button', { name: 'Start anyway' }).click();
+  await saved;
   await expect(page).toHaveURL(new RegExp(`/g/${guideId}/play\\?step=s1$`));
 
   await putProgress(page, guideId, { currentStepId: 's4', completedStepIds: ['s1', 's2', 's3'], checklist: {} });
