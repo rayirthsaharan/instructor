@@ -57,7 +57,7 @@ describe('QA M0-c: validator invariants', () => {
     }
   });
 
-  it.each(['Use about ½ the force.', 'Turn it a quarter turn.', 'Use twenty screws.', 'Fifteen minutes should do.', 'Allow a hundred seconds.', 'Use one screw.', 'Use ٣ screws.', 'Tighten to 5 Nm.'])(
+  it.each(['Use about ½ the force.', 'Turn it a quarter turn.', 'Use twenty screws.', 'Fifteen minutes should do.', 'Allow a hundred seconds.', 'Use two screws.', 'Use ٣ screws.', 'Tighten to 5 Nm.'])(
     'inferred guidance carrying a quantity is not allowed through: %s',
     (text) => {
       const g = valid();

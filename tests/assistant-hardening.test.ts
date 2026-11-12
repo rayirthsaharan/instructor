@@ -73,7 +73,7 @@ describe('D-020 (2): quantity detection', () => {
   });
 
   it('plain words are not quantities', () => {
-    for (const t of ['Phone', 'second panel', 'twofold', 'tighten firmly', 'Mix well', 'Part G and part L', 'CAM LOCK', 'one of the', 'both sides', 'Take a minute to rest', 'the first and second', 'wait once']) expect(containsQuantity(t), t).toBe(false);
+    for (const t of ['Phone', 'second panel', 'twofold', 'tighten firmly', 'Mix well', 'Part G and part L', 'CAM LOCK', 'one of the', 'both sides', 'Take a minute to rest', 'the first and second', 'wait once', 'minute detail', 'day to day']) expect(containsQuantity(t), t).toBe(false);
   });
 
   it('holdback: bypass words are held, even split across deltas', () => {

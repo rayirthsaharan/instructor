@@ -260,9 +260,9 @@ describe('ValidatedGuide brand', () => {
     const r = await simplifyStepChecked(p, { guide, stepId: 'constructor', level: 'simpler' });
     expect(r.fellBack).toBe(true);
   });
-  it('SUSPECTED minor: quantity words outside the list (zero, single, both) slip through', async () => {
+  it('D-022: counts and units that must still be caught (zero, two, third, an inch, one inch); single/both are ordinary words', async () => {
     const stepId = ids.find((i) => !/\d/.test(guide.steps[i]!.instruction)) ?? ids[0]!;
-    for (const text of ['Remove zero washers', 'Use a single screw', 'Tighten both screws']) {
+    for (const text of ['Remove zero washers', 'Use two screws', 'Use the third hole', 'Tighten by an inch', 'Move it one inch']) {
       const r = await simplifyStepChecked({ simplifyStep: async () => ({ text }) } as unknown as AIProvider, { guide, stepId, level: 'simpler' });
       expect(r.fellBack, text).toBe(true);
     }
