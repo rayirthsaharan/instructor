@@ -3,11 +3,16 @@
 Last updated: 2026-11-11 by orchestrator. **Read this first when resuming.**
 
 ## Where we are
-- M-1 (development system, product definition): done. User approved direction, MVP scope, stack and design (D-010).
-- M0 (foundations): done.
-- **M1 (capture and pipeline): done.** A user can add a PDF or page photos, watch honest processing stages, and land on a guide (placeholder page). Everything runs on the mock AI provider: the bundled Lumen bookcase manual gets its real fixture guide; any other upload gets a clearly labelled demo guide.
-- Verified by the orchestrator at M1 close: `npm run check` 492/492 unit tests, typecheck and lint clean; `npm run build` ok; `npm run e2e -- --trace off` 110/110.
-- **M2 (guide experience: overview + prep checklist, step player, original viewer): in progress.** See IMPLEMENTATION_PLAN.
+- M-1, M0, M1: done (see IMPLEMENTATION_PLAN).
+- **M2 (guide experience) is built and in final QA re-check.** Overview + prep checklist (`/g/[id]`), Step player and Original viewer (`/g/[id]/play`), Completion (`/g/[id]/done`), shared guide store. Designer approved with fixes (all 18 applied, D-017). QA's first pass failed on two-tab data loss; the senior engineer fixed it with an operation-based `PATCH` progress contract (D-018); QA's other defects are fixed.
+- Last full run by an engineer: `npm run check` 598/598; e2e 223 passed, 2 failed - both QA-owned tests awaiting update (`e2e/qa-m2-experience.spec.ts:413` expects old copy "Almost there."; `e2e/qa-m1-flow.spec.ts:331` keyboard test - cause not yet known).
+- **Interrupted:** the QA re-check (brief in the orchestrator's last message to QA: update those two tests, verify D-018, re-check the four QA defects and designer P1 items, and investigate whether the source-visual image-error block really detaches in the app - an engineer masked it with a `toPass` retry in `e2e/m2-player-flow.spec.ts`) stopped on the account usage limit. Resume it, or start a fresh `qa-engineer` with the same brief.
+
+## Next actions
+1. Finish the M2 QA re-check; fix anything it confirms; orchestrator runs `npm run check`, `npm run build`, `npm run e2e -- --trace off`; close M2 in IMPLEMENTATION_PLAN and report to the user.
+2. M3 (assistant on the mock provider): chat API with streaming and validated citations, assistant sheet, "Explain it more simply" with cache (`simplifyStepChecked` exists).
+3. M4: polish, performance, security review, P1 extras (notes/bookmarks, print).
+4. Before any real-model work: present the user a test plan and cost estimate (D-010).
 - Run locally: `npm run dev:all` (web + worker). API contract: `docs/API.md`.
 
 ## Rules in force (from the user, D-010)
