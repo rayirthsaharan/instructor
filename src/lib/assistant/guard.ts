@@ -34,8 +34,8 @@ export function stepEvidenceParts(guide: ValidatedGuide, step: Step): string[] {
     if (g) parts.push(g.text, ...(g.sourceQuote ? [g.sourceQuote] : []));
   }
   for (const pu of step.partsUsed) {
-    if (pu.quantity !== undefined) parts.push(`${pu.quantity}`);
     const part = guide.parts.find((p) => p.id === pu.partId);
+    if (pu.quantity !== undefined) parts.push(part ? `${pu.quantity} ${part.name}` : `${pu.quantity}`);
     if (part) parts.push(part.name, ...(part.manualLabel ? [part.manualLabel] : []), ...(part.description ? [part.description] : []));
   }
   return parts;

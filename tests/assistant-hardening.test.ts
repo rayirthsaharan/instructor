@@ -63,8 +63,17 @@ describe('D-020 (2): quantity detection', () => {
     expect(findIntroducedQuantities(['Tighten to 4', 'mm is wrong'], 'Tighten to 4 mm')).not.toEqual([]);
   });
 
+  it('a/an + time unit is a quantity; a number must sit on the same noun as in the evidence', () => {
+    for (const t of ['Wait an hour.', 'Wait a minute or two.', 'Back in a day.']) expect(containsQuantity(t), t).toBe(true);
+    expect(containsQuantity('Take a minute to rest')).toBe(false);
+    expect(findIntroducedQuantities(['Press 4 dowels in'], 'Use 4 screws')).not.toEqual([]);
+    expect(findIntroducedQuantities(['Press 4 wooden dowels in'], 'Use 4 dowels')).toEqual([]);
+    expect(findIntroducedQuantities(['Press 4 dowels in'], 'Use 4')).toEqual([]);
+    expect(findIntroducedQuantities(['Press 2 side panels'], 'Use two screws')).not.toEqual([]);
+  });
+
   it('plain words are not quantities', () => {
-    for (const t of ['Phone', 'second panel', 'twofold', 'tighten firmly', 'Mix well', 'Part G and part L', 'CAM LOCK', 'one of the', 'both sides', 'Take a minute', 'the first and second', 'wait once']) expect(containsQuantity(t), t).toBe(false);
+    for (const t of ['Phone', 'second panel', 'twofold', 'tighten firmly', 'Mix well', 'Part G and part L', 'CAM LOCK', 'one of the', 'both sides', 'Take a minute to rest', 'the first and second', 'wait once']) expect(containsQuantity(t), t).toBe(false);
   });
 
   it('holdback: bypass words are held, even split across deltas', () => {

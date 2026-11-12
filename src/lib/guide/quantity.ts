@@ -24,8 +24,8 @@ const OTHER_QUANTITY_WORDS = new Set([
   'eighteenth', 'nineteenth', 'twentieth', 'thirtieth', 'fortieth', 'fiftieth', 'hundredth', 'thousandth',
 ]);
 
-/** Units that are not a quantity on their own even after "a"/"an" ("take a minute", "a degree of care"). */
-const NOT_STANDALONE = new Set(['minute', 'day', 'week', 'month', 'year', 'degree', 'percent', 'seconds', 'minutes', 'hours', 'days', 'weeks', 'months', 'years', 'degrees']);
+/** Units that are not a quantity on their own even after "a"/"an" ("a degree of care"). A time unit after "a"/"an" is a quantity unless "to" follows ("take a minute to look"). */
+const NOT_STANDALONE = new Set(['degree', 'percent', 'seconds', 'minutes', 'hours', 'days', 'weeks', 'months', 'years', 'degrees']);
 
 /** Unit words; a quantity when attached to a number or number word, or after "a"/"an" for measurement units ("an inch"). Canonical form on the right. */
 const LONG_UNITS: Record<string, string> = {
@@ -91,7 +91,12 @@ function tokenise(text: string): Tok[] {
 }
 
 /** Quantity keys of one already-normalised text: key -> how it is shown to a person. */
-function keysOf(text: string, into: Map<string, string>): void {
+const NOT_A_NOUN = new Set(['of', 'in', 'on', 'to', 'the', 'and', 'or', 'at', 'for', 'per', 'from', 'with', 'a', 'an', 'by', 'is', 'are', 'x', 'than', 'then', 'into', 'each']);
+const TIME_WORDS = new Set(['minute', 'hour', 'day', 'week', 'month', 'year']);
+const foldNoun = (w: string) => (w.length > 3 ? w.toLowerCase().replace(/ies$/, 'y').replace(/(s|x|z|ch|sh)es$/, '$1').replace(/s$/, '') : w.toLowerCase());
+
+/** `evidence`: a number also matches answers that attach it to any of the next three words; an answer's number is tied to the word right after it. */
+function keysOf(text: string, into: Map<string, string>, evidence: boolean): void {
   const toks = tokenise(text);
   for (let i = 0; i < toks.length; ) {
     const tok = toks[i]!;
@@ -123,8 +128,19 @@ function keysOf(text: string, into: Map<string, string>): void {
           j++;
         }
       }
+      const base = `${kind}:${tok.v}~${to ?? ''}:${unit}`;
       const shown = `${tok.v}${to === undefined ? '' : kind === 'f' ? `/${to}` : `-${to}`}${unit ? ` ${unit}` : ''}`;
-      into.set(`${kind}:${tok.v}~${to ?? ''}:${unit}`, shown);
+      const nouns: string[] = [];
+      if (unit === '') {
+        for (let k = j; k < toks.length && k < j + (evidence ? 3 : 1); k++) {
+          const w = toks[k]!;
+          if (w.t !== 'w') break;
+          if (!NOT_A_NOUN.has(w.v.toLowerCase())) nouns.push(foldNoun(w.v));
+          else if (k === j) break;
+        }
+      }
+      if (evidence || nouns.length === 0) into.set(base, shown);
+      for (const n of nouns) into.set(`${base}:${n}`, shown);
       i = j;
       continue;
     }
@@ -141,7 +157,7 @@ function keysOf(text: string, into: Map<string, string>): void {
       const prev = toks[i - 1];
       const article = prev?.t === 'w' && /^an?$/i.test(prev.v);
       if (OTHER_QUANTITY_WORDS.has(lower)) into.set(`w:${lower}`, lower);
-      else if (article && Object.hasOwn(LONG_UNITS, lower) && !NOT_STANDALONE.has(lower)) into.set(`u:${LONG_UNITS[lower]}`, lower);
+      else if (article && Object.hasOwn(LONG_UNITS, lower) && !NOT_STANDALONE.has(lower) && !(TIME_WORDS.has(lower) && next?.t === 'w' && next.v.toLowerCase() === 'to')) into.set(`u:${LONG_UNITS[lower]}`, lower);
       else if (tok.v.length >= 2 && ((tok.v === tok.v.toUpperCase() && ROMAN.test(tok.v)) || (/^[ivx]+$/i.test(tok.v) && ROMAN.test(tok.v.toUpperCase())))) into.set(`roman:${tok.v.toUpperCase()}`, tok.v);
     }
     i++;
@@ -167,9 +183,9 @@ export function hasNonLatinLetters(text: string): boolean {
 }
 
 /** Every quantity key in `text`, mapped to a readable form. */
-export function quantityKeys(text: string): Map<string, string> {
+export function quantityKeys(text: string, evidence = false): Map<string, string> {
   const out = new Map<string, string>();
-  for (const reading of normalisedReadings(text)) keysOf(reading, out);
+  for (const reading of normalisedReadings(text)) keysOf(reading, out, evidence);
   return out;
 }
 
@@ -184,7 +200,7 @@ export function containsQuantity(text: string): boolean {
  */
 export function findIntroducedQuantities(evidence: string | readonly string[], text: string): string[] {
   const known = new Set<string>();
-  for (const piece of typeof evidence === 'string' ? [evidence] : evidence) for (const k of quantityKeys(piece).keys()) known.add(k);
+  for (const piece of typeof evidence === 'string' ? [evidence] : evidence) for (const k of quantityKeys(piece, true).keys()) known.add(k);
   const out: string[] = [];
   for (const [key, shown] of quantityKeys(text)) if (!known.has(key)) out.push(shown);
   return out;
