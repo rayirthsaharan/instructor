@@ -298,3 +298,16 @@ Done: `src/lib/ai/anthropic.ts` + `src/lib/ai/anthropic/*` (usage pricing, error
 How to verify: `npx vitest run tests/ai-*`; `npm run build`.
 Open issues / risks (only a real call can settle them): whether the API accepts the derived structured-output schema; whether the streamed chat JSON keeps `answer` first (fallback emits the full answer at the end); cache hits (minimum prefix length); real stream/abort behaviour; Haiku 5.5 limits.
 Next: QA at unit level; the accuracy test's first calls double as the adapter's smoke test.
+
+## H-041 | 2026-11-13 | from: software-engineer -> to: orchestrator
+Task: M4-a polish (dock banners, performance, reused signal, delete race, font warnings).
+Done: Dock `AssistantHost.tsx`/`Player.tsx` (pinned banners, `useViewportHeight`, sheet fallback); `assistant/lazy.tsx` (assistant UI loaded on first Ask); next-step image preload; ETag/304 on page images; `reused` (schema, migration 0005, handler, API.md, Processing toast "We already know this manual - your guide is ready."); `removeUnreferencedFiles` + `deleteSync` (tests/shared-page-delete-race.test.ts); font `fallback` in layout.tsx. New specs: e2e/m4-dock-pinned.spec.ts, e2e/m4-reused.spec.ts. Updated non-QA specs m3-dock-short and m3-assistant-mocked to accept the sheet fallback.
+How to verify: npm run check; npm run build (no warnings); npm run e2e -- --trace off.
+Open issues / risks: QA specs in e2e/qa-m3-experience.spec.ts (section D dock safety, resize test) assume the dock at 1280x720/600/560 and 1024x768/560 and now fail by design; QA must change them to "dock or modal sheet". Chat minimum 200px is a judgement call.
+Next: QA update those specs; orchestrator review D-026.
+
+## H-042 | 2026-11-13 | from: senior-engineer -> to: software-engineer, qa-engineer
+Task: Accuracy test design (D-025: $10 cap, Haiku 5.5 only).
+Done: `docs/ACCURACY_TEST_PLAN.md`; harness `scripts/accuracy/{run,harness,score,budget,matrix,manuals,key-schema}.ts` with the Lumen answer key; 21 tests on the mock. Manuals (all CC BY-SA, from `raw.githubusercontent.com`, which is reachable): Cyclone PCB Factory "2 Montaje del Eje X" (14 pp, picture-led, Spanish captions), ANAVI Thermometer User's Manual (about 12 pp, English, text-heavy, Markdown to render), Cyclone "4 Montaje de la Electronica" (12 pp, mixed, Spanish); spares: Cyclone "3 Montaje del Eje Z", ANAVI Light Controller. Run matrix: 4 manuals x 3 variants = 28 runs; projected $0.89 expected, $1.64 worst case, about $3.40 worst case for all phases. Every request is locked to `claude-haiku-5-5`, checked against the cap before sending, and logged from `usage`.
+Open issues / risks: no truly wordless manual and only one English real manual could be verified (hosts for other candidates are blocked by the network policy); two of three are Spanish, where the assistant guard holds whole answers by design.
+Next: engineer implements the panel detector (plan section 7); QA downloads and renders the manuals (`run.ts prepare`, into gitignored `data/accuracy/`) and builds answer keys; senior engineer reviews the keys; user supplies the API key.
