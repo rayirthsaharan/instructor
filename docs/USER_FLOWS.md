@@ -269,7 +269,7 @@ At 320 width the Steps button moves into the top bar counter (the counter itself
 | "Done - finish" | "Finish" | `landscape-compact` |
 | "I checked - done" | padlock + "I checked" | all of `sm`, and `landscape-compact` |
 
-The Ask button is `accent` icon on an `accent-soft` fill at every width (no border); it is the only tinted control in the bar. On `lg`, while the dock is open, it is a toggle in its selected state: `accent` fill, `on-accent` icon and label, `aria-expanded="true"`; pressing it again closes the dock. Below `lg` the sheet covers it, so it has no selected state there.
+The Ask button is `accent` icon on an `accent-soft` fill at every width (no border); it is the only tinted control in the bar. On `lg`, while the dock is open, it is a toggle in its selected state: `accent` fill, `on-accent` icon and label, `aria-expanded="true"`, `aria-controls` = the dock; pressing it again closes the dock. The button does not move when the dock opens - it stays in the action bar under the step content, even though the dock is the left column (section 7); the dock's own close button is the nearby way out. Wherever the sheet is used instead (below `lg`, or a window under 560 tall) the sheet covers it, so it has no selected state there.
 
 ### 6.3 Layout by width
 
@@ -278,7 +278,7 @@ The Ask button is `accent` icon on an `accent-soft` fill at every width (no bord
 | **375 portrait** | As 6.2. Visual edge to edge (radius 0). |
 | **Phone landscape** (`landscape-compact`, e.g. 667x375) | Common when propped. Top bar collapses to a 6px progress bar across the full width plus a 44 "x" overlaid top-left of the visual. Two columns: visual left 56% full height; right 44% holds a 44 compact header (the counter, which is the Steps button as at 320; read-aloud; overflow - right-aligned), then the text panel (scrolls) with the action bar pinned at its bottom (Back 56, Primary flex with short labels per 6.2, Ask 56; no Steps button). Instruction stays `glance`. |
 | **768** | Top bar 56. Visual stage 48% of viewport height, inset 24 with radius `md`. Text panel max-width 640 centred. Action bar: content max-width 640 centred; Back and Steps get text labels ("Back", "Steps"), Ask labelled "Ask". Step rail and Assistant open as sheets (max-width 560). |
-| **1280** | Three regions under a 56 top bar (Close and counter left; read-aloud and overflow right-aligned at the 32 margin, as at 768 - never floating after the counter). **Left**: Step rail permanently visible, 280 wide, own scroll, 12 top padding before the first phase header. **Centre**: visual stage, fills remaining width and full height minus bars, radius `md`, 24 padding. The stage here is taller than most step regions, so the view shows the bracketed region with the rest of the page around it - this is intended (DS 7.10 layer 2: fit is always "contain", never a hard crop); the dim wash does the focusing. **Right**: text panel 420 wide, own scroll, with the action bar pinned at its bottom (Back / Primary / Ask - no Steps button). When the Assistant is open the right column is split: a pinned **step summary** (banners never hidden) above the chat, per section 7 "Desktop dock"; the visual, the rail and the action bar stay live. Between 1024 and 1199 the rail collapses to a 64 icon strip (status markers and numbers; expands on hover/focus). |
+| **1280** | Three regions under a 56 top bar (Close and counter left; read-aloud and overflow right-aligned at the 32 margin, as at 768 - never floating after the counter). **Left**: Step rail permanently visible, 280 wide, own scroll, 12 top padding before the first phase header. **Centre**: visual stage, fills remaining width and full height minus bars, radius `md`, 24 padding. The stage here is taller than most step regions, so the view shows the bracketed region with the rest of the page around it - this is intended (DS 7.10 layer 2: fit is always "contain", never a hard crop); the dim wash does the focusing. **Right**: text panel 420 wide, own scroll, with the action bar pinned at its bottom (Back / Primary / Ask - no Steps button). Between 1024 and 1199 the rail collapses to a 64 icon strip (status markers and numbers; expands on hover/focus). **When the Assistant is open the dock takes the rail's place in the left column** (section 7 "Desktop dock": 320 / 360 / 400 wide); the right column - text panel and action bar - is not touched in any way, and the centre gives up the difference in width. While the dock is open the top-bar counter is the Steps button. |
 
 ### 6.4 Interactions
 
@@ -286,11 +286,11 @@ The Ask button is `accent` icon on an `accent-soft` fill at every width (no bord
 |---|---|---|
 | Complete and advance | Tap Primary | `Enter` or `Space` on Primary; `Ctrl/Cmd+Enter` anywhere |
 | Next / previous without completing | Swipe left / right on the text panel, or on the visual at 1x. Threshold: 64px horizontal travel and under 30 degrees from horizontal, or a fling over 0.5 px/ms | `ArrowRight` / `ArrowLeft` (when focus is not in an input or the zoomed visual); `PageDown` / `PageUp` |
-| Jump | Steps button -> rail -> tap row | Rail is a list; `Home` / `End` first / last |
+| Jump | Steps button -> rail -> tap row | Rail is a list; `Home` / `End` first / last. On `lg` with the dock open: the top-bar counter button opens the rail as a panel (section 7) |
 | Zoom / pan | Per DS 7.10 | Per DS 7.10 |
 | Link picture and part | Tap callout or part chip | Tab to either, `Enter` |
 | Read aloud | Tap speaker | `R` |
-| Ask | Tap Ask | `/` or `A` |
+| Ask | Tap Ask | `/` or `A` (dock already open: moves focus to the composer) |
 | Original page | "Show original page", or the visual's "Original page" button | `O` |
 | Leave | Close | `Esc` closes the top overlay; if none, focuses Close (does not leave) |
 
@@ -334,11 +334,11 @@ The irreversible thing is the physical act, so the treatment arrives **before** 
 
 Purpose: answer from the manual, about this step, without losing the step.
 
-Revised after the M3 review of the built UI (2026-11-12); aligned with D-019 and D-020.
+Revised after the M3 review of the built UI (2026-11-12); aligned with D-019 and D-020. Desktop dock moved to the left column on 2026-11-13 (M4 ruling; replaces D-021 item 1, D-022 item 7 and D-027 item 1).
 
 **Content hierarchy**
 1. Header: title "Ask about this step", close button.
-2. Context strip (sheet only; non-scrolling, 64 high): 48x48 thumbnail of the current step's visual + "STEP 7" (`label`; not "ABOUT STEP 7" - that wording belongs to the conversation divider directly below, and the two must not read as a repeat) + step title (1 line, truncates). Trailing **safety tag** when the step has one (`tag`, radius `xs`, padding 2 8, icon 16): irreversible -> padlock + "Can't be undone" (`danger-fg` on `danger-soft`); otherwise, with warnings -> triangle + "1 warning" / "2 warnings" (`warn-fg` on `warn-soft`). Irreversible wins when both apply. The sheet is modal and covers the step's banners, so the strip says they exist. Tapping the strip closes the sheet (back to the step); `aria-label="Step 7: <title>. 1 warning. Close and go back to the step"`.
+2. Context strip (sheet only - the dock has none; non-scrolling, 64 high): 48x48 thumbnail of the current step's visual + "STEP 7" (`label`; not "ABOUT STEP 7" - that wording belongs to the conversation divider directly below, and the two must not read as a repeat) + step title (1 line, truncates). Trailing **safety tag** when the step has one (`tag`, radius `xs`, padding 2 8, icon 16): irreversible -> padlock + "Can't be undone" (`danger-fg` on `danger-soft`); otherwise, with warnings -> triangle + "1 warning" / "2 warnings" (`warn-fg` on `warn-soft`). Irreversible wins when both apply. The sheet is modal and covers the step's banners, so the strip says they exist. Tapping the strip closes the sheet (back to the step); `aria-label="Step 7: <title>. 1 warning. Close and go back to the step"`.
 3. Conversation (per guide, scrolls, newest at bottom). Quiet "Clear conversation", right-aligned, is the first item of the scroll area when there is history (confirm dialog: "Clear this conversation?" / "Your questions and the answers for this guide will be removed." / Danger "Clear" + "Cancel"). A divider with the Context tag "ABOUT STEP 7" is inserted whenever the user asks from a different step than the previous message.
 4. Suggested-question chips (shown when no question has been asked on this step yet): "What does this mean?", "Which piece is this?", "Why am I doing this?".
 5. Composer (DS 7.13), pinned to the bottom above the keyboard.
@@ -348,51 +348,85 @@ Revised after the M3 review of the built UI (2026-11-12); aligned with D-019 and
 
 | Width | Layout |
 |---|---|
-| `sm`, `md`, `landscape-compact` (everything below 1024) | Modal bottom sheet (DS 7.7), opens at the `full` detent (the keyboard needs the room; a `half` detent would leave about two lines of conversation above the keyboard). Full width on `sm`; centred, max-width 560 on `md`. The context strip keeps the step and its safety tag in view. One presentation below `lg` (M3 ruling): the earlier right-hand panel for 768 and for landscape is dropped - 6.3 already specified sheets at 768, and in landscape a 44% column plus the keyboard leaves no usable conversation area. |
-| `lg` (>= 1024) | **Desktop dock**, below. Not modal, no scrim. |
+| `sm`, `md`, `landscape-compact` (everything below 1024 wide), **and any window under 560 tall** | Modal bottom sheet (DS 7.7), opens at the `full` detent (the keyboard needs the room; a `half` detent would leave about two lines of conversation above the keyboard). Full width on `sm`; centred, max-width 560 on `md`. The context strip keeps the step and its safety tag in view. One presentation below `lg` (M3 ruling): the earlier right-hand panel for 768 and for landscape is dropped - 6.3 already specified sheets at 768, and in landscape a 44% column plus the keyboard leaves no usable conversation area. |
+| `lg` (>= 1024 wide) and >= 560 tall | **Desktop dock**, below. Not modal, no scrim. |
 
-**Desktop dock (`lg`)** - the right column (420) is split; the action bar stays pinned under it and stays live, so nothing the user needs before pressing the Primary may be hidden:
+**Sheet or dock - the whole rule.** `window width >= 1024 and window height >= 560` -> dock; anything else -> sheet. It is decided from the window size alone, on open and on resize. It never depends on the step, on its banners or on any measured content: the same window always gets the same presentation on every step. If a resize crosses the line while the assistant is open, the presentation switches in place - conversation, scroll position and composer draft are kept, and focus goes to the composer if it was inside the assistant. The 560 floor is about chat room only (top bar and progress 70 + dock header 56 + chips, composer and footnote up to about 250 leave under 180 for the conversation below that height); it is no longer a safety rule, because the dock cannot cover a banner.
+
+**Desktop dock** - the assistant takes the place of the **step rail** (the left column). The step content is not part of the dock and the dock never touches it: the text panel (banners, title, instruction, provenance, parts, checkpoint, disclosures) and the action bar under it stay in the right column at 420, at full size, with the same scroll position, exactly as when the assistant is closed. Nothing is repeated in the dock, so there is nothing to keep in step and nothing to fit.
 
 ```
-+------------------------------------------+
-| Ask about this step                  [x] |  Header 56, bottom hairline
-+------------------------------------------+
-| (irreversible banner)                    |  STEP SUMMARY - pinned, own scroll,
-| (warning banners, all, verbatim)         |  max-height 44% of the column
-| (missing-part / low-confidence banners)  |  (top bar to action bar), padding 16,
-| v  STEP 4                                |  8 between banners, bottom hairline
-|    Press in the cam locks                |  Toggle row, min-height 56
-|    Press a cam lock (F) into each ...    |  Instruction  body
-|    [ YOU'LL KNOW IT'S RIGHT WHEN ... ]   |  Checkpoint block (DS 7.15)
-+------------------------------------------+
-| conversation (scrolls)                   |  Fills the rest, min-height 240
-| [chips]  [ composer ] [send]  footnote   |
-+------------------------------------------+
-| [ Back ] [  Done - next step  ] [ Ask ]  |  Action bar (unchanged); Ask selected
-+------------------------------------------+
++-- top bar 56: [x] [STEP 5 OF 10 - BUILD THE FRAME v]            [>)] [:] --+
++-- segmented progress -------------------------------------------------------+
+| Ask about this step [x] |                        | (irreversible banner)    |
++-------------------------+                        | (warning banners)        |
+| conversation (scrolls)  |   SOURCE VISUAL        | Step title               |
+|                         |   (unchanged, live:    | Instruction              |
+|                         |    zoom, marks,        | FOR THIS STEP chips      |
+|                         |    callouts)           | Checkpoint               |
+| [chip] [chip]           |                        | Disclosures              |
+| [chip]                  |                        +--------------------------+
+| [ composer      ] [send]|                        | [Back] [ Done - next ]   |
+| Answers come only ...   |                        |                  [Ask *] |
++-------------------------+------------------------+--------------------------+
+   DOCK (replaces rail)        CENTRE (fills)          TEXT PANEL 420 (untouched)
 ```
 
-- **Step summary content, in the text panel's safety order (6.2 items 1-4, then 5, 6, 9):** irreversible banner; every warning banner; missing-part banner; low-confidence banner; step label + title; instruction; checkpoint block. The banners are the DS 7.12 components unchanged - same wording, source line and page tag, never shortened, never collapsed, never replaced by a count.
-- **Toggle row** (chevron 20 + `label` "STEP 4" + title `body` 600, one line; `aria-expanded`): collapses the instruction and the checkpoint only. **Banners are outside the toggle and cannot be collapsed.** The summary re-expands and scrolls to its top on every step change.
-- Not in the summary (close the dock to see them): Source quote, part chips, disclosures, "Show original page". The picture, its callouts and "Original page" stay available in the centre.
-- If the banners alone exceed the 44% cap the summary scrolls, banners first - the same behaviour as the text panel, where they are also first in a scrolling column.
-- The Primary keeps its label rules while the dock is open ("I checked - done" on irreversible steps, 6.5), and the irreversible border colours on the bars stay.
-- Step change with the dock open (rail, Back, Primary, arrows): the summary updates; the conversation and any draft in the composer stay; the next question is about the new step. Focus stays in the composer if it was there, otherwise moves to the summary's step title. The step is announced as in 6.4.
-- Focus on open: the dock heading. Close (button, `Esc` inside the dock, or the Ask toggle): the text panel returns at its previous scroll position; focus returns to Ask.
+Column widths (the centre takes what is left; the text panel is 420 in every case):
 
-Rejected: a modal side panel (blocks changing step and zooming while asking); the dock replacing the whole text panel with only title + instruction pinned (built in M3-b: the user could press "Done - next step" with a warning off screen).
+| Window width | Rail (dock closed) | Dock (open) | Centre, closed -> open | Centre padding, open |
+|---|---|---|---|---|
+| 1024-1199 | 64 icon strip | **320** | 540 -> 284 (at 1024); 715 -> 459 (at 1199) | 12 |
+| 1200-1439 | 280 | **360** | 580 -> 500 (at 1280) | 24 |
+| >= 1440 | 280 | **400** | 740 -> 620 (at 1440) | 24 |
+
+The widths are fixed steps, not fluid. 280 (the rail's own width) is too narrow for the chat - about 28 characters of `body-lg` per line - so the dock is wider than the rail and the centre pays for it. At 1024 the picture is narrow (260 of image after padding) but still whole, live and zoomable, and closing the dock is one key away.
+
+**Dock anatomy**, top to bottom. `surface`, 1px `line` right border (the rail's border), from under the progress bar to the bottom edge of the window - there is no action bar under the dock:
+1. Header, 56 high, bottom hairline, padding 0 8 0 16: title "Ask about this step" (`display-md`, `h2`), close icon button 44 (`aria-label="Close the assistant"`).
+2. Conversation: fills the rest, min-height 120, the dock's only scroller, padding 16, `overscroll-behavior: contain`. Content as "Content hierarchy" item 3.
+3. Suggested-question chips (when shown): padding 12 16 0, wrap, gap 8.
+4. Composer row: padding 12 16 0, input + Send 48, gap 8.
+5. Footnote: padding 4 16 16.
+
+There is **no context strip, no step summary, no banners, no toggle row and no safety tag** in the dock: the step is on screen beside it. The "ABOUT STEP n" divider in the conversation stays.
+
+**Safety rule, and why it now holds without a check.** A step's warning and irreversible banners are in the text panel, and the dock neither covers, resizes, scrolls nor re-renders the text panel. So with the dock open the banners are exactly as visible as with the assistant closed - on every step, at every window size that gets the dock. Engineering must keep that property literal: opening, closing or using the dock must not change the right column's width, height, scroll position or content. The Primary keeps its label rules ("I checked - done" on irreversible steps, 6.5) and the irreversible border colours on the bars stay.
+
+**Steps while the rail is hidden**
+- While the dock is open the rail (and the 64 strip) is not rendered. The **top-bar counter becomes the Steps button**, as it already is at 320 and in `landscape-compact`: same text, plus a trailing chevron-down 16; height 44; hover `surface-sunken`; focus ring; `aria-haspopup="dialog"`, `aria-label="Steps. Step 5 of 10, Build the frame"`. With the dock closed it is plain text again (the rail is on screen).
+- It opens the Step rail (DS 7.6) as a **modal left panel over the dock**: same width as the dock (320 / 360 / 400), from under the top bar to the bottom of the window, `surface-raised`, `elev-2`, scrim over the rest, header "Steps" + close 44, current row scrolled to centre and focused. Choosing a row goes to that step and closes the panel; `Esc`, the close button or the scrim close it without moving. On close, focus returns to the counter button (after choosing a row: to the step title, as any step change). The dock, its conversation and its draft are untouched underneath.
+- Back, the Primary, `ArrowLeft` / `ArrowRight`, `PageUp` / `PageDown` and swipes work as always (arrows not while focus is in the composer, 6.4).
+- **Step change with the dock open** (any route): the text panel and the visual change as in 6.4 - the text panel scrolls to its top, which puts the new step's banners first in view. The conversation and any draft in the composer stay; the next question is about the new step. Focus stays in the composer if it was there, otherwise moves to the step title. The step is announced as in 6.4.
+- **"Step n" citation chip**: goes to that step with the dock open. Because the rail is not there to show the move, the confirmation is the counter, the text panel and the picture changing together. The chip that was pressed disappears (a chip citing the current step is omitted, DS 7.11), so focus moves to the step title like any other step change; `/` or `A` returns to the composer.
+
+**DOM, landmarks and focus**
+- DOM order equals visual order, left to right: top bar, **dock**, visual, text panel, action bar. The dock sits in the rail's position in the DOM - the rail is unmounted (or `hidden`) while the dock is open, never merely moved off screen. Not after the action bar: the tab order would then jump from bottom-right to top-left (DS section 8 rule 4).
+- The dock is `<aside aria-labelledby="its h2">` (a complementary landmark), not a dialog: no `aria-modal`, no focus trap, no scrim, the rest of the page is not `inert`. The step title stays the page's only `h1`, so screen-reader users reach the step by heading or by the main landmark, and the chat by the complementary landmark.
+- Tab order: top bar (Close, Steps counter, read-aloud, overflow) -> dock (close, conversation's chips and links in order, suggestion chips, composer, Send) -> visual controls -> text panel -> Back, Primary, Ask. Tabbing forward from Send therefore leads through the picture and the step to the Primary.
+- **Focus on open: the composer** (the dock is for keyboard-and-pointer devices; `/` then typing must work without another key). The composer's accessible name is "Ask a question about step 5". The sheet keeps focusing its title (DS 7.7).
+- Close (dock close button, `Esc` while focus is inside the dock, or the Ask toggle): the rail returns; focus goes to Ask. `Esc` with focus outside the dock keeps its 6.4 meaning and does not close the dock.
+- Answers are announced as in DS 7.13 (once, polite); nothing else in the dock is live.
+
+**Opening and closing - no animation.** Rail out and dock in happen in one frame, both ways: no slide, no fade, no width transition. The centre column changes width in the same frame; the picture is re-fitted to the step's region at the new width (if the user had zoomed or panned, the zoom level and the centre point are kept). The Steps panel appears and leaves with a `dur-fast` opacity fade together with its scrim (no slide - it does not travel from anywhere meaningful). Reduced motion: no change needed for the dock; the Steps panel follows the 80ms rule.
+
+**Toast** while the dock is open: bottom-left of the **centre** column (inset 24, 80 above the column's bottom so it clears the picture's page tag and zoom controls; max-width = column width - 48), not the window's bottom-left, where it would cover the composer.
+
+**Removed by this ruling** (delete, do not hide): the pinned step summary in the dock (banner copies, toggle row, collapsed instruction and checkpoint, the 44% cap, the summary scroller); the split right column; the chat minimums of 200 / 240; and the fits-or-sheet fallback of D-027 item 1 - the dock no longer measures itself or reports to the player, and no step is ever sent to the sheet because of its banners.
+
+Rejected: a modal side panel (blocks changing step and zooming while asking); the dock in the right column over the step text with a pinned summary (M3: duplicated banners needed a height fallback that sent most banner steps to the sheet at 1280x600, 1024x768 and 1280x720); narrowing the text panel at 1024-1199 to give the picture more room (it would reflow the banners at the moment the dock opens and break "the dock never touches the step column"); a 280 dock that leaves the picture unmoved (chat lines too short to read).
 
 **Interactions**
 - Tapping a suggestion chip sends it.
 - **Send**: on a keyboard-and-pointer device (`not (pointer: coarse)`) `Enter` sends and `Shift+Enter` is a new line. On touch (`pointer: coarse`) `Enter` is a new line and only the Send button sends - a propped phone must not send a half-typed question. The on-screen keyboard's key must match: `enterkeyhint="enter"` on touch, `"send"` otherwise.
 - After Send on touch the composer is disabled and the keyboard closes, so the answer has the whole sheet.
 - **Stop** replaces Send while an answer is being prepared. Stop discards the partial answer (unverified text is never kept, D-019) and keeps the question: under the user's bubble, `body-lg` `ink-muted` "You stopped this answer." + Quiet "Ask again". Nothing is saved for a stopped turn.
-- **Citations are two chips** (DS 7.11): "Step 4" goes to that step (below `lg`: closes the sheet first; `lg`: the dock stays open); "p. 4" opens the Original viewer at the cited page and region **over** the sheet or dock. Closing the viewer returns to the conversation with its scroll position kept. The viewer has no "Go to step" footer (removed: the Step chip does it).
+- **Citations are two chips** (DS 7.11): "Step 4" goes to that step (sheet: closes the sheet first; dock: the dock stays open, see "Steps while the rail is hidden"); "p. 4" opens the Original viewer at the cited page and region **over** the sheet or dock. Closing the viewer returns to the conversation with its scroll position kept. The viewer has no "Go to step" footer (removed: the Step chip does it).
 - No per-message rating in the MVP ("Helpful" / "Not helpful" is cut: no endpoint and nobody to read the data).
 - Composer limit: 1000 characters. A counter ("1000 / 1000", `tag`, `ink-muted`, right-aligned under the input) appears within the last 100; input stops at the limit.
 
 **States**
-- Empty: context strip (or step summary), one line "Stuck on this step? Ask in your own words.", chips.
+- Empty: context strip (sheet only), one line "Stuck on this step? Ask in your own words.", chips.
 - Loading history: 2 message skeletons. History failed: `body` `ink-muted` "Couldn't load your earlier questions." + Quiet "Try again"; the composer still works.
 - **Preparing an answer** (DS 7.13 "Answer in progress"): provisional text plus a visible status line - "Looking in your manual..." until the first words arrive, then "Checking this against your manual..." until the answer is verified (text after the first number is held back until then, D-019), and "Still checking. This can take up to a minute." after 20 s. The screen must never show a half sentence with no sign of work.
 - Complete: per DS 7.13.

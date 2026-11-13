@@ -311,3 +311,9 @@ Task: Accuracy test design (D-025: $10 cap, Haiku 5.5 only).
 Done: `docs/ACCURACY_TEST_PLAN.md`; harness `scripts/accuracy/{run,harness,score,budget,matrix,manuals,key-schema}.ts` with the Lumen answer key; 21 tests on the mock. Manuals (all CC BY-SA, from `raw.githubusercontent.com`, which is reachable): Cyclone PCB Factory "2 Montaje del Eje X" (14 pp, picture-led, Spanish captions), ANAVI Thermometer User's Manual (about 12 pp, English, text-heavy, Markdown to render), Cyclone "4 Montaje de la Electronica" (12 pp, mixed, Spanish); spares: Cyclone "3 Montaje del Eje Z", ANAVI Light Controller. Run matrix: 4 manuals x 3 variants = 28 runs; projected $0.89 expected, $1.64 worst case, about $3.40 worst case for all phases. Every request is locked to `claude-haiku-5-5`, checked against the cap before sending, and logged from `usage`.
 Open issues / risks: no truly wordless manual and only one English real manual could be verified (hosts for other candidates are blocked by the network policy); two of three are Spanish, where the assistant guard holds whole answers by design.
 Next: engineer implements the panel detector (plan section 7); QA downloads and renders the manuals (`run.ts prepare`, into gitignored `data/accuracy/`) and builds answer keys; senior engineer reviews the keys; user supplies the API key.
+
+## H-044 | 2026-11-13 | from: ui-ux-designer -> to: software-engineer
+Task: Ruling on the desktop assistant dock layout.
+Done: D-028. Specs updated: USER_FLOWS 6.2-6.4 and 7; DESIGN_SYSTEM 5, 7.6-7.8, new 7.17.
+Open issues / risks: the 260-284px picture column at 1024 needs a visual check; touch tablets in landscape (on-screen keyboard over the composer) untested.
+Next: engineer implements USER_FLOWS 7 "Desktop dock"; QA re-shoots 1280x600, 1024x768, 1280x720 and updates its dock specs.

@@ -157,6 +157,7 @@ Rules: max line length 62ch for body, 34ch for `glance`. Emphasis is weight 700,
 - **Progress fill**, **disclosure open**, **visual-stage resize**: `dur-base`.
 - **Processing arc** (7.14): the only looping motion in the product.
 - Hover, press, select, tick, toast: colour or opacity changes only (`dur-instant` / `dur-fast`).
+- **Not animated: the assistant dock** (7.17). Rail out, dock in and the centre column's new width all land in one frame; the picture is re-fitted without a resize transition. The desktop Steps panel fades with its scrim in `dur-fast` (no slide).
 
 Interaction feedback must start within 100ms; never block input on an animation; a new step change interrupts a running one.
 
@@ -227,17 +228,17 @@ Semantics: `role="checkbox"` with `aria-checked`; missing is announced as "marke
 - **Stage list** (processing): see 7.14.
 
 ### 7.6 Step rail
-A list of all steps grouped by phase. One component, two presentations: bottom sheet on `sm`/`md`, permanent left column (280px) on `lg`.
+A list of all steps grouped by phase. One component, three presentations: bottom sheet on `sm`/`md`; permanent left column on `lg` (280px; a 64px icon strip at 1024-1199); and, on `lg` **while the assistant dock is open**, not rendered at all - the dock has its column (7.17) - and reached from the top-bar counter button as a modal left panel the width of the dock (USER_FLOWS 7).
 
 Row anatomy (min height 56): status marker 24 (empty ring = not done; `success` check disc = done; `accent` filled ring = current), step number (`tag`), title (`body`, 2-line clamp), trailing flags in fixed order: padlock (irreversible), "?" (low confidence), warn triangle (uses a part marked missing). Phase header: `label`, sticky, with "3/6".
 States: default; hover `surface-sunken`; current `accent-soft` with 3px `accent` left bar and `aria-current="step"`; focus ring; done rows keep full-contrast titles. Opening scrolls the current row to centre. Any step can be opened at any time (no locking).
 
 ### 7.7 Bottom sheet
-`surface-raised`, top radius `lg`, `elev-2`, scrim behind. Anatomy: grab handle (36x4, `ink-subtle`, in a 44px-tall drag zone), header (title `display-md`, close icon button 44), scrollable body, optional sticky footer. Detents: `half` (56% of viewport height) and `full` (viewport minus 48). Drag between detents; drag down past 30% or fling to dismiss; tap scrim or Esc dismisses. On `md` centred with max-width 560; on `lg` sheets become right-side panels (400px) or centred dialogs (max 560) as specified per screen.
+`surface-raised`, top radius `lg`, `elev-2`, scrim behind. Anatomy: grab handle (36x4, `ink-subtle`, in a 44px-tall drag zone), header (title `display-md`, close icon button 44), scrollable body, optional sticky footer. Detents: `half` (56% of viewport height) and `full` (viewport minus 48). Drag between detents; drag down past 30% or fling to dismiss; tap scrim or Esc dismisses. On `md` centred with max-width 560; on `lg` sheets become right-side panels (400px) or centred dialogs (max 560) as specified per screen; the Steps panel opened over the assistant dock is the one left-side panel (dock width, `dur-fast` opacity fade instead of the slide). A window under 560 tall gets the bottom-sheet presentation for the Assistant at any width (7.17).
 Accessibility: `role="dialog"`, `aria-modal="true"`, labelled by its title, focus moves to the sheet title on open, focus is trapped, returns to the invoking control on close. Every sheet has a visible close button; drag is never the only way to dismiss.
 
 ### 7.8 Toast
-Bottom-centre on `sm` (above the action bar: bottom offset = bar height + 12), bottom-left on `lg`. `ink` fill with `bg` text in light; `surface-raised` with `ink` text and 1px `line` in dark. Radius `sm`, `elev-2`, padding 12 16, max-width 420, optional leading icon and one Quiet action ("Undo"). Duration 4s (8s with an action); pauses on hover/focus; max one visible, newest replaces. `role="status"` (`aria-live="polite"`); errors that need action are **not** toasts - they are inline banners. Enter and exit: opacity fade, `dur-fast`.
+Bottom-centre on `sm` (above the action bar: bottom offset = bar height + 12), bottom-left on `lg`. In the player with the assistant dock open: bottom-left of the centre (picture) column, inset 24, 80 above the column's bottom, max-width = column width - 48 - never over the dock's composer. `ink` fill with `bg` text in light; `surface-raised` with `ink` text and 1px `line` in dark. Radius `sm`, `elev-2`, padding 12 16, max-width 420, optional leading icon and one Quiet action ("Undo"). Duration 4s (8s with an action); pauses on hover/focus; max one visible, newest replaces. `role="status"` (`aria-live="polite"`); errors that need action are **not** toasts - they are inline banners. Enter and exit: opacity fade, `dur-fast`.
 
 ### 7.9 Upload dropzone
 Anatomy: dashed 2px `ink-subtle` border, radius `md`, `surface`, min-height 220 (`sm`) / 280; icon (page with bracket corners), title `display-md` "Add your manual", helper `body-sm` "PDF or photos of the pages - up to 60 pages, 40 MB", two buttons: Primary "Take photos" (mobile only, camera capture) and Secondary "Choose files" (on desktop this is Primary and the helper adds "or drop them here").
@@ -378,6 +379,25 @@ The user must be able to tell, at a glance, what comes straight from the manual 
 Overview key (second sentence of the authority note, shown once per guide, not per step): "Steps are Instructor's wording of your manual. Text marked FROM YOUR MANUAL is the manual's exact words."
 
 Noise rules: at most one Source quote and one tag per step outside banners; `confidence: medium` and ordinary reworded text get no marker; no per-sentence markers, percentages or confidence meters.
+
+### 7.17 Assistant dock (desktop)
+The non-modal presentation of the Assistant. It **replaces the step rail** in the left column; it never covers, resizes or repeats the step's text panel, so warning and irreversible banners (7.12) are exactly as visible with it open as with it closed. Behaviour and flows: USER_FLOWS 7.
+
+**When**: window width >= 1024 **and** height >= 560. Otherwise the Assistant is the bottom sheet (7.7). The choice depends on the window size only - never on the step or on measured content.
+
+| Window width | Dock width | Text panel | Centre (picture) column | Centre padding |
+|---|---|---|---|---|
+| 1024-1199 | 320 | 420 | rest (284 at 1024) | 12 |
+| 1200-1439 | 360 | 420 | rest (500 at 1280) | 24 |
+| >= 1440 | 400 | 420 | rest (620 at 1440) | 24 |
+
+Anatomy: `surface`, 1px `line` right border, full height under the progress bar to the window's bottom edge. Header 56 with bottom hairline (title `display-md` as `h2`, padding-left 16; close icon button 44, 8 from the edge). Conversation: flex 1, min-height 120, the only scroller, padding 16. Suggested chips: padding 12 16 0, gap 8, wrap. Composer row: padding 12 16 0, gap 8. Footnote: padding 4 16 16. Chat messages per 7.13 (user bubble max-width 85% of the dock's content width). No context strip, no step summary, no banners.
+
+States: closed (rail shown; Ask default) / open (rail not rendered; Ask selected, USER_FLOWS 6.2; top-bar counter is the Steps button: 44 high, trailing chevron-down 16, hover `surface-sunken`, focus ring). Open and close are instant (section 5).
+
+Semantics: `<aside>` labelled by its title, in the rail's DOM position (before the picture and the text panel); not a dialog, no focus trap, no scrim. Focus on open: the composer. `Esc` inside it closes it and returns focus to Ask.
+
+Removed (M4 ruling): the pinned step summary and its 44% cap, the split right column, and the measured "fits, else sheet" fallback.
 
 ## 8. Accessibility rules
 
