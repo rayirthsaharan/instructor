@@ -18,8 +18,16 @@ export interface PageImage {
   data: Uint8Array;
 }
 
+/** A diagram panel detected in code on the exact rendered page image. The model selects one by `panelId`. */
+export interface DetectedPanel {
+  panelId: string;
+  region: Region;
+}
+
 export interface AnalyseDocumentInput {
   pages: PageImage[];
+  /** Code-detected panels per page (by `pageIndex`). When absent the model returns coarse regions flagged `regionFallback`. */
+  panels?: { pageIndex: number; panels: DetectedPanel[] }[];
   /** Hash of the uploaded content. Real providers ignore it; the mock matches it against its fixture manuals. */
   contentHash?: string;
   /** Preferred language for generated text; defaults to the manual's language. */

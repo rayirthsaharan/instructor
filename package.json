@@ -20,6 +20,7 @@
     "check": "npm run typecheck && npm run lint && npm run test"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.8.0",
     "@napi-rs/canvas": "^1.1.0",
     "better-sqlite3": "^13.0.3",
     "drizzle-orm": "^0.45.4",

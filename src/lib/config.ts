@@ -14,7 +14,10 @@ const envSchema = z.object({
   AI_PROVIDER: z.preprocess(emptyToUndefined, z.enum(['mock', 'anthropic']).default('mock')),
   ANTHROPIC_API_KEY: optionalString,
   AI_MODEL_ANALYSIS: optionalString,
+  AI_MODEL_VERIFY: optionalString,
   AI_MODEL_CHAT: optionalString,
+  AI_MODEL_SIMPLIFY: optionalString,
+  AI_ANALYSIS_CHUNK_PAGES: z.preprocess(emptyToUndefined, z.coerce.number().int().min(1).max(100).default(12)),
   WORKER_POLL_MS: z.preprocess(emptyToUndefined, z.coerce.number().int().min(10).max(3_600_000).default(1000)),
   SESSION_SECRET: optionalString,
   RENDER_CHILD_PATH: optionalString,
@@ -25,6 +28,9 @@ const envSchema = z.object({
   ASSISTANT_MAX_STREAMS: z.preprocess(emptyToUndefined, z.coerce.number().int().min(1).max(1000).default(8)),
 });
 
+/** Single default model for analysis, verification, the assistant and simplify (D-025). Every role can be overridden by env. */
+export const DEFAULT_AI_MODEL = 'claude-haiku-5-5';
+
 export interface AppConfig {
   nodeEnv: 'development' | 'test' | 'production';
   isProduction: boolean;
@@ -33,7 +39,11 @@ export interface AppConfig {
   aiProvider: 'mock' | 'anthropic';
   anthropicApiKey?: string;
   aiModelAnalysis?: string;
+  aiModelVerify?: string;
   aiModelChat?: string;
+  aiModelSimplify?: string;
+  /** Pages per analysis chunk (ARCHITECTURE section 10, item 4). */
+  aiAnalysisChunkPages: number;
   workerPollMs: number;
   /** Artificial delay of the mock analysis so progress states are visible in local use. 0 in tests. */
   mockAiDelayMs: number;
@@ -90,7 +100,10 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     aiProvider: e.AI_PROVIDER,
     anthropicApiKey: e.ANTHROPIC_API_KEY,
     aiModelAnalysis: e.AI_MODEL_ANALYSIS,
+    aiModelVerify: e.AI_MODEL_VERIFY,
     aiModelChat: e.AI_MODEL_CHAT,
+    aiModelSimplify: e.AI_MODEL_SIMPLIFY,
+    aiAnalysisChunkPages: e.AI_ANALYSIS_CHUNK_PAGES,
     workerPollMs: e.WORKER_POLL_MS,
     mockAiDelayMs: e.MOCK_AI_DELAY_MS,
     assistantMessagesPer10Min: e.ASSISTANT_MESSAGES_PER_10_MIN,
@@ -99,6 +112,49 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     trustProxyHops: e.TRUST_PROXY_HOPS,
     freeGuidesPerMonth: e.FREE_GUIDES_PER_MONTH,
     sessionSecret: e.SESSION_SECRET,
+  };
+}
+
+export interface AIConfig {
+  provider: 'mock' | 'anthropic';
+  apiKey?: string;
+  models: { analysis: string; verify: string; chat: string; simplify: string };
+  chunkPages: number;
+}
+
+const aiEnvSchema = envSchema.pick({
+  AI_PROVIDER: true,
+  ANTHROPIC_API_KEY: true,
+  AI_MODEL_ANALYSIS: true,
+  AI_MODEL_VERIFY: true,
+  AI_MODEL_CHAT: true,
+  AI_MODEL_SIMPLIFY: true,
+  AI_ANALYSIS_CHUNK_PAGES: true,
+});
+
+/**
+ * Only the AI-related settings, so the provider can be built without the session secret rules.
+ * Throws ConfigError with a clear message when AI_PROVIDER=anthropic has no API key. Never log the result.
+ */
+export function loadAIConfig(env: Record<string, string | undefined> = process.env): AIConfig {
+  const parsed = aiEnvSchema.safeParse(env);
+  if (!parsed.success) {
+    throw new ConfigError(`Invalid configuration: ${parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ')}`);
+  }
+  const e = parsed.data;
+  if (e.AI_PROVIDER === 'anthropic' && !e.ANTHROPIC_API_KEY) {
+    throw new ConfigError('Invalid configuration: ANTHROPIC_API_KEY is required when AI_PROVIDER=anthropic');
+  }
+  return {
+    provider: e.AI_PROVIDER,
+    apiKey: e.ANTHROPIC_API_KEY,
+    models: {
+      analysis: e.AI_MODEL_ANALYSIS ?? DEFAULT_AI_MODEL,
+      verify: e.AI_MODEL_VERIFY ?? DEFAULT_AI_MODEL,
+      chat: e.AI_MODEL_CHAT ?? DEFAULT_AI_MODEL,
+      simplify: e.AI_MODEL_SIMPLIFY ?? DEFAULT_AI_MODEL,
+    },
+    chunkPages: e.AI_ANALYSIS_CHUNK_PAGES,
   };
 }
 
