@@ -299,7 +299,7 @@ How to verify: `npx vitest run tests/ai-*`; `npm run build`.
 Open issues / risks (only a real call can settle them): whether the API accepts the derived structured-output schema; whether the streamed chat JSON keeps `answer` first (fallback emits the full answer at the end); cache hits (minimum prefix length); real stream/abort behaviour; Haiku 5.5 limits.
 Next: QA at unit level; the accuracy test's first calls double as the adapter's smoke test.
 
-## H-041 | 2026-11-13 | from: software-engineer -> to: orchestrator
+## H-043 | 2026-11-13 | from: software-engineer -> to: orchestrator
 Task: M4-a polish (dock banners, performance, reused signal, delete race, font warnings).
 Done: Dock `AssistantHost.tsx`/`Player.tsx` (pinned banners, `useViewportHeight`, sheet fallback); `assistant/lazy.tsx` (assistant UI loaded on first Ask); next-step image preload; ETag/304 on page images; `reused` (schema, migration 0005, handler, API.md, Processing toast "We already know this manual - your guide is ready."); `removeUnreferencedFiles` + `deleteSync` (tests/shared-page-delete-race.test.ts); font `fallback` in layout.tsx. New specs: e2e/m4-dock-pinned.spec.ts, e2e/m4-reused.spec.ts. Updated non-QA specs m3-dock-short and m3-assistant-mocked to accept the sheet fallback.
 How to verify: npm run check; npm run build (no warnings); npm run e2e -- --trace off.
