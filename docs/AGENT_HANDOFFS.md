@@ -317,3 +317,18 @@ Task: Ruling on the desktop assistant dock layout.
 Done: D-028. Specs updated: USER_FLOWS 6.2-6.4 and 7; DESIGN_SYSTEM 5, 7.6-7.8, new 7.17.
 Open issues / risks: the 260-284px picture column at 1024 needs a visual check; touch tablets in landscape (on-screen keyboard over the composer) untested.
 Next: engineer implements USER_FLOWS 7 "Desktop dock"; QA re-shoots 1280x600, 1024x768, 1280x720 and updates its dock specs.
+
+## H-045 | 2026-11-13 | from: qa-engineer -> to: orchestrator, senior-engineer
+Task: Prepare the three test manuals and build their answer keys (no paid calls, no network use beyond raw.githubusercontent.com).
+Done: Downloaded and rendered (via `run.ts prepare`) into gitignored `data/accuracy/manuals/<id>/`; sources table in `data/accuracy/SOURCES.md`. Keys: `scripts/accuracy/keys/{cyclone-x-axis,cyclone-electronics,anavi-thermometer}.key.json`. Test: `tests/qa-accuracy-keys.test.ts`. Every page was read by eye; warnings are checked verbatim against the text layer by the test. No harness code was changed.
+Sources (all raw.githubusercontent.com, CC BY-SA 4.0): cyclone-x-axis `CarlosGS/Cyclone-PCB-Factory/master/AssemblyInstructions/Cyclone_QSG_2_Montaje_del_Eje_X.pdf` sha256 8ac2b638...d06525, 14 pages. cyclone-electronics `.../Cyclone_QSG_4_Montaje_de_la_Electronica.pdf` sha256 f90ce9ec...eafa0, 12 pages. anavi-thermometer `AnaviTechnology/anavi-docs/master/anavi-thermometer/anavi-thermometer.md` sha256 5b969ced...f0df; rendered PDF (pandoc 3.1.3 + headless Chromium, ligatures off) sha256 5d13f000...a2e, 9 pages (the plan says "about 12").
+Counts, pages / parts / steps / warnings, with ambiguous items in brackets: cyclone-x-axis 14 / 28 (10) / 11 (2) / 12 (0); cyclone-electronics 12 / 15 (2) / 6 (3) / 9 (1); anavi-thermometer 9 / 10 (8) / 18 (8) / 10 (1). Reasons are in each item's `ambiguityNote`.
+How to verify: `npx vitest run tests/qa-accuracy-* tests/accuracy-*` (68 pass, 3 skipped = Lumen data checks that do not apply).
+Open issues / risks for the senior engineer:
+1. `key-schema.ts` has no `ambiguous`, `printedLabel`, `tools` fields; the keys carry them as extras that Zod strips, so the scorer ignores them. Add them if ambiguity should be reported. Tools are only in `tools` and `notes`.
+2. Part letters (A, B, C) restart on every Cyclone step. The `label` field is left empty and part keys are `s<step>-<letter>`; otherwise score.ts label-first matching would pair the wrong parts. Same-named parts in two steps (spring, B608zz bearing, M3 nut) are separate key parts marked ambiguous, because a model may merge them.
+3. `manuals.ts` lists anavi-thermometer as 12 pages; the rendered PDF has 9. Not edited.
+4. Regions are the numbered assembly figures, deliberately excluding the parts box at the top of each Cyclone page. Cyclone step 5 (guiding cables) is one composite picture with five circular close-ups; a panel covering a single circle will score wrong. Steps spanning two pages (x-axis 6, electronics 2 and 3, several ANAVI) use `altRegions` for the second page.
+5. ANAVI is a text manual: all regions are text blocks, so it tests order and warnings, not diagram location. Text-layer note: the first render had ligature splitting ("fi rmware"); re-rendered with ligatures off. Chromium PDFs embed timestamps, so do not re-render after the keys are frozen.
+6. Cyclone page 1 (cover) and the last page (blank logo page) hold no step; electronics index 10 holds a safety pointer, keyed as a warning (ambiguous).
+Next: senior engineer reviews each key against the page images; then freeze key hashes before any paid run.
