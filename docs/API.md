@@ -50,6 +50,7 @@ Other codes: `not_found` (404), `invalid_request` (400, bad progress JSON or ids
   progress: 0..1, pageCount: number|null, pagesRendered: number,
   guideId: string|null, attempts: number,   // pipeline starts for the latest job (0 before the first, max 3)
   retryCount: number,   // times the user called POST /retry for this document (persisted). The UI's "still not working" copy uses this (>= 2), not `attempts`
+  reused: boolean,   // true when the guide was built from an analysis the app already had (duplicate upload, zero provider calls); the Processing screen shows "We already know this manual - your guide is ready."
   error: { code, message }|null, title: string|null }
 ```
 - `rejected` = "not a manual" (`error.code = "not_a_manual"`, message is the reason). No guide exists.

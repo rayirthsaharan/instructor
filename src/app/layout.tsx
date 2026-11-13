@@ -16,12 +16,17 @@ const text = Atkinson_Hyperlegible_Next({
   display: 'swap',
   weight: 'variable',
   variable: '--font-atkinson',
+  adjustFontFallback: false,
+  // next/font has no size-adjust metrics for this family; naming the fallback stack (same as globals.css) avoids the build warning.
+  fallback: ['system-ui', 'sans-serif'],
 });
 const label = Atkinson_Hyperlegible_Mono({
   subsets: ['latin'],
   display: 'swap',
   weight: ['400', '600'],
   variable: '--font-atkinson-mono',
+  adjustFontFallback: false,
+  fallback: ['ui-monospace', 'monospace'],
 });
 
 export const metadata: Metadata = {

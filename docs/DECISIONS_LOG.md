@@ -82,3 +82,6 @@ Status: proposed (needs user approval), accepted, superseded by D-nnn.
 
 ## D-024 | 2026-11-13 | orchestrator | proposed (needs user approval)
 **Real-model accuracy test.** Plan, API usage and cost estimate in `docs/REAL_MODEL_PROPOSAL.md`: 3 real manuals x 3 models (Opus 5.5, Sonnet 5.5, Haiku 5.5) x up to 3 prompt variants x 2 repeats, expected about $25, requested hard cap $50. No spend until the user approves and supplies an API key.
+
+## D-025 | 2026-11-13 | user | accepted - resolves D-024
+**Real-model accuracy test approved with changes.** Hard cap **$10**. Model: **Claude Haiku 5.5 (`claude-haiku-5-5`) only** - no Opus or Sonnet runs. Test manuals: chosen by the team from ones that are free to use for testing. The API key is supplied through the environment's secret settings, never in chat or the repo. Haiku 5.5 is therefore the model for analysis, verification and the assistant unless the user decides otherwise after the results.

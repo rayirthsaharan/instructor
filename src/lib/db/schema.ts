@@ -23,6 +23,8 @@ export const documents = sqliteTable('documents', {
   errorMessage: text('error_message'),
   // Number of user-initiated retries (POST /retry); the UI's "still not working" copy depends on it.
   retryCount: integer('retry_count').notNull().default(0),
+  // True when the guide came from an analysis that already existed (no provider calls).
+  reused: integer('reused', { mode: 'boolean' }).notNull().default(false),
   createdAt: integer('created_at').notNull(),
 }, (t) => [index('documents_session_idx').on(t.sessionId), index('documents_hash_idx').on(t.contentHash)]);
 

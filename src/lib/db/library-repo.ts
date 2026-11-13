@@ -28,6 +28,7 @@ export interface DocumentRecord {
   errorCode: string | null;
   errorMessage: string | null;
   retryCount: number;
+  reused: boolean;
   createdAt: number;
 }
 
@@ -44,6 +45,7 @@ const toDoc = (r: DocRow): DocumentRecord => ({
   errorCode: r.errorCode,
   errorMessage: r.errorMessage,
   retryCount: r.retryCount,
+  reused: r.reused,
   createdAt: r.createdAt,
 });
 
@@ -83,6 +85,7 @@ export async function insertDocument(db: Db, input: NewDocument, now: number): P
     errorCode: null,
     errorMessage: null,
     retryCount: 0,
+    reused: false,
     createdAt: now,
   };
   unwrap(db).insert(documents).values(row).run();
@@ -105,6 +108,7 @@ export interface DocumentPatch {
   pageCount?: number | null;
   errorCode?: string | null;
   errorMessage?: string | null;
+  reused?: boolean;
 }
 
 export async function updateDocument(db: Db, id: string, patch: DocumentPatch): Promise<void> {
@@ -434,6 +438,30 @@ export async function deleteDocumentCascade(db: Db, documentId: string, sessionI
     }
     return { orphanedKeys: [...keys] };
   }, { behavior: 'immediate' });
+}
+
+/**
+ * Deletes stored files that nothing references any more. For each key, ONE immediate transaction checks that no page
+ * row points at it and removes the file before releasing the write lock, so a concurrent writer (the worker inserts its
+ * page reference before writing the file) either committed its reference first, and the file is kept, or waits for the
+ * lock and writes the file after this delete. A delete can never remove a file another document now references.
+ * `removeFile` must be synchronous (the lock is held while it runs). Returns the keys that were removed.
+ */
+export async function removeUnreferencedFiles(db: Db, keys: string[], removeFile: (key: string) => void): Promise<string[]> {
+  const removed: string[] = [];
+  for (const key of keys) {
+    try {
+      unwrap(db).transaction((tx) => {
+        const used = tx.select({ id: pages.id }).from(pages).where(eq(pages.imagePath, key)).limit(1).get();
+        if (used) return;
+        removeFile(key);
+        removed.push(key);
+      }, { behavior: 'immediate' });
+    } catch (e) {
+      console.error('Could not delete stored file', key, e);
+    }
+  }
+  return removed;
 }
 
 // --- rate limiting --------------------------------------------------------------------------------

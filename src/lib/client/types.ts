@@ -18,6 +18,8 @@ export interface DocumentState {
   attempts?: number;
   /** Times the user pressed "Try again" (POST /retry). Drives the repeated-failure copy. */
   retryCount?: number;
+  /** True when the guide came from an analysis the app already had (no provider calls). */
+  reused?: boolean;
 }
 
 export interface GuideSummary {

@@ -46,6 +46,7 @@ export async function runAnalysis(deps: PipelineDeps, job: Job, ctx: JobContext)
 
 async function analyse(deps: PipelineDeps, doc: DocumentRecord, job: Job, ctx: JobContext, report: (s: PipelineStage, p: number) => Promise<void>): Promise<void> {
   const { existing } = await ingestStage(deps, doc, report);
+  await updateDocument(deps.db, doc.id, { reused: existing !== undefined });
   const pages = await renderStage(deps, doc, report, ctx.signal);
 
   let guide: ValidatedGuide;

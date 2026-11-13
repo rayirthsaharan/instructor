@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useId, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { useEffect, useEffectEvent, useId, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { BottomSheet, ConfirmDialog, Icon, IconButton } from '@/components/ui';
 import { keyboardInset } from '@/lib/client/assistant';
 import { getOwn } from '@/lib/guide/selectors';
@@ -157,14 +157,13 @@ export function AssistantDock(p: DockProps) {
 
   // Banners are pinned (they sit outside any scroller). If they and the chat minimum do not fit, hand over to the sheet.
   const section = useRef<HTMLElement>(null);
-  const onNoRoom = useRef(p.onNoRoom);
-  onNoRoom.current = p.onNoRoom;
+  const noRoom = useEffectEvent(() => p.onNoRoom());
   useLayoutEffect(() => {
     const el = section.current;
     if (!el) return;
     const measure = () => {
       const pinned = el.querySelector<HTMLElement>('[data-testid="dock-header"]')!.offsetHeight + (el.querySelector<HTMLElement>('[data-testid="dock-banners"]')?.offsetHeight ?? 0) + (el.querySelector<HTMLElement>('[data-testid="dock-step-toggle"]')?.offsetHeight ?? 0);
-      if (el.clientHeight < pinned + DOCK_CHAT_MIN) onNoRoom.current();
+      if (el.clientHeight < pinned + DOCK_CHAT_MIN) noRoom();
     };
     measure();
     const ro = new ResizeObserver(measure);
@@ -190,7 +189,7 @@ export function AssistantDock(p: DockProps) {
         }}
       >
         {/* Banners are never capped, clipped or scrolled away (D-024): nothing in the column scrolls except the details and the chat. */}
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden" data-testid="dock-scroll">
+        <div className="flex min-h-0 flex-1 flex-col overflow-clip" data-testid="dock-scroll">
           <header data-testid="dock-header" className="flex h-12 shrink-0 items-center justify-between gap-2 border-b border-line pl-4 pr-2">
             <h2 id={headingId} ref={heading} tabIndex={-1} className="type-display-md outline-none focus-visible:outline-2">
               {COPY.title}

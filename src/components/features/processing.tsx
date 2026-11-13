@@ -1,8 +1,8 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import { Banner, Button, Icon, Skeleton, SkeletonRegion, StageList } from '@/components/ui';
+import { useEffect, useRef, useState } from 'react';
+import { Banner, Button, Icon, Skeleton, SkeletonRegion, StageList, useToast } from '@/components/ui';
 import { retryDocument } from '@/lib/client/api';
 import { useDocumentPolling } from '@/lib/client/hooks';
 import { failureMessage, STAGE_LABELS } from '@/lib/client/messages';
@@ -122,10 +122,19 @@ export function ProcessingScreen() {
   const router = useRouter();
   const { doc, notFound, reconnecting, slow, restart } = useDocumentPolling(documentId);
 
+  const toast = useToast();
   const guideId = doc?.status === 'ready' ? doc.guideId : null;
+  const reused = doc?.reused === true;
+  const announced = useRef(false);
   useEffect(() => {
-    if (guideId) router.replace(`/g/${guideId}`);
-  }, [guideId, router]);
+    if (!guideId) return;
+    // USER_FLOWS 4: a manual the app already knows goes straight to the Overview with a toast (the provider was never called).
+    if (reused && !announced.current) {
+      announced.current = true;
+      toast.show({ message: 'We already know this manual - your guide is ready.' });
+    }
+    router.replace(`/g/${guideId}`);
+  }, [guideId, reused, router, toast]);
 
   if (notFound) return <NotFound />;
   if (!doc) return <Loading />;

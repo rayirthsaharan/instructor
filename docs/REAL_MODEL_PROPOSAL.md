@@ -1,6 +1,6 @@
 # Proposal: connecting a real model (needs user approval - D-010)
 
-Status: **proposed, no money spent.** Owner: lead orchestrator. Date: 2026-11-13.
+Status: **approved by the user with changes (D-025): $10 hard cap, Claude Haiku 5.5 only, team-chosen free test manuals.** Sections below are the original proposal; where they differ, D-025 wins. Owner: lead orchestrator. Date: 2026-11-13.
 
 Everything built so far runs on a mock. This proposal covers the first paid step: a bounded accuracy test, and what real usage would cost afterwards. Nothing here runs until the user approves and supplies an Anthropic API key.
 

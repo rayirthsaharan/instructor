@@ -9,7 +9,7 @@ import { useAssistant, type Citation } from '@/lib/client/assistant';
 import { useGuide } from '@/lib/client/guide-store';
 import { getOwn } from '@/lib/guide/selectors';
 import type { ValidatedGuide } from '@/lib/guide/validate';
-import { AssistantDock, AssistantSheet } from '../assistant/AssistantHost';
+import { LazyAssistantDock as AssistantDock, LazyAssistantSheet as AssistantSheet, preloadAssistant } from '../assistant/lazy';
 import { OriginalViewer } from '../original-viewer/OriginalViewer';
 import { swipeDirection } from '../source-visual/geometry';
 import { marksForPage, pageForPart, visualPages, type MarkView } from '../source-visual/pages';
@@ -188,6 +188,32 @@ function Player({ guideId, guide, documentId, pageCount, progress, actions, save
   const dockNoRoom = noRoom !== null && noRoom.stepId === stepId && noRoom.height === viewportHeight;
   const assistantOpen = panel === 'ask' || (panel === 'original' && askBelow);
   const assistant = useAssistant(guideId, stepId, assistantOpen);
+  // Warm the browser's image cache with the first page of the next step, so Next shows it without a request or a blank frame.
+  const nextStepId = position.next?.id;
+  const preloaded = useRef<HTMLImageElement[]>([]);
+  useEffect(() => {
+    const next = nextStepId ? getOwn(guide.steps, nextStepId) : undefined;
+    const first = next ? visualPages(next, guide.parts)[0] : undefined;
+    if (!first) return;
+    const img = new Image();
+    img.decoding = 'async';
+    img.src = pageImageUrl(documentId, first.pageIndex);
+    preloaded.current = [...preloaded.current.slice(-4), img]; // keep a reference so the request is not dropped
+  }, [nextStepId, documentId, guide]);
+  // The assistant UI is a separate chunk, fetched when Ask is first opened; pointing at or focusing Ask starts the fetch early.
+  const [assistantSeen, setAssistantSeen] = useState(false);
+  if (assistantOpen && !assistantSeen) setAssistantSeen(true);
+  useEffect(() => {
+    const intent = (e: Event) => {
+      if ((e.target as Element | null)?.closest?.('[data-testid="ask-button"]')) preloadAssistant();
+    };
+    document.addEventListener('pointerover', intent);
+    document.addEventListener('focusin', intent);
+    return () => {
+      document.removeEventListener('pointerover', intent);
+      document.removeEventListener('focusin', intent);
+    };
+  }, []);
   useEffect(() => {
     const st = overlays.current;
     if (!panel) overlays.current = [];
@@ -580,7 +606,7 @@ function Player({ guideId, guide, documentId, pageCount, progress, actions, save
         </BottomSheet>
       )}
 
-      {(layout !== 'desktop' || shortDesktop || dockNoRoom) && <AssistantSheet {...assistantProps} open={assistantOpen} onClose={closePanel} />}
+      {assistantSeen && (layout !== 'desktop' || shortDesktop || dockNoRoom) && <AssistantSheet {...assistantProps} open={assistantOpen} onClose={closePanel} />}
 
       <OriginalViewer
         open={url.panel === 'original'}

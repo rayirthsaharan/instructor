@@ -1,0 +1,1 @@
+ALTER TABLE `documents` ADD `reused` integer DEFAULT false NOT NULL;

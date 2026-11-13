@@ -1,4 +1,4 @@
-import { constants } from 'node:fs';
+import { constants, realpathSync, rmSync } from 'node:fs';
 import { lstat, mkdir, open, realpath, rename, rm, writeFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { dirname, resolve, sep } from 'node:path';
@@ -121,6 +121,28 @@ export class LocalStorage implements StorageAdapter {
     } catch {
       return false;
     }
+  }
+
+  deleteSync(key: string): void {
+    const p = this.pathFor(key);
+    let realRoot = this.root;
+    try {
+      realRoot = realpathSync(this.root);
+    } catch {
+      /* no root yet: nothing stored */
+    }
+    let dir = dirname(p);
+    for (;;) {
+      try {
+        if (!within(realRoot, realpathSync(dir))) throw new StorageKeyError(ESCAPES);
+        break;
+      } catch (e) {
+        if (e instanceof StorageKeyError) throw e;
+        if (dir === this.root || dir === dirname(dir)) break;
+        dir = dirname(dir);
+      }
+    }
+    rmSync(p, { force: true });
   }
 
   async delete(key: string): Promise<void> {

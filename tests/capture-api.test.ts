@@ -357,6 +357,35 @@ describe('ownership: session B cannot see or change session A resources', () => 
   });
 });
 
+describe('page image revalidation', () => {
+  it('sends a strong ETag and answers a matching If-None-Match with 304 and no body, keeping private, no-cache', async () => {
+    const c = new TestClient();
+    const { documentId } = await readyGuide(c);
+    const first = await c.call(getImage, '/x', {}, { id: documentId, index: '0' });
+    const etag = first.headers.get('etag')!;
+    expect(etag).toMatch(/^"[0-9a-f]{32}"$/);
+    expect(first.headers.get('cache-control')).toBe('private, no-cache');
+    const again = await c.call(getImage, '/x', { headers: { 'If-None-Match': etag } }, { id: documentId, index: '0' });
+    expect(again.status).toBe(304);
+    expect(await again.text()).toBe('');
+    expect(again.headers.get('cache-control')).toBe('private, no-cache');
+    expect((await c.call(getImage, '/x', { headers: { 'If-None-Match': '"other"' } }, { id: documentId, index: '0' })).status).toBe(200);
+  }, 30_000);
+});
+
+describe('reused flag', () => {
+  it('is false for a first upload and true when the same content is uploaded again (zero provider calls)', async () => {
+    const c = new TestClient();
+    const one = await readyGuide(c);
+    expect(one.status.reused).toBe(false);
+    const calls = app.provider.analyseCalls;
+    const two = await readyGuide(c);
+    expect(two.status.reused).toBe(true);
+    expect(app.provider.analyseCalls).toBe(calls);
+    expect((await status(c, one.documentId)).reused).toBe(false);
+  }, 30_000);
+});
+
 describe('DELETE', () => {
   it('deletes the guide, document and files; shared page images survive until the last user is gone', async () => {
     const c = new TestClient();

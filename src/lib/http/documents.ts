@@ -1,6 +1,6 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import {
-  countPages, countSessionDocumentsSince, deleteDocumentCascade, getGuideForDocument, getLatestJobForDocument, getOwnedDocument, getPage, insertDocument,
+  countPages, countSessionDocumentsSince, deleteDocumentCascade, getGuideForDocument, getLatestJobForDocument, getOwnedDocument, getPage, insertDocument, removeUnreferencedFiles,
   requeueFailedDocument, updateDocument, type DocumentRecord, type DocumentStatus, type OriginalFile,
 } from '../db';
 import { MAX_CONCURRENT_UPLOADS, QUOTA_WINDOW_MS, UPLOAD_LIMIT_GLOBAL, UPLOAD_LIMIT_PER_IP, UPLOAD_LIMIT_PER_SESSION } from '../limits';
@@ -8,7 +8,6 @@ import { JOB_TYPE } from '../pipeline/types';
 import { readUploadFiles, validateUpload } from '../upload/validate';
 import { clientIp, type AppContext, type SessionInfo } from './context';
 import { ApiError, json, notFound, parseId } from './respond';
-import type { StorageAdapter } from '../storage';
 
 export interface DocumentView {
   id: string;
@@ -22,6 +21,7 @@ export interface DocumentView {
   attempts: number;
   /** How many times the user has pressed "Try again" (POST /retry) for this document. */
   retryCount: number;
+  reused: boolean;
   error: { code: string; message: string } | null;
   title: string | null;
 }
@@ -51,6 +51,7 @@ export async function documentView(ctx: AppContext, doc: DocumentRecord): Promis
     guideId: guide?.id ?? null,
     attempts: job?.attempts ?? 0,
     retryCount: doc.retryCount,
+    reused: doc.reused,
     error,
     title: guide?.title ?? null,
   };
@@ -91,14 +92,9 @@ export function setActiveUploadsForTests(n: number): void {
   activeUploads = n;
 }
 
-async function removeKeys(storage: StorageAdapter, keys: string[]): Promise<void> {
-  for (const k of keys) {
-    try {
-      await storage.delete(k);
-    } catch (e) {
-      console.error('Could not delete stored file', k, e);
-    }
-  }
+/** Removes files nothing references any more; each is re-checked under the database write lock (see removeUnreferencedFiles). */
+async function removeKeys(ctx: Pick<AppContext, 'db' | 'storage'>, keys: string[]): Promise<void> {
+  await removeUnreferencedFiles(ctx.db, keys, (k) => ctx.storage.deleteSync(k));
 }
 
 export async function createDocument(req: Request, ctx: AppContext, session: SessionInfo): Promise<Response> {
@@ -130,7 +126,7 @@ export async function createDocument(req: Request, ctx: AppContext, session: Ses
     await ctx.queue.enqueue({ type: JOB_TYPE, payload: { documentId: id }, documentId: id });
   } catch (e) {
     await deleteDocumentCascade(ctx.db, id, session.sessionId);
-    await removeKeys(ctx.storage, originals.map((o) => o.key));
+    await removeKeys(ctx, originals.map((o) => o.key));
     throw e;
   }
   return json({ documentId: id }, 201);
@@ -156,7 +152,7 @@ export async function retryDocument(req: Request, ctx: AppContext, session: Sess
 export async function deleteOwnedDocument(ctx: AppContext, session: SessionInfo, documentId: string): Promise<boolean> {
   const res = await deleteDocumentCascade(ctx.db, documentId, session.sessionId);
   if (!res) return false;
-  await removeKeys(ctx.storage, res.orphanedKeys);
+  await removeKeys(ctx, res.orphanedKeys);
   return true;
 }
 
@@ -173,7 +169,7 @@ const FILE_HEADERS = {
 
 const IMAGE_TYPES: Record<string, string> = { png: 'image/png', webp: 'image/webp' };
 
-export async function getPageImage(ctx: AppContext, session: SessionInfo, rawId: string, rawIndex: string): Promise<Response> {
+export async function getPageImage(ctx: AppContext, session: SessionInfo, rawId: string, rawIndex: string, req?: Request): Promise<Response> {
   const doc = await ownedDocument(ctx, session, rawId);
   if (!/^\d{1,5}$/.test(rawIndex)) throw notFound('That page');
   const page = await getPage(ctx.db, doc.id, Number(rawIndex));
@@ -185,9 +181,11 @@ export async function getPageImage(ctx: AppContext, session: SessionInfo, rawId:
   } catch {
     throw notFound('That page');
   }
-  return new Response(new Uint8Array(data), {
-    headers: { ...FILE_HEADERS, 'Content-Type': type, 'Content-Length': String(data.length), 'Cache-Control': 'private, no-cache' },
-  });
+  // The file is content-addressed, so a strong ETag lets the browser revalidate with a 304 instead of downloading the page again.
+  const etag = `"${createHash('sha256').update(data).digest('hex').slice(0, 32)}"`;
+  const headers = { ...FILE_HEADERS, 'Content-Type': type, 'Cache-Control': 'private, no-cache', ETag: etag };
+  if (req && (req.headers.get('if-none-match') ?? '').split(',').some((t) => t.trim() === etag)) return new Response(null, { status: 304, headers });
+  return new Response(new Uint8Array(data), { headers: { ...headers, 'Content-Length': String(data.length) } });
 }
 
 const ORIGINAL_TYPES = new Set(['application/pdf', 'image/jpeg', 'image/png', 'image/webp']);
