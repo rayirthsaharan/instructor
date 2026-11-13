@@ -1,6 +1,7 @@
 import type { AIProvider } from '../ai/provider';
 import type { Db } from '../db';
 import type { StorageAdapter } from '../storage';
+import type { detectPanels } from '../render/panels';
 import type { renderPdfPages, probePdf, RenderLimits } from '../render/pdf';
 
 export type PipelineStage = 'ingest' | 'render' | 'analyse' | 'verify' | 'publish';
@@ -14,6 +15,8 @@ export interface PipelineDeps {
   renderPdfPages?: typeof renderPdfPages;
   probePdf?: typeof probePdf;
   renderLimits?: RenderLimits;
+  /** Injectable for tests; default is the code-side panel detector. */
+  detectPanels?: typeof detectPanels;
 }
 
 /** Progress reporting handed to every stage; returns false when the lease is lost and work must stop. */

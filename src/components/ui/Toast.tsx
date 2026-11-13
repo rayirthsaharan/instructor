@@ -98,8 +98,12 @@ function ToastProviderRoot({ children }: { children: ReactNode }) {
     <ToastContext.Provider value={value}>
       {children}
       <div
-        className="pointer-events-none fixed inset-x-0 z-50 flex justify-center px-4 lg:justify-start"
-        style={{ bottom: 'calc(var(--toast-offset, 0px) + 12px + env(safe-area-inset-bottom))' }}
+        className="pointer-events-none fixed z-50 flex justify-center px-4 lg:justify-start"
+        style={{
+          left: 'var(--toast-left, 0px)',
+          right: 'var(--toast-right, 0px)',
+          bottom: 'calc(var(--toast-offset, 0px) + 12px + env(safe-area-inset-bottom))',
+        }}
       >
         <div
           role="status"

@@ -6,7 +6,10 @@ import dynamic from 'next/dynamic';
 // player is interactive, so it is not part of the player's first load.
 const load = () => import('./AssistantHost');
 
-export const LazyAssistantDock = dynamic(() => load().then((m) => m.AssistantDock), { ssr: false });
+// Holds the dock's column while its code loads, so the picture does not jump twice.
+const DockPlaceholder = () => <aside aria-hidden="true" className="w-[320px] shrink-0 border-r border-line bg-surface min-[1200px]:w-[360px] min-[1440px]:w-[400px]" />;
+
+export const LazyAssistantDock = dynamic(() => load().then((m) => m.AssistantDock), { ssr: false, loading: DockPlaceholder });
 export const LazyAssistantSheet = dynamic(() => load().then((m) => m.AssistantSheet), { ssr: false });
 
 /** Fetches the assistant code without rendering it. Safe to call repeatedly. */

@@ -43,6 +43,13 @@
       "when": 1794529894234,
       "tag": "0005_panoramic_phantom_reporter",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1794548903503,
+      "tag": "0006_page_panels",
+      "breakpoints": true
     }
   ]
 }

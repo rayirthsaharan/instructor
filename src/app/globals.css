@@ -409,6 +409,38 @@
       max-height: none !important;
       border-radius: var(--radius-lg) 0 0 var(--radius-lg);
     }
+    /* The Steps panel over the assistant dock: dock width, under the top bar, opacity fade (no slide), no grab handle. */
+    dialog.sheet[data-lg='left'] {
+      inset: 4.25rem auto 0 0;
+      margin: 0;
+      width: 20rem;
+      max-width: 20rem;
+      height: calc(100dvh - 4.25rem);
+      transform: none;
+      opacity: 0;
+      transition: opacity var(--dur-fast) var(--ease-in), display var(--dur-fast) allow-discrete,
+        overlay var(--dur-fast) allow-discrete;
+    }
+    dialog.sheet[data-lg='left'][open] {
+      transform: none;
+      opacity: 1;
+    }
+    @starting-style {
+      dialog.sheet[data-lg='left'][open] {
+        opacity: 0;
+      }
+    }
+    dialog.sheet[data-lg='left'] .sheet-inner {
+      height: 100% !important;
+      max-height: none !important;
+      border-radius: 0 !important;
+    }
+    dialog.sheet[data-lg='left'] .sheet-handle {
+      display: none !important;
+    }
+    dialog.sheet[data-lg='left'] .sheet-inner > header {
+      padding-top: 0.5rem !important;
+    }
     dialog.sheet[data-lg='dialog'] {
       inset: 0;
       margin: auto;
@@ -432,6 +464,42 @@
       height: auto !important;
       max-height: min(40rem, calc(100dvh - 48px)) !important;
       border-radius: var(--radius-lg);
+    }
+  }
+
+  @media (min-width: 75rem) {
+    dialog.sheet[data-lg='left'] {
+      width: 22.5rem;
+      max-width: 22.5rem;
+    }
+  }
+  @media (min-width: 90rem) {
+    dialog.sheet[data-lg='left'] {
+      width: 25rem;
+      max-width: 25rem;
+    }
+  }
+
+  /* Toasts while the assistant dock is open: bottom-left of the picture column (inset 24, 80 above its bottom,
+     max-width = column width - 48), never over the composer. Dock widths 320 / 360 / 400; text panel 420. */
+  html[data-dock-open] {
+    --toast-left: 8rem;
+    --toast-right: 428px;
+    --toast-offset: 68px;
+  }
+  @media (min-width: 64rem) {
+    html[data-dock-open] {
+      --toast-left: 328px;
+    }
+  }
+  @media (min-width: 75rem) {
+    html[data-dock-open] {
+      --toast-left: 368px;
+    }
+  }
+  @media (min-width: 90rem) {
+    html[data-dock-open] {
+      --toast-left: 408px;
     }
   }
 

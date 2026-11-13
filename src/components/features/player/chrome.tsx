@@ -65,15 +65,21 @@ export function CloseLink({ href, overlay }: { href: string; overlay?: boolean }
 /** "STEP 7 OF 24 · FRAME" (phase drops first when space is short). Below 360px it is the Steps button. */
 export function StepCounter({
   position,
+  title,
   review,
   onOpenSteps,
   asButton = false,
+  dockOpen = false,
 }: {
   position: StepPosition;
+  /** The current step's title (the Steps button's accessible name). */
+  title: string;
   review: boolean;
   onOpenSteps?: () => void;
   /** Always show the counter as the Steps button (phone landscape), not only below 360px. */
   asButton?: boolean;
+  /** The assistant dock has taken the rail's place: the counter is the Steps button, with its phase and a chevron (USER_FLOWS 7). */
+  dockOpen?: boolean;
 }) {
   const text = (
     <>
@@ -85,7 +91,21 @@ export function StepCounter({
   );
   return (
     <div className="flex min-w-0 flex-1 items-center gap-2">
-      {onOpenSteps ? (
+      {dockOpen && onOpenSteps ? (
+        <button
+          type="button"
+          onClick={onOpenSteps}
+          aria-haspopup="dialog"
+          aria-label={`Steps. Step ${position.number} of ${position.total}, ${title}`}
+          data-testid="counter-steps"
+          className="type-label inline-flex min-h-11 min-w-0 cursor-pointer items-center gap-1 rounded-sm px-2 text-ink-muted t-fast hover:bg-surface-sunken"
+        >
+          <span className="flex min-w-0" data-testid="step-counter">
+            {text}
+          </span>
+          <Icon name="chevronDown" size={16} />
+        </button>
+      ) : onOpenSteps ? (
         <>
           <p className={cn('type-label flex min-w-0 text-ink-muted max-[359px]:hidden', asButton && '!hidden')} data-testid="step-counter">
             {text}

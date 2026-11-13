@@ -4,6 +4,7 @@
  *   npx tsx scripts/accuracy/run.ts plan
  *   npx tsx scripts/accuracy/run.ts run --manual lumen --variant all            # AI_PROVIDER=mock
  *   npx tsx scripts/accuracy/run.ts prepare --manual cyclone-x-axis            # renders data/accuracy/manuals/<id>/manual.pdf
+ *   npx tsx scripts/accuracy/run.ts detect-panels --manual cyclone-x-axis      # writes panels.json (production detector)
  *   npx tsx scripts/accuracy/run.ts measure-tokens --manual all --provider anthropic   # phase 0, count_tokens only (free)
  *   npx tsx scripts/accuracy/run.ts run --manual all --variant all --provider anthropic
  *
@@ -16,7 +17,7 @@ import { MockProvider } from '../../src/lib/ai/mock';
 import type { AIProvider, PageImage } from '../../src/lib/ai/provider';
 import { ALLOWED_MODEL, BudgetGuard, CostLog, CostLogSink, guardedClient, HARD_CAP_USD } from './budget';
 import { runMatrix } from './harness';
-import { DEFAULT_DATA_DIR, loadPrepared, MANUALS, prepareManual, type LoadedManual } from './manuals';
+import { DEFAULT_DATA_DIR, detectManualPanels, loadPrepared, MANUALS, prepareManual, type LoadedManual } from './manuals';
 import { buildMatrix, projectMatrix, VARIANTS, type Variant } from './matrix';
 
 interface Args {
@@ -115,6 +116,14 @@ async function main(): Promise<void> {
     return;
   }
 
+  if (a.command === 'detect-panels') {
+    for (const id of selectManualIds(a).filter((i) => i !== 'lumen')) {
+      const r = await detectManualPanels(id, a.dataDir);
+      console.log(id, r.map((p) => `${p.pageIndex + 1}:${p.panels.length}${p.method === 'none' ? '-' : p.method[0]}(${p.ms}ms)`).join(' '));
+    }
+    return;
+  }
+
   const manuals: LoadedManual[] = selectManualIds(a).map((id) => loadPrepared(id, a.dataDir));
   const guard = new BudgetGuard(log, a.cap);
   const sink = new CostLogSink(log);
@@ -168,7 +177,7 @@ async function main(): Promise<void> {
     return;
   }
 
-  throw new Error(`Unknown command "${a.command}". Use plan, prepare, measure-tokens or run.`);
+  throw new Error(`Unknown command "${a.command}". Use plan, prepare, detect-panels, measure-tokens or run.`);
 }
 
 const invokedDirectly = process.argv[1] !== undefined && /scripts[\\/]accuracy[\\/]run\.ts$/.test(process.argv[1]);

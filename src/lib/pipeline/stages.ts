@@ -1,12 +1,13 @@
-import type { AnalysisKey, DocumentRecord } from '../db';
+import type { AnalysisKey, DocumentRecord, PagePanels } from '../db';
 import {
-  countPages, findAnalysis, findRenderedTwin, getPage, listPages, publishGuide, upsertPage, type AnalysisRecord, type PageRecord,
+  countPages, findAnalysis, findRenderedTwin, getPage, listPages, publishGuide, setPagePanels, upsertPage, type AnalysisRecord, type PageRecord,
 } from '../db';
-import type { PageImage } from '../ai/provider';
+import type { AnalyseDocumentInput, PageImage } from '../ai/provider';
 import { MAX_PAGES, PAGE_IMAGE_MAX_DIM, PIPELINE_VERSION } from '../limits';
 import { CURRENT_SCHEMA_VERSION } from '../guide/schema';
 import { validateGuide, type ValidatedGuide } from '../guide/validate';
 import { normaliseImage } from '../render/image';
+import { detectPanels, toStored } from '../render/panels';
 import { probePdf, renderPdfPages } from '../render/pdf';
 import { contentHashFor } from './hash';
 import { PipelineError } from './errors';
@@ -117,6 +118,34 @@ export async function renderStage(deps: PipelineDeps, doc: DocumentRecord, repor
   return all;
 }
 
+/**
+ * Stage 2b. Finds diagram panels on every page that has not been looked at yet (in code, on the stored page image) and
+ * stores them. A page the detector cannot handle is logged and kept with zero panels: it never fails the document.
+ */
+export async function panelStage(deps: PipelineDeps, doc: DocumentRecord, pages: PageRecord[], report: Report, signal?: AbortSignal): Promise<PageRecord[]> {
+  await report('render', 40);
+  const detect = deps.detectPanels ?? detectPanels;
+  const out: PageRecord[] = [];
+  for (const page of pages) {
+    if (page.panels) { out.push(page); continue; }
+    if (signal?.aborted) throw new PipelineError('aborted', 'Cancelled', true);
+    let found: PagePanels = { method: 'none', panels: [] };
+    try {
+      found = toStored(await detect(await deps.storage.get(page.imagePath), page.index));
+    } catch (e) {
+      console.error(`Pipeline: panel detection failed for document ${doc.id} page ${page.index}; continuing without panels`, e);
+    }
+    await setPagePanels(deps.db, doc.id, page.index, found);
+    out.push({ ...page, panels: found });
+  }
+  return out;
+}
+
+/** Panels per page for the provider (pages with none are omitted) and for validation. */
+export function panelsInput(pages: PageRecord[]): NonNullable<AnalyseDocumentInput['panels']> {
+  return pages.filter((p) => p.panels && p.panels.panels.length > 0).map((p) => ({ pageIndex: p.index, panels: p.panels!.panels }));
+}
+
 export async function loadPageImages(deps: PipelineDeps, pages: PageRecord[]): Promise<PageImage[]> {
   return Promise.all(
     pages.map(async (p) => ({
@@ -135,7 +164,8 @@ export function pageTextsFor(pages: PageRecord[]): string[] | undefined {
 
 /** Only a ValidatedGuide leaves this function; anything the provider returned is untrusted until it passes. */
 export function validateOrThrow(draft: unknown, pages: PageRecord[], what: string): ValidatedGuide {
-  const r = validateGuide(draft, { pageCount: pages.length, pageTexts: pageTextsFor(pages) });
+  const panels = new Map(panelsInput(pages).map((p) => [p.pageIndex, p.panels] as const));
+  const r = validateGuide(draft, { pageCount: pages.length, pageTexts: pageTextsFor(pages), panels });
   if (!r.ok) {
     console.error(`Pipeline: ${what} failed validation:`, r.errors.slice(0, 10).map((e) => `${e.path}: ${e.message}`).join('; '));
     throw new PipelineError('invalid_analysis', 'We could not build a reliable guide from this document, so we did not make one.');

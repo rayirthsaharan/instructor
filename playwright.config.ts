@@ -3,9 +3,9 @@ import { existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-const PORT = 3100;
+const PORT = Number(process.env.E2E_PORT ?? 3100);
 // Isolated data for the un-mocked specs; web server and worker share it.
-const dataDir = join(tmpdir(), 'instructor-e2e');
+const dataDir = process.env.E2E_DATA_DIR ?? join(tmpdir(), 'instructor-e2e');
 const chromiumPath = '/opt/pw-browsers/chromium';
 
 export default defineConfig({

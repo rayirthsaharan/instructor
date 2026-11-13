@@ -2,7 +2,7 @@ import { expect, test, type BrowserContext } from '@playwright/test';
 import { openPlayer, putProgress, uploadLumen } from './m2-player-helpers';
 import { installStreamControl, mockAssistantApi, openAssistant } from './m3-helpers';
 
-// D-022 item 7 / M4-a: under 560px tall the assistant is the modal sheet; taller, it is the dock when the pinned banners leave the chat its minimum height (900 fits every step).
+// D-028: the presentation depends on the window size alone - the modal sheet under 560px tall, the dock from 560 up, on every step.
 let guideId = '';
 let state: Awaited<ReturnType<BrowserContext['storageState']>>;
 
@@ -14,8 +14,8 @@ test.beforeAll(async ({ browser }) => {
   await ctx.close();
 });
 
-for (const [height, dock] of [[559, false], [900, true]] as const) {
-  test(`1280x${height} step s8: ${dock ? 'dock' : 'sheet'} presentation, banners never under the action bar`, async ({ browser }) => {
+for (const [height, dock] of [[559, false], [560, true]] as const) {
+  test(`1280x${height} step s8: ${dock ? 'dock' : 'sheet'} presentation, same on every step`, async ({ browser }) => {
     const context = await browser.newContext({ viewport: { width: 1280, height }, storageState: state, reducedMotion: 'reduce' });
     await putProgress(context, guideId, {});
     const page = await context.newPage();
@@ -25,9 +25,10 @@ for (const [height, dock] of [[559, false], [900, true]] as const) {
     await openAssistant(page);
     await expect(page.getByTestId('assistant-dock')).toHaveCount(dock ? 1 : 0);
     if (dock) {
-      const barTop = await page.getByTestId('action-bar').evaluate((el) => el.getBoundingClientRect().top);
-      const dockBottom = await page.getByTestId('assistant-dock').evaluate((el) => el.getBoundingClientRect().bottom);
-      expect(dockBottom).toBeLessThanOrEqual(barTop + 1);
+      // the dock is the left column: it never reaches under the action bar's column, and the banners stay where they are
+      const dockRight = await page.getByTestId('assistant-dock').evaluate((el) => el.getBoundingClientRect().right);
+      const barLeft = await page.getByTestId('action-bar').evaluate((el) => el.getBoundingClientRect().left);
+      expect(dockRight).toBeLessThanOrEqual(barLeft + 1);
     }
     await page.keyboard.press('Escape');
     await expect(page.getByTestId('assistant-panel')).toBeHidden();

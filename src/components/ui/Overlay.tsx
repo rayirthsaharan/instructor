@@ -69,8 +69,8 @@ export function BottomSheet({
   children: ReactNode;
   footer?: ReactNode;
   initialDetent?: DetentName;
-  /** At >= 1024px: 400px right-side panel or centred dialog (max 560). */
-  lgPresentation?: 'panel' | 'dialog';
+  /** At >= 1024px: 400px right-side panel, centred dialog (max 560), or the Steps panel on the left (dock width, fades in). */
+  lgPresentation?: 'panel' | 'dialog' | 'left';
   /** The body manages its own padding and scrolling (e.g. a chat with a pinned composer). */
   bare?: boolean;
   /** Pixels the on-screen keyboard covers: the sheet lifts and shrinks so its footer stays visible. */
@@ -80,7 +80,14 @@ export function BottomSheet({
   const [detent, setDetent] = useState<DetentName>(initialDetent);
   const [drag, setDrag] = useState<number | null>(null);
   const start = useRef<number | null>(null);
-  const ref = useModalDialog(open, (d) => d.querySelector<HTMLElement>('[data-sheet-title]')?.focus());
+  const ref = useModalDialog(open, (d) => {
+    // The left Steps panel opens on the current step (centred and focused); every other presentation focuses its title.
+    const row = lgPresentation === 'left' && window.matchMedia('(min-width: 64rem)').matches ? d.querySelector<HTMLElement>('[aria-current="step"]') : null;
+    if (row) {
+      row.focus({ preventScroll: true });
+      row.scrollIntoView({ block: 'center' });
+    } else d.querySelector<HTMLElement>('[data-sheet-title]')?.focus();
+  });
 
   function onPointerDown(e: PointerEvent<HTMLDivElement>) {
     start.current = e.clientY;
@@ -131,7 +138,7 @@ export function BottomSheet({
         }}
       >
         <div
-          className="flex h-11 shrink-0 cursor-grab touch-none items-center justify-center"
+          className="sheet-handle flex h-11 shrink-0 cursor-grab touch-none items-center justify-center"
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}

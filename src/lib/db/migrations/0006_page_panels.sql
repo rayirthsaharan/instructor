@@ -1,0 +1,1 @@
+ALTER TABLE `pages` ADD `panels_json` text;

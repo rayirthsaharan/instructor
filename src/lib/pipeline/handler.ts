@@ -4,7 +4,7 @@ import type { AnalyseDocumentResult } from '../ai/provider';
 import { validateGuide, type ValidatedGuide } from '../guide/validate';
 import type { JobContext, JobHandler, Job } from '../jobs';
 import { classifyError, PipelineError } from './errors';
-import { ingestStage, loadPageImages, publishStage, renderStage, validateOrThrow } from './stages';
+import { ingestStage, loadPageImages, panelsInput, panelStage, publishStage, renderStage, validateOrThrow } from './stages';
 import { JOB_TYPE, type PipelineDeps, type PipelineStage } from './types';
 
 export { JOB_TYPE };
@@ -47,7 +47,7 @@ export async function runAnalysis(deps: PipelineDeps, job: Job, ctx: JobContext)
 async function analyse(deps: PipelineDeps, doc: DocumentRecord, job: Job, ctx: JobContext, report: (s: PipelineStage, p: number) => Promise<void>): Promise<void> {
   const { existing } = await ingestStage(deps, doc, report);
   await updateDocument(deps.db, doc.id, { reused: existing !== undefined });
-  const pages = await renderStage(deps, doc, report, ctx.signal);
+  let pages = await renderStage(deps, doc, report, ctx.signal);
 
   let guide: ValidatedGuide;
   if (existing) {
@@ -56,11 +56,13 @@ async function analyse(deps: PipelineDeps, doc: DocumentRecord, job: Job, ctx: J
     if (!r.ok) throw new PipelineError('invalid_analysis', 'The stored analysis for this document is no longer valid.');
     guide = r.guide;
   } else {
+    pages = await panelStage(deps, doc, pages, report, ctx.signal);
     const images = await loadPageImages(deps, pages);
     await report('analyse', 40);
     const result = await artifact<AnalyseDocumentResult>(ctx, job, 'analyse', () =>
       deps.provider.analyseDocument({
         pages: images,
+        panels: panelsInput(pages),
         contentHash: doc.contentHash,
         signal: ctx.signal,
         onProgress: (p) => void ctx.heartbeat({ stage: 'analyse', progress: 40 + Math.round(p.fraction * 30) }),

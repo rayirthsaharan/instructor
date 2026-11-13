@@ -191,3 +191,21 @@ export async function prepareManual(id: string, dataDir = DEFAULT_DATA_DIR): Pro
   writeFileSync(join(dir, 'texts.json'), JSON.stringify(texts, null, 2));
   return { pages: pageCount };
 }
+
+/**
+ * Runs the production panel detector (src/lib/render/panels) over a prepared manual's page images and writes
+ * `panels.json` next to them (ACCURACY_TEST_PLAN section 7). Returns per-page results and timing.
+ */
+export async function detectManualPanels(id: string, dataDir = DEFAULT_DATA_DIR): Promise<{ pageIndex: number; method: string; panels: DetectedPanel[]; ms: number }[]> {
+  const { detectPanels, toStored } = await import('../../src/lib/render/panels');
+  const dir = manualDir(dataDir, id);
+  const pageCount = (JSON.parse(readFileSync(join(dir, 'texts.json'), 'utf8')) as string[]).length;
+  const out: { pageIndex: number; method: string; panels: DetectedPanel[]; ms: number }[] = [];
+  for (let i = 0; i < pageCount; i++) {
+    const t = performance.now();
+    const d = toStored(await detectPanels(new Uint8Array(readFileSync(join(dir, 'pages', `page-${i + 1}.png`))), i));
+    out.push({ pageIndex: i, method: d.method, panels: d.panels, ms: Math.round(performance.now() - t) });
+  }
+  writeFileSync(join(dir, 'panels.json'), JSON.stringify(out.map((r) => ({ pageIndex: r.pageIndex, method: r.method, panels: r.panels })), null, 2));
+  return out;
+}

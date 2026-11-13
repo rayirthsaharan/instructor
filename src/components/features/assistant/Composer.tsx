@@ -28,12 +28,20 @@ function subscribeCoarse(cb: () => void) {
 
 /** Composer (DS 7.13): multiline, 16px text (no iOS zoom), up to 4 lines, Send 48 / Stop while streaming. */
 export function Composer({
+  value,
+  onValueChange,
+  label = 'Your question',
   busy,
   disabledReason,
   onSend,
   onStop,
   className,
 }: {
+  /** Controlled text (the player keeps the draft); uncontrolled when omitted. */
+  value?: string;
+  onValueChange?: (text: string) => void;
+  /** Accessible name of the field. */
+  label?: string;
   busy: boolean;
   /** Offline: composer disabled with this helper. */
   disabledReason?: string;
@@ -41,7 +49,9 @@ export function Composer({
   onStop: () => void;
   className?: string;
 }) {
-  const [text, setText] = useState('');
+  const [own, setOwn] = useState('');
+  const text = value ?? own;
+  const setText = onValueChange ?? setOwn;
   // On touch screens Enter is a new line, so the keyboard key says so (USER_FLOWS 7).
   const coarse = useSyncExternalStore(subscribeCoarse, () => matchMedia('(pointer: coarse)').matches, () => false);
   const ref = useRef<HTMLTextAreaElement>(null);
@@ -91,7 +101,7 @@ export function Composer({
           value={text}
           rows={1}
           disabled={busy || blocked}
-          aria-label="Your question"
+          aria-label={label}
           aria-describedby={cn(disabledReason && helperId, len >= COUNTER_FROM && countId) || undefined}
           aria-invalid={over || undefined}
           placeholder={COPY.placeholder}

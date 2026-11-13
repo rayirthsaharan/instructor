@@ -332,3 +332,10 @@ Open issues / risks for the senior engineer:
 5. ANAVI is a text manual: all regions are text blocks, so it tests order and warnings, not diagram location. Text-layer note: the first render had ligature splitting ("fi rmware"); re-rendered with ligatures off. Chromium PDFs embed timestamps, so do not re-render after the keys are frozen.
 6. Cyclone page 1 (cover) and the last page (blank logo page) hold no step; electronics index 10 holds a safety pointer, keyed as a warning (ambiguous).
 Next: senior engineer reviews each key against the page images; then freeze key hashes before any paid run.
+
+## H-046 | 2026-11-13 | from: software-engineer -> to: qa-engineer
+Task: Implement D-028 (desktop dock replaces the step rail).
+Done: `Player.tsx`, `chrome.tsx`, `AssistantHost.tsx`, `AssistantPanel.tsx`, `Composer.tsx`, `ui/Overlay.tsx` (`lgPresentation="left"`), `ui/Toast.tsx`, `globals.css`; `playwright.config.ts` honours `E2E_PORT` and `E2E_DATA_DIR`; new `e2e/m4-dock-layout.spec.ts` (25 tests), `e2e/m4-dock-pinned.spec.ts` removed. Screenshots in `artifacts/screenshots/m4/`. Orchestrator checked 1280x600 on the irreversible step: both banners fully visible with the dock open.
+How to verify: `E2E_PORT=3210 E2E_DATA_DIR=/tmp/instructor-e2e-dock npx playwright test e2e/m4-dock-layout.spec.ts --trace off`.
+Open issues / risks: QA specs to update in `e2e/qa-m3-experience.spec.ts` - lines 227, 314, 361 (`context-label` no longer in the dock), 384 "D. desktop dock safety" (20 cases on `dock-summary` / `dock-banners`), 552 (focus now goes to the composer), 246 (hardcodes port 3100). Deviations for QA/designer to judge: conversation scroll re-pins to the bottom when dock and sheet swap; on a mid-open dock-to-sheet switch focus goes to the sheet title; a 3-worker run hit one upload failure in a beforeAll (passed with 1 worker - possible rate-limit or concurrency flake in tests).
+Next: QA re-check after the panel detector lands (so the full suite can run).

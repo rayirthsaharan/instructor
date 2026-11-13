@@ -140,10 +140,35 @@ export interface PageRecord {
   width: number;
   height: number;
   textContent: string | null;
+  /** Detected diagram panels; `null` (or absent on write) until the panel detector has run on this page. */
+  panels?: PagePanels | null;
+}
+
+/** What the panel detector found on one page (src/lib/render/panels). `panels` is empty for method `none`. */
+export interface PagePanels {
+  method: 'frames' | 'xycut' | 'none';
+  panels: { panelId: string; region: { x: number; y: number; w: number; h: number } }[];
+}
+
+/** Stored JSON is treated as untrusted-by-shape: anything unexpected reads as "not detected yet". */
+function parsePanels(json: string | null): PagePanels | null {
+  if (!json) return null;
+  try {
+    const v = JSON.parse(json) as PagePanels;
+    const num = (n: unknown) => typeof n === 'number' && Number.isFinite(n);
+    const ok =
+      (v.method === 'frames' || v.method === 'xycut' || v.method === 'none') &&
+      Array.isArray(v.panels) &&
+      v.panels.every((p) => typeof p.panelId === 'string' && num(p.region?.x) && num(p.region?.y) && num(p.region?.w) && num(p.region?.h));
+    return ok ? { method: v.method, panels: v.panels.map((p) => ({ panelId: p.panelId, region: { x: p.region.x, y: p.region.y, w: p.region.w, h: p.region.h } })) } : null;
+  } catch {
+    return null;
+  }
 }
 
 const toPage = (r: typeof pages.$inferSelect): PageRecord => ({
   documentId: r.documentId, index: r.index, imagePath: r.imagePath, width: r.width, height: r.height, textContent: r.textContent,
+  panels: parsePanels(r.panelsJson),
 });
 
 export async function listPages(db: Db, documentId: string): Promise<PageRecord[]> {
@@ -160,16 +185,22 @@ export async function getPage(db: Db, documentId: string, index: number): Promis
   return r && toPage(r);
 }
 
-/** Idempotent: re-writing the same page replaces its row. */
+/** Idempotent: re-writing the same page replaces its row (including its panels: a new image has none until detected). */
 export async function upsertPage(db: Db, p: PageRecord): Promise<void> {
+  const panelsJson = p.panels ? JSON.stringify(p.panels) : null;
   unwrap(db)
     .insert(pages)
-    .values({ id: randomUUID(), documentId: p.documentId, index: p.index, imagePath: p.imagePath, width: p.width, height: p.height, textContent: p.textContent })
+    .values({ id: randomUUID(), documentId: p.documentId, index: p.index, imagePath: p.imagePath, width: p.width, height: p.height, textContent: p.textContent, panelsJson })
     .onConflictDoUpdate({
       target: [pages.documentId, pages.index],
-      set: { imagePath: p.imagePath, width: p.width, height: p.height, textContent: p.textContent },
+      set: { imagePath: p.imagePath, width: p.width, height: p.height, textContent: p.textContent, panelsJson },
     })
     .run();
+}
+
+/** Stores the detector's result for one page. */
+export async function setPagePanels(db: Db, documentId: string, index: number, panels: PagePanels): Promise<void> {
+  unwrap(db).update(pages).set({ panelsJson: JSON.stringify(panels) }).where(and(eq(pages.documentId, documentId), eq(pages.index, index))).run();
 }
 
 /** Another document with identical content whose pages are all rendered (page images can be shared). */

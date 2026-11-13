@@ -15,7 +15,7 @@ import { swipeDirection } from '../source-visual/geometry';
 import { marksForPage, pageForPart, visualPages, type MarkView } from '../source-visual/pages';
 import { SourceVisual } from '../source-visual/SourceVisual';
 import { ActionBar, CloseLink, OfflineBanner, OverflowMenu, PlayerProgress, SpeakerButton, StepCounter } from './chrome';
-import { useMediaQuery, useOnline, usePlayerLayout, useSpeech, useStoredFlag, useViewportHeight, useWakeLock, useWideRail } from './hooks';
+import { useMediaQuery, useOnline, usePlayerLayout, useSpeech, useStoredFlag, useWakeLock, useWideRail } from './hooks';
 import {
   missingPartsForStep,
   NOTICE_TEXT,
@@ -117,12 +117,14 @@ function Player({ guideId, guide, documentId, pageCount, progress, actions, save
   const url = parsePlayerSearch(searchParams);
   const layout = usePlayerLayout();
   const wideRail = useWideRail();
-  // Desktop windows under 560px tall have no room for the dock: the assistant opens as the modal sheet instead.
+  // Dock or sheet is decided from the window size alone (D-028): dock at >= 1024 wide and >= 560 tall, sheet otherwise.
   const shortDesktop = useMediaQuery('(max-height: 559.98px)') && layout === 'desktop';
+  const dockMode = layout === 'desktop' && !shortDesktop;
   const online = useOnline();
-  // The dock reports when its pinned banners leave the chat less than its minimum: the sheet is used for that step at that window height.
-  const viewportHeight = useViewportHeight();
-  const [noRoom, setNoRoom] = useState<{ stepId: string; height: number } | null>(null);
+  // The question being typed survives the dock and the sheet swapping places on resize, and closing the assistant.
+  const [draft, setDraft] = useState('');
+  // The Steps list as a modal left panel while the dock has taken the rail's place (local: the URL keeps naming the assistant).
+  const [dockSteps, setDockSteps] = useState(false);
 
   // Which step: the URL wins; otherwise where the user left off, decided once when the player opens.
   const [initial] = useState(() => resolveStep(guide, url.step, progress));
@@ -177,7 +179,7 @@ function Player({ guideId, guide, documentId, pageCount, progress, actions, save
     openPanel('original', c.pageIndex + 1);
   };
   const goToStep = (id: string) => {
-    // The docked assistant (desktop) stays open while the step changes; every other overlay closes.
+    // The assistant (dock, or the sheet on a short desktop window) stays open while the step changes; every other overlay closes.
     if (layout === 'desktop' && parsePlayerSearch(window.location.search).panel === 'ask') return commitUrl({ step: id }, 'replace');
     overlays.current = [];
     commitUrl({ step: id, panel: null, page: null }, 'replace');
@@ -185,8 +187,9 @@ function Player({ guideId, guide, documentId, pageCount, progress, actions, save
 
   // Keep the history stack in sync when the browser's Back / Forward changes the panel.
   const panel = url.panel;
-  const dockNoRoom = noRoom !== null && noRoom.stepId === stepId && noRoom.height === viewportHeight;
   const assistantOpen = panel === 'ask' || (panel === 'original' && askBelow);
+  const dockOpen = assistantOpen && dockMode;
+  if (!dockOpen && dockSteps) setDockSteps(false);
   const assistant = useAssistant(guideId, stepId, assistantOpen);
   // Warm the browser's image cache with the first page of the next step, so Next shows it without a request or a blank frame.
   const nextStepId = position.next?.id;
@@ -314,7 +317,10 @@ function Player({ guideId, guide, documentId, pageCount, progress, actions, save
       return;
     }
     panelRef.current?.scrollTo(0, 0);
-    panelRef.current?.querySelector<HTMLElement>('h1')?.focus({ preventScroll: true });
+    // With the dock open, a user typing a question keeps the composer; otherwise focus goes to the step title.
+    const active = document.activeElement;
+    const typing = dockOpen && active instanceof HTMLTextAreaElement && !!active.closest('[data-testid="assistant-dock"]');
+    if (!typing) panelRef.current?.querySelector<HTMLElement>('h1')?.focus({ preventScroll: true });
     if (autoRead) speak(readAloudScript(step), guide.language);
   });
   useEffect(() => {
@@ -364,7 +370,8 @@ function Player({ guideId, guide, documentId, pageCount, progress, actions, save
     else if (plain && (e.key === 'r' || e.key === 'R') && speech.supported) toggleRead();
     else if (plain && (e.key === '/' || e.key === 'a' || e.key === 'A')) {
       if (url.panel !== 'ask') openPanel('ask');
-    } else if (plain && e.key === 'Escape' && url.panel === 'ask') closePanel();
+      else document.querySelector<HTMLElement>('[data-testid="composer-input"]')?.focus();
+    }
     else if (plain && (e.key === 'o' || e.key === 'O')) openOriginal(stepOriginalPage(step));
     else if (plain && e.key === 'Escape') document.querySelector<HTMLElement>('[data-testid="leave-guide"]')?.focus();
     else handled = false;
@@ -388,11 +395,19 @@ function Player({ guideId, guide, documentId, pageCount, progress, actions, save
   // Toasts sit above the action bar on phone and tablet.
   useEffect(() => {
     const root = document.documentElement;
-    root.style.setProperty('--toast-offset', layout === 'desktop' ? '0px' : '84px');
+    if (layout !== 'desktop') root.style.setProperty('--toast-offset', '84px');
     return () => {
       root.style.removeProperty('--toast-offset');
     };
   }, [layout]);
+  // While the dock is open toasts sit in the picture column, not over the composer (globals.css reads this attribute).
+  useEffect(() => {
+    if (!dockOpen) return;
+    document.documentElement.dataset.dockOpen = '1';
+    return () => {
+      delete document.documentElement.dataset.dockOpen;
+    };
+  }, [dockOpen]);
 
   // First run: one coach line on step 1.
   const [coachSeen, setCoachSeen, coachLoaded] = useStoredFlag(GOT_IT_KEY, false);
@@ -477,8 +492,8 @@ function Player({ guideId, guide, documentId, pageCount, progress, actions, save
       onBack={goPrev}
       onPrimary={onPrimary}
       onSteps={() => openPanel('steps')}
-      askOpen={url.panel === 'ask' && layout === 'desktop'}
-      onAsk={() => (url.panel === 'ask' && layout === 'desktop' ? closePanel() : url.panel !== 'ask' && openPanel('ask'))}
+      askOpen={dockOpen}
+      onAsk={() => (url.panel === 'ask' && dockMode ? closePanel() : url.panel !== 'ask' && openPanel('ask'))}
       coach={coach}
     />
   );
@@ -500,7 +515,14 @@ function Player({ guideId, guide, documentId, pageCount, progress, actions, save
   const topRow = (
     <div className="flex items-center gap-1 px-2 md:px-4 lg:px-8">
       {layout !== 'landscape' && <CloseLink href={overviewHref} />}
-      <StepCounter position={position} review={reviewMode} onOpenSteps={layout === 'desktop' ? undefined : () => openPanel('steps')} asButton={layout === 'landscape'} />
+      <StepCounter
+        position={position}
+        title={step.title}
+        review={reviewMode}
+        onOpenSteps={dockOpen ? () => setDockSteps(true) : layout === 'desktop' ? undefined : () => openPanel('steps')}
+        asButton={layout === 'landscape'}
+        dockOpen={dockOpen}
+      />
       {speech.supported && <SpeakerButton speaking={speech.speaking} onToggle={toggleRead} />}
       <OverflowMenu items={menuItems} />
     </div>
@@ -517,6 +539,8 @@ function Player({ guideId, guide, documentId, pageCount, progress, actions, save
     stepId,
     assistant,
     online,
+    draft,
+    onDraftChange: setDraft,
     onGoToStep: goToStep,
     onOpenCitation: openCitation,
     onOpenManual: () => openOriginal(stepOriginalPage(step), true),
@@ -535,17 +559,21 @@ function Player({ guideId, guide, documentId, pageCount, progress, actions, save
         {!online && <OfflineBanner />}
         {saveBanner}
         <div className="flex min-h-0 flex-1">
-          <div className={cn('relative shrink-0', wideRail ? 'w-[280px]' : 'w-16')}>
-            <aside
-              aria-label="All steps"
-              className={cn('group/rail absolute inset-y-0 left-0 z-20 overflow-y-auto border-r border-line bg-surface-raised', wideRail ? 'w-[280px]' : 'w-16 focus-within:w-[280px] hover:w-[280px] focus-within:shadow-elev-2 hover:shadow-elev-2')}
-            >
-              {stepsRail(!wideRail)}
-            </aside>
-          </div>
-          <div className="min-w-0 flex-1 p-6">{visual}</div>
+          {dockOpen ? (
+            <AssistantDock {...assistantProps} onClose={closePanel} />
+          ) : (
+            <div className={cn('relative shrink-0', wideRail ? 'w-[280px]' : 'w-16')}>
+              <aside
+                aria-label="All steps"
+                className={cn('group/rail absolute inset-y-0 left-0 z-20 overflow-y-auto border-r border-line bg-surface-raised', wideRail ? 'w-[280px]' : 'w-16 focus-within:w-[280px] hover:w-[280px] focus-within:shadow-elev-2 hover:shadow-elev-2')}
+              >
+                {stepsRail(!wideRail)}
+              </aside>
+            </div>
+          )}
+          <div className={cn('min-w-0 flex-1', dockOpen ? 'p-3 min-[1200px]:p-6' : 'p-6')}>{visual}</div>
           <div className="flex w-[420px] shrink-0 flex-col bg-surface shadow-[inset_1px_0_0_var(--color-line)]">
-            {assistantOpen && !shortDesktop && !dockNoRoom ? <AssistantDock {...assistantProps} onNoRoom={() => setNoRoom({ stepId, height: window.innerHeight })} onClose={closePanel} missing={missing} onFoundPart={(id) => actions.setChecklistItem(id, 'have')} onOpenOriginal={openOriginal} /> : textPanel}
+            {textPanel}
             {bar}
           </div>
         </div>
@@ -606,7 +634,24 @@ function Player({ guideId, guide, documentId, pageCount, progress, actions, save
         </BottomSheet>
       )}
 
-      {assistantSeen && (layout !== 'desktop' || shortDesktop || dockNoRoom) && <AssistantSheet {...assistantProps} open={assistantOpen} onClose={closePanel} />}
+      {dockOpen && (
+        <BottomSheet open={dockSteps} onClose={() => setDockSteps(false)} title="Steps" initialDetent="full" lgPresentation="left">
+          <div className="-mx-4">
+            <StepRail
+              groups={groups}
+              currentStepId={stepId}
+              onSelect={(id) => {
+                setDockSteps(false);
+                goToStep(id);
+                // Choosing the step already shown does not trigger a step change, so put focus on the title here.
+                setTimeout(() => panelRef.current?.querySelector<HTMLElement>('h1')?.focus({ preventScroll: true }), 0);
+              }}
+            />
+          </div>
+        </BottomSheet>
+      )}
+
+      {assistantSeen && !dockMode && <AssistantSheet {...assistantProps} open={assistantOpen} onClose={closePanel} />}
 
       <OriginalViewer
         open={url.panel === 'original'}

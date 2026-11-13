@@ -1,4 +1,5 @@
 import { containsQuantity } from './quantity';
+import { resolveGuidePanels, type PanelsByPage } from './panel-refs';
 import { guideSchema, migrateGuide, type Guide, type Guidance, type Region } from './schema';
 
 export type IssueSeverity = 'info' | 'warning';
@@ -33,6 +34,12 @@ export interface ValidateOptions {
   pageCount: number;
   /** Plain text of each page (index = pageIndex). When given, every sourceQuote is checked against its step's pages. */
   pageTexts?: string[];
+  /**
+   * Code-detected panels per page. When given (the pipeline always gives it, possibly empty), every source reference is
+   * resolved against it: a known `panelId` takes the stored panel region, anything else becomes the whole page with
+   * `regionFallback: true`. Omit it only for guides that were already resolved when they were stored.
+   */
+  panels?: PanelsByPage;
 }
 
 const normaliseText = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim();
@@ -136,6 +143,11 @@ export function validateGuide(raw: unknown, opts: ValidateOptions): ValidationRe
   const err = (code: string, path: string, message: string) => errors.push({ code, path, message });
   const issue = (code: string, path: string, message: string, severity: IssueSeverity = 'warning') => issues.push({ code, path, message, severity });
   const validPage = (n: number) => Number.isInteger(n) && n >= 0 && n < opts.pageCount;
+
+  if (opts.panels) {
+    const { fallback } = resolveGuidePanels(guide, opts.panels);
+    if (fallback > 0) issue('panel_fallback', 'sources', `${fallback} source reference(s) have no known panel and show the whole page as approximate.`, 'info');
+  }
 
   // --- id uniqueness and resolution ---------------------------------------------------------
   const unique = (kind: string, ids: string[]) => {

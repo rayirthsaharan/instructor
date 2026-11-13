@@ -37,6 +37,8 @@ export const pages = sqliteTable('pages', {
   height: integer('height').notNull(),
   // Plain text extracted from the page (PDF only); used to check source quotes.
   textContent: text('text_content'),
+  // JSON `{ method, panels }` from the panel detector; NULL until it has run (an empty list means "no panels").
+  panelsJson: text('panels_json'),
 }, (t) => [unique('pages_doc_index').on(t.documentId, t.index)]);
 
 // Immutable once written. Keyed by (content_hash, pipeline_version, provider).

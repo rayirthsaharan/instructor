@@ -19,6 +19,9 @@ export interface AssistantViewProps {
   stepId: string;
   assistant: Assistant;
   online: boolean;
+  /** The question being typed. Held by the player so it survives the dock and the sheet swapping places. */
+  draft: string;
+  onDraftChange: (text: string) => void;
   onGoToStep: (stepId: string) => void;
   onOpenCitation: (c: Citation) => void;
   onOpenManual: () => void;
@@ -125,7 +128,7 @@ export function AssistantPanel(p: AssistantViewProps & { onClear: () => void; on
           const el = e.currentTarget;
           pinned.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
         }}
-        className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-3"
+        className={`min-h-0 flex-1 overflow-y-auto overscroll-contain ${p.showStrip === false ? 'min-h-[120px] p-4' : 'px-4 py-3'}`}
       >
         <div className="flex flex-col gap-4">
           {hasMessages && !a.busy && (
@@ -166,7 +169,7 @@ export function AssistantPanel(p: AssistantViewProps & { onClear: () => void; on
         {state.announce}
       </div>
 
-      <div className="shrink-0 border-t border-line bg-surface-raised px-4 pb-2 pt-2">
+      <div className={`shrink-0 border-t border-line ${p.showStrip === false ? 'bg-surface px-4 pb-4 pt-3' : 'bg-surface-raised px-4 pb-2 pt-2'}`}>
         {a.suggestions.length > 0 && !a.busy && (
           <ul className="-mt-1 mb-1 flex flex-wrap gap-x-2" aria-label="Suggested questions" data-testid="suggestions">
             {a.suggestions.map((s) => (
@@ -178,7 +181,13 @@ export function AssistantPanel(p: AssistantViewProps & { onClear: () => void; on
             ))}
           </ul>
         )}
-        <Composer busy={a.busy} disabledReason={p.online ? undefined : COPY.offline} onSend={a.send} onStop={a.stop} />
+        <Composer
+          value={p.draft}
+          onValueChange={p.onDraftChange}
+          label={`Ask a question about step ${stepPosition(guide, p.stepId).number}`}
+          busy={a.busy}
+          disabledReason={p.online ? undefined : COPY.offline} onSend={a.send} onStop={a.stop}
+        />
       </div>
     </div>
   );
