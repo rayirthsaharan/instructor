@@ -15,7 +15,7 @@ import { swipeDirection } from '../source-visual/geometry';
 import { marksForPage, pageForPart, visualPages, type MarkView } from '../source-visual/pages';
 import { SourceVisual } from '../source-visual/SourceVisual';
 import { ActionBar, CloseLink, OfflineBanner, OverflowMenu, PlayerProgress, SpeakerButton, StepCounter } from './chrome';
-import { useMediaQuery, useOnline, usePlayerLayout, useSpeech, useStoredFlag, useWakeLock, useWideRail } from './hooks';
+import { useMediaQuery, useOnline, usePlayerLayout, useSpeech, useStoredFlag, useViewportHeight, useWakeLock, useWideRail } from './hooks';
 import {
   missingPartsForStep,
   NOTICE_TEXT,
@@ -120,6 +120,9 @@ function Player({ guideId, guide, documentId, pageCount, progress, actions, save
   // Desktop windows under 560px tall have no room for the dock: the assistant opens as the modal sheet instead.
   const shortDesktop = useMediaQuery('(max-height: 559.98px)') && layout === 'desktop';
   const online = useOnline();
+  // The dock reports when its pinned banners leave the chat less than its minimum: the sheet is used for that step at that window height.
+  const viewportHeight = useViewportHeight();
+  const [noRoom, setNoRoom] = useState<{ stepId: string; height: number } | null>(null);
 
   // Which step: the URL wins; otherwise where the user left off, decided once when the player opens.
   const [initial] = useState(() => resolveStep(guide, url.step, progress));
@@ -182,6 +185,7 @@ function Player({ guideId, guide, documentId, pageCount, progress, actions, save
 
   // Keep the history stack in sync when the browser's Back / Forward changes the panel.
   const panel = url.panel;
+  const dockNoRoom = noRoom !== null && noRoom.stepId === stepId && noRoom.height === viewportHeight;
   const assistantOpen = panel === 'ask' || (panel === 'original' && askBelow);
   const assistant = useAssistant(guideId, stepId, assistantOpen);
   useEffect(() => {
@@ -515,7 +519,7 @@ function Player({ guideId, guide, documentId, pageCount, progress, actions, save
           </div>
           <div className="min-w-0 flex-1 p-6">{visual}</div>
           <div className="flex w-[420px] shrink-0 flex-col bg-surface shadow-[inset_1px_0_0_var(--color-line)]">
-            {assistantOpen && !shortDesktop ? <AssistantDock {...assistantProps} onClose={closePanel} missing={missing} onFoundPart={(id) => actions.setChecklistItem(id, 'have')} onOpenOriginal={openOriginal} /> : textPanel}
+            {assistantOpen && !shortDesktop && !dockNoRoom ? <AssistantDock {...assistantProps} onNoRoom={() => setNoRoom({ stepId, height: window.innerHeight })} onClose={closePanel} missing={missing} onFoundPart={(id) => actions.setChecklistItem(id, 'have')} onOpenOriginal={openOriginal} /> : textPanel}
             {bar}
           </div>
         </div>
@@ -576,7 +580,7 @@ function Player({ guideId, guide, documentId, pageCount, progress, actions, save
         </BottomSheet>
       )}
 
-      {(layout !== 'desktop' || shortDesktop) && <AssistantSheet {...assistantProps} open={assistantOpen} onClose={closePanel} />}
+      {(layout !== 'desktop' || shortDesktop || dockNoRoom) && <AssistantSheet {...assistantProps} open={assistantOpen} onClose={closePanel} />}
 
       <OriginalViewer
         open={url.panel === 'original'}

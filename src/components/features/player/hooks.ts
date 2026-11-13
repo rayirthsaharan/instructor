@@ -14,6 +14,17 @@ export function useMediaQuery(query: string): boolean {
   );
 }
 
+export function useViewportHeight(): number {
+  return useSyncExternalStore(
+    (cb) => {
+      window.addEventListener('resize', cb);
+      return () => window.removeEventListener('resize', cb);
+    },
+    () => window.innerHeight,
+    () => 0,
+  );
+}
+
 export type PlayerLayout = 'phone' | 'tablet' | 'desktop' | 'landscape';
 
 /** Layout by width (DS 6) plus the phone-landscape layout (height under 500 and landscape). */

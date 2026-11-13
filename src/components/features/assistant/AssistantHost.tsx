@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useId, useRef, useState, useSyncExternalStore } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { BottomSheet, ConfirmDialog, Icon, IconButton } from '@/components/ui';
 import { keyboardInset } from '@/lib/client/assistant';
 import { getOwn } from '@/lib/guide/selectors';
@@ -86,8 +86,8 @@ function DockSummary({ p, headingFocus }: { p: DockProps; headingFocus: React.Re
   const page = (step.sources[0]?.pageIndex ?? 0) + 1;
   const openPage = () => p.onOpenOriginal(step.sources[0]?.pageIndex ?? 0);
   return (
-    <div className="shrink-0 border-b border-line" data-testid="dock-summary">
-      <div className="flex flex-col gap-2 px-4 pt-3 empty:hidden empty:pt-0" data-testid="dock-banners">
+    <div className="flex min-h-0 shrink flex-col border-b border-line" data-testid="dock-summary">
+      <div className="flex shrink-0 flex-col gap-2 px-4 pt-3 empty:hidden empty:pt-0" data-testid="dock-banners">
         <StepBanners step={step} guide={p.guide} page={page} missing={p.missing} onFoundPart={p.onFoundPart} onOpenPage={openPage} />
       </div>
       <button
@@ -95,7 +95,7 @@ function DockSummary({ p, headingFocus }: { p: DockProps; headingFocus: React.Re
         type="button"
         aria-expanded={!collapsed}
         onClick={() => setCollapsed(!collapsed)}
-        className="flex min-h-14 w-full cursor-pointer items-center gap-2 px-4 text-left t-fast hover:bg-surface-sunken"
+        className="flex min-h-14 w-full shrink-0 cursor-pointer items-center gap-2 px-4 text-left t-fast hover:bg-surface-sunken"
         data-testid="dock-step-toggle"
       >
         <Icon name={collapsed ? 'chevronRight' : 'chevronDown'} size={20} />
@@ -109,7 +109,7 @@ function DockSummary({ p, headingFocus }: { p: DockProps; headingFocus: React.Re
         </span>
       </button>
       {!collapsed && (
-        <div className="flex max-h-[44dvh] flex-col gap-3 overflow-y-auto overscroll-contain px-4 pb-4 pl-11" data-testid="dock-details">
+        <div className="flex max-h-[44dvh] min-h-0 flex-col gap-3 overflow-y-auto overscroll-contain px-4 pb-4 pl-11" data-testid="dock-details">
           <p className="type-body text-ink" data-testid="dock-instruction">
             {step.instruction}
           </p>
@@ -125,7 +125,12 @@ type DockProps = AssistantViewProps & {
   missing: MissingPartUse[];
   onFoundPart: (partId: string) => void;
   onOpenOriginal: (pageIndex: number) => void;
+  /** Called when the pinned part (header, banners, toggle) plus the chat minimum does not fit: the player shows the sheet instead. */
+  onNoRoom: () => void;
 };
+
+/** The chat never gets less than this in the dock (D-024). */
+export const DOCK_CHAT_MIN = 200;
 
 /** Desktop: docked in the right column, not modal. Pinned step summary above the chat. */
 export function AssistantDock(p: DockProps) {
@@ -150,10 +155,30 @@ export function AssistantDock(p: DockProps) {
     if (document.activeElement?.tagName !== 'TEXTAREA') toggle.current?.focus({ preventScroll: true });
   }, [p.stepId]);
 
+  // Banners are pinned (they sit outside any scroller). If they and the chat minimum do not fit, hand over to the sheet.
+  const section = useRef<HTMLElement>(null);
+  const onNoRoom = useRef(p.onNoRoom);
+  onNoRoom.current = p.onNoRoom;
+  useLayoutEffect(() => {
+    const el = section.current;
+    if (!el) return;
+    const measure = () => {
+      const pinned = el.querySelector<HTMLElement>('[data-testid="dock-header"]')!.offsetHeight + (el.querySelector<HTMLElement>('[data-testid="dock-banners"]')?.offsetHeight ?? 0) + (el.querySelector<HTMLElement>('[data-testid="dock-step-toggle"]')?.offsetHeight ?? 0);
+      if (el.clientHeight < pinned + DOCK_CHAT_MIN) onNoRoom.current();
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    const b = el.querySelector('[data-testid="dock-banners"]');
+    if (b) ro.observe(b);
+    return () => ro.disconnect();
+  }, [p.stepId]);
+
   if (!getOwn(p.guide.steps, p.stepId)) return null;
   return (
     <>
       <section
+        ref={section}
         aria-labelledby={headingId}
         data-testid="assistant-dock"
         className="flex min-h-0 flex-1 flex-col bg-surface"
@@ -164,9 +189,9 @@ export function AssistantDock(p: DockProps) {
           }
         }}
       >
-        {/* Banners are never capped or clipped (D-022 item 7): when the window is short the whole column scrolls. */}
-        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain" data-testid="dock-scroll">
-          <header className="flex h-12 shrink-0 items-center justify-between gap-2 border-b border-line pl-4 pr-2">
+        {/* Banners are never capped, clipped or scrolled away (D-024): nothing in the column scrolls except the details and the chat. */}
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden" data-testid="dock-scroll">
+          <header data-testid="dock-header" className="flex h-12 shrink-0 items-center justify-between gap-2 border-b border-line pl-4 pr-2">
             <h2 id={headingId} ref={heading} tabIndex={-1} className="type-display-md outline-none focus-visible:outline-2">
               {COPY.title}
             </h2>
@@ -174,7 +199,7 @@ export function AssistantDock(p: DockProps) {
           </header>
           <DockSummary key={p.stepId} p={p} headingFocus={toggle} />
           {clear.failed && failNote}
-          <div className="flex min-h-[200px] flex-1 flex-col">
+          <div className="flex min-h-[200px] flex-1 shrink-0 flex-col">
             <AssistantPanel {...p} showStrip={false} onClear={clear.ask} />
           </div>
         </div>
