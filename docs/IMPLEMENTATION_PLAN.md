@@ -38,12 +38,15 @@ Each task names its owner agent. Every feature task runs the feature loop in `CL
 - [x] Completion screen
 - Note: the milestone security review for M2 is combined with M3's (the only new server surface in M2 is the PATCH progress route, written by the senior engineer).
 
-## M3. Assistant
-- [ ] Chat API with streaming, grounding and validated citations (F5)
-- [ ] Assistant sheet UI, suggested questions, citation chips (F5)
-- [ ] "Explain simpler" with cache
+## M3. Assistant - DONE 2026-11-13 (designer approved, security review applied, QA passed, orchestrator verified)
+- [x] Chat API with streaming, step awareness, validated citations and answer guards (D-019, D-020, D-022, D-023) on the mock provider
+- [x] Assistant sheet (phones, tablets, short windows) and desktop dock with pinned warnings (D-021); suggested questions; citation chips
+- [x] "Explain it more simply" with checked, cached simplifications
+- [x] Senior-engineer security review of M2 + M3 (H-033) - all findings fixed
 
-## M4. Library and polish
+## M4. Polish and sign-off
+- [ ] Dock: keep banners pinned (sticky) so focusing the composer cannot scroll a warning out of view (QA observation, H-040)
+- [ ] Real-device check of the on-screen keyboard with the assistant composer and of the landscape sheet (needs the user or a device lab)
 - [ ] Library/home, continue, delete (F7)
 - [ ] Empty/error/loading states, motion pass, accessibility pass (designer review -> engineer)
 - [ ] Rate limits, security review (senior-engineer), performance pass

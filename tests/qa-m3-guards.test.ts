@@ -445,3 +445,28 @@ describe('QA M3 re-check: D-022 calibration', () => {
     console.info(`[qa-m3] D-022 rarer words rejected: ${bad.length}/${rarer.length} ${bad.join(' | ')}`);
   });
 });
+
+describe('QA M3 final re-check: quantity rulings (M3-e)', () => {
+  const rej = (step: string, t: string) => finalize(step, t).notInManual;
+  it.each([
+    'Leave it for an hour to dry.', 'Wait a minute to set.', 'Give it a day to cure.', 'Leave it a minute to set.',
+    'There are a million dowels.', 'Use a thousand dowels.', 'Use a hundred dowels.', 'Use a dozen dowels.', 'Press the dowels in halfway.', 'Fill it half full.',
+    'Press the dowels in twofold.', 'Press it double.', 'Press it twice.', 'Use a pair of 4 mm dowels.',
+  ])('rejected: %s', (t) => expect(rej('s2', t), t).toBe(true));
+  it.each(['Press the dowels in x2.', 'Press 2x as hard.', 'Press it x3.'])('multiplier rejected (steps without it in evidence): %s', (t) => expect(rej('s9', t), t).toBe(true));
+  it.each(['Take a minute to check.', 'Pair each part with the matching entry in the parts list.', 'Keep a pair of hands free.', 'Take a minute to clear the floor.'])('accepted: %s', (t) =>
+    expect(rej('s2', t), t).toBe(false),
+  );
+  it('false-positive rates after M3-e (informational)', () => {
+    const everyday = [
+      'Dowels are one of the parts that keep the top panel from slipping.', 'Do the dowels in the top edge of one side panel first, then the other.', 'Both side panels get dowels in the top edge.',
+      'Once the shelves are on, fit the second side panel over them.', 'Do not leave a single edge without nails.', 'Take a minute to clear the floor before you tip it upright.',
+      'The dowels from step 2 are what the top panel lowers onto.', 'Join the shelves to the first side before the second.', 'Part I is the wall strap kit.', 'Keep a few spare.',
+    ];
+    const rarer = ['Pair each part with the entry.', 'Check the strap every day.', 'Stand at the foot of the bookcase.', 'Do not pound the nails.', 'Keep the few small fittings together.', 'Check that all edges are flush to a high degree.', 'Wait for it to dry.'];
+    const e = everyday.filter((t) => rej(['s6', 's2'].includes('s2') ? (t.includes('step 2') ? 's6' : t.startsWith('Do not leave') ? 's7' : t.startsWith('Join') ? 's5' : t.startsWith('Part I') ? 's9' : t.startsWith('Take a minute to clear') ? 's8' : 's2') : 's2', t));
+    const r = rarer.filter((t) => rej('s1', t));
+    process.stdout.write(`[qa-m3] M3-e everyday rejected ${e.length}/${everyday.length} ${e.join(' | ')}; rarer rejected ${r.length}/${rarer.length} ${r.join(' | ')}\n`);
+    expect(e.length).toBe(0);
+  });
+});

@@ -376,8 +376,8 @@ test.describe('D. desktop dock safety', () => {
     { width: 1024, height: 768 },
     { width: 1280, height: 720 },
     { width: 1280, height: 600 },
-    { width: 1280, height: 500 },
     { width: 1024, height: 560 },
+    { width: 1280, height: 560 },
   ];
   for (const vp of sizes) {
     for (const step of ['s5', 's7', 's8', 's9']) {
@@ -414,6 +414,72 @@ test.describe('D. desktop dock safety', () => {
       });
     }
   }
+
+  // D-022 / orchestrator ruling: under 560px tall the assistant is the modal sheet, never the dock.
+  for (const step of ['s5', 's7', 's8', 's9']) {
+    test(`1280x500 step ${step}: the assistant is the modal sheet; banners stay on the step content and the Primary cannot be pressed`, async ({ browser }) => {
+      const { context, page } = await start(browser, { width: 1280, height: 500 }, step);
+      await openAssistant(page);
+      await expect(page.getByTestId('assistant-dock')).toHaveCount(0);
+      await expect(page.getByTestId('dock-summary')).toHaveCount(0);
+      const modal = await page.evaluate(() => {
+        const d = document.querySelector('dialog[open]') as HTMLDialogElement | null;
+        return { dialog: !!d && !!d.querySelector('[data-testid="assistant-panel"]'), modal: !!d && d.matches(':modal') };
+      });
+      expect(modal).toEqual({ dialog: true, modal: true });
+      // the page behind is inert: a real click on the Primary does not reach it
+      await expect(page.getByTestId('primary').click({ timeout: 1500 })).rejects.toThrow();
+      await page.keyboard.press('Escape');
+      await expect(page.getByTestId('assistant-panel')).toBeHidden();
+      // back on the step: banners are in the step content, and the Primary is pressable again
+      const notes = page.getByTestId('step-content').locator('[role="note"]');
+      expect(await notes.count()).toBeGreaterThan(0);
+      await expect(page.getByTestId('primary')).toBeEnabled();
+      await context.close();
+    });
+  }
+
+  for (const vp of [{ width: 1280, height: 559 }, { width: 1024, height: 400 }]) {
+    test(`${vp.width}x${vp.height} step s7: sheet, not dock`, async ({ browser }) => {
+      const { context, page } = await start(browser, vp, 's7');
+      await openAssistant(page);
+      await expect(page.getByTestId('assistant-dock')).toHaveCount(0);
+      expect(await page.evaluate(() => !!document.querySelector('dialog[open]:modal'))).toBe(true);
+      await context.close();
+    });
+  }
+
+  test('resize across the 560px threshold while the assistant is open never leaves a pressable Primary beside a clipped banner', async ({ browser }) => {
+    const { context, page } = await start(browser, { width: 1280, height: 700 }, 's7');
+    await openAssistant(page);
+    const check = async (label: string) => {
+      const r = await page.evaluate(() => {
+        // the dock column scrolls as a whole (D-022 item 7); judge the banners at its top, as on arrival
+        document.querySelector('[data-testid="dock-scroll"]')?.scrollTo(0, 0);
+        const panel = document.querySelector('[data-testid="assistant-panel"]');
+        const dlg = document.querySelector('dialog[open]:modal');
+        const dock = document.querySelector('[data-testid="assistant-dock"]');
+        const bar = document.querySelector('[data-testid="action-bar"]')!.getBoundingClientRect();
+        const kids = [...document.querySelectorAll('[data-testid="dock-banners"] > [role="note"]')].map((e) => e.getBoundingClientRect());
+        const clipped = kids.some((b) => b.top < 0 || b.bottom > bar.top + 1);
+        return { panel: !!panel, modal: !!dlg, dock: !!dock, clipped, kids: kids.map((b) => [Math.round(b.top), Math.round(b.bottom)]), bar: Math.round(bar.top), sc: (() => { const e = document.querySelector('[data-testid="dock-scroll"]'); return e ? [e.scrollHeight, e.clientHeight] : null; })() };
+      });
+      expect(r.panel, label).toBe(true);
+      expect(r.modal || r.dock, label).toBe(true);
+      expect(r.clipped, `${label}: banner clipped ${JSON.stringify(r)}`).toBe(false);
+      return r;
+    };
+    await check('700');
+    await composer(page).fill('keep this draft');
+    for (const h of [560, 559, 500, 560, 700, 450, 720]) {
+      await page.setViewportSize({ width: 1280, height: h });
+      await page.waitForTimeout(400);
+      const r = await check(String(h));
+      expect(r.dock, `height ${h}`).toBe(h >= 560);
+      if (h < 560) expect(r.modal, `height ${h}`).toBe(true);
+    }
+    await context.close();
+  });
 
   test('the Primary stays reachable and labelled for an irreversible step with the dock open', async ({ browser }) => {
     const { context, page } = await start(browser, { width: 1280, height: 600 }, 's7');
