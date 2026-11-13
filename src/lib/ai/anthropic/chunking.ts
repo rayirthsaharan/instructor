@@ -1,4 +1,3 @@
-import type { PageImage } from '../provider';
 import type { Guide, Step } from '../../guide/schema';
 import { badResponse } from './errors';
 import type { ModelGuide } from './schemas';

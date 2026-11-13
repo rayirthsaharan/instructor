@@ -291,3 +291,10 @@ Done: dock tests in `e2e/qa-m3-experience.spec.ts` now cover 1024x768, 1280x720,
 Results: no defect found. False positives: everyday 0/10, restated fixture 0/14, rarer 0/7 (was 2/7). Fixture validates with zero issues; the `why` is inferred and not tied to a page. Reduced-motion backdrop rule present. Observation (not a defect): in the dock, focusing the composer scrolls the column and can move the first banner partly above the viewport; by D-022 item 7 the column scrolls as a whole.
 Counts: `npm run check` 922 pass / 0 fail (37 files); e2e 366 pass / 0 fail.
 Open defects: none. Verdict: PASS.
+
+## H-041 | 2026-11-13 | from: software-engineer -> to: qa-engineer, senior-engineer
+Task: Real provider adapter behind `AIProvider` (no real calls made).
+Done: `src/lib/ai/anthropic.ts` + `src/lib/ai/anthropic/*` (usage pricing, error mapping, schemas, chunking, panels, verify-apply, JSON stream), `src/lib/ai/prompts/{analysis,verify}.ts`, wiring in `index.ts` / `config.ts` / `.env.example`; `@anthropic-ai/sdk` 1.8.0; 40 tests with a fake client (`tests/ai-anthropic-*.test.ts`). Model `claude-haiku-5-5` everywhere, overridable by `AI_MODEL_*`. Optional `AnalyseDocumentInput.panels` added for code-detected panels (no detector exists yet).
+How to verify: `npx vitest run tests/ai-*`; `npm run build`.
+Open issues / risks (only a real call can settle them): whether the API accepts the derived structured-output schema; whether the streamed chat JSON keeps `answer` first (fallback emits the full answer at the end); cache hits (minimum prefix length); real stream/abort behaviour; Haiku 5.5 limits.
+Next: QA at unit level; the accuracy test's first calls double as the adapter's smoke test.

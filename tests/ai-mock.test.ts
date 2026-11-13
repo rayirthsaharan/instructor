@@ -148,8 +148,8 @@ describe('getAIProvider', () => {
     expect(getAIProvider({ AI_PROVIDER: ' MOCK ' }).name).toBe('mock');
     expect(getAIProvider({ AI_PROVIDER: '' }).name).toBe('mock');
   });
-  it('throws a clear error for anthropic until implemented', () => {
-    expect(() => getAIProvider({ AI_PROVIDER: 'anthropic' })).toThrow(/not implemented/);
+  it('throws a clear startup error for anthropic without an API key', () => {
+    expect(() => getAIProvider({ AI_PROVIDER: 'anthropic' })).toThrow(/ANTHROPIC_API_KEY/);
   });
   it('throws for unknown providers', () => {
     expect(() => getAIProvider({ AI_PROVIDER: 'foo' })).toThrow(/Unknown AI_PROVIDER/);

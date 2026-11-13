@@ -2,7 +2,7 @@ import { expect, test, type BrowserContext } from '@playwright/test';
 import { openPlayer, putProgress, uploadLumen } from './m2-player-helpers';
 import { installStreamControl, mockAssistantApi, openAssistant } from './m3-helpers';
 
-// D-022 item 7: under 560px tall the assistant is the modal sheet, from 560px up it is the dock.
+// D-022 item 7 / M4-a: under 560px tall the assistant is the modal sheet; taller, it is the dock when the pinned banners leave the chat its minimum height (900 fits every step).
 let guideId = '';
 let state: Awaited<ReturnType<BrowserContext['storageState']>>;
 
@@ -14,7 +14,7 @@ test.beforeAll(async ({ browser }) => {
   await ctx.close();
 });
 
-for (const [height, dock] of [[559, false], [560, true]] as const) {
+for (const [height, dock] of [[559, false], [900, true]] as const) {
   test(`1280x${height} step s8: ${dock ? 'dock' : 'sheet'} presentation, banners never under the action bar`, async ({ browser }) => {
     const context = await browser.newContext({ viewport: { width: 1280, height }, storageState: state, reducedMotion: 'reduce' });
     await putProgress(context, guideId, {});

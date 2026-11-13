@@ -38,7 +38,7 @@ for (const vp of sizes) {
       if (vp.height === 900) expect(dock).toBe(1);
       if (!dock) {
         // fallback: the modal sheet, which makes the Primary unpressable
-        expect(await page.evaluate(() => !!document.querySelector('dialog[open]:modal'))).toBe(true);
+        await expect.poll(() => page.evaluate(() => !!document.querySelector('dialog[open]:modal'))).toBe(true);
         await context.close();
         return;
       }
@@ -98,7 +98,7 @@ test('a window too short for the banners plus the chat minimum uses the sheet an
     }
   }
   if (sheetAt) {
-    expect(await page.evaluate(() => !!document.querySelector('dialog[open]:modal'))).toBe(true);
+    await expect.poll(() => page.evaluate(() => !!document.querySelector('dialog[open]:modal'))).toBe(true);
     await page.setViewportSize({ width: 1280, height: 760 });
     await expect(page.getByTestId('assistant-dock')).toHaveCount(1);
   }

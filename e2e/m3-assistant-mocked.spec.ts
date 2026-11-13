@@ -577,6 +577,12 @@ test.describe('desktop dock in short windows', () => {
         await mockAssistantApi(page);
         await openPlayer(page, guideId, `?step=${stepId}`);
         await openAssistant(page);
+        // M4-a: when the pinned banners would leave the chat under its minimum height, the assistant is the modal sheet.
+        if ((await page.getByTestId('assistant-dock').count()) === 0) {
+          await expect.poll(() => page.evaluate(() => !!document.querySelector('dialog[open]:modal'))).toBe(true);
+          await context.close();
+          return;
+        }
         const r = await page.evaluate(() => {
           const scroll = document.querySelector('[data-testid="dock-scroll"]')!.getBoundingClientRect();
           const banners = [...document.querySelectorAll('[data-testid="dock-banners"] > [role="note"]')].map((el) => el.getBoundingClientRect());
