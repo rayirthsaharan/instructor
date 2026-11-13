@@ -79,3 +79,6 @@ Status: proposed (needs user approval), accepted, superseded by D-nnn.
 
 ## D-023 | 2026-11-13 | orchestrator | accepted - completes D-022
 **Final guard and dock rules for M3.** (1) On desktop windows under 560px tall the assistant opens as the modal bottom sheet, not the dock, so a warning can never sit under the action bar. (2) Article + time unit is a quantity even when followed by "to" ("leave it for an hour to dry" is rejected); the only exemption is the idiom "take a minute to". (3) "million", "thousand", "hundred", "dozen", "half", "halfway", and multiplier forms ("x2", "2x", "twofold", "double", "twice") are quantities. (4) "pair" is an ordinary word unless a unit follows. (5) The reduced-motion rule covers `::backdrop`.
+
+## D-024 | 2026-11-13 | orchestrator | proposed (needs user approval)
+**Real-model accuracy test.** Plan, API usage and cost estimate in `docs/REAL_MODEL_PROPOSAL.md`: 3 real manuals x 3 models (Opus 5.5, Sonnet 5.5, Haiku 5.5) x up to 3 prompt variants x 2 repeats, expected about $25, requested hard cap $50. No spend until the user approves and supplies an API key.
